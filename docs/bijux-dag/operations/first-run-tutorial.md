@@ -4,7 +4,7 @@ audience: operators
 type: operations
 status: canonical
 owner: bijux-dag-docs
-last_reviewed: 2026-07-19
+last_reviewed: 2026-10-08
 ---
 
 # First-Run Tutorial
@@ -13,9 +13,24 @@ This tutorial produces one retained local run, inspects its evidence, confirms
 cache reuse, replays a selected boundary, and verifies the replay. It uses only
 checked-in inputs and writes outputs under `artifacts/`.
 
+## Prepare A Source Checkout
+
+This tutorial uses the repository's checked-in graph and sample files. A
+standalone `bijux-dag` installation does not include those inputs. If you do
+not have a checkout, obtain one and enter its root:
+
+```bash
+git clone https://github.com/bijux/bijux-core.git
+cd bijux-core
+```
+
+Check [Installation and Setup](installation-and-setup.md) for the pinned Rust
+toolchain and local execution prerequisites. Use a checkout that matches the
+version you intend to inspect; the commands below use its workspace binary.
+
 ## Fastest Proof
 
-From repository root:
+From that repository root:
 
 ```bash
 make dag-demo

@@ -4,13 +4,23 @@ audience: mixed
 type: index
 status: canonical
 owner: bijux-core-docs
-last_reviewed: 2026-07-23
+last_reviewed: 2026-10-08
 ---
 
 # Bijux Core
 
 `bijux-core` is the release and verification workspace for the `bijux` command
 runtime and the local-first `bijux-dag` toolchain.
+
+## Start With One Product
+
+| What you want to do | Prepare the command | Continue with |
+| --- | --- | --- |
+| Use `bijux` commands, configuration, or plugins | [CLI installation](bijux-cli/operations/installation-and-setup.md) | [Command surface](bijux-cli/interfaces/cli-surface.md) |
+| Run a local workflow and retain its results | [DAG installation](bijux-dag/operations/installation-and-setup.md) | [First-run tutorial](bijux-dag/operations/first-run-tutorial.md), using a source checkout for its checked-in inputs |
+
+The CLI and DAG are installed separately. Choose the product first; the
+handbooks below explain its behavior and verification boundaries.
 
 <!-- bijux-core-badges:generated:start -->
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-0F766E)](https://github.com/bijux/bijux-core/blob/main/LICENSE)

@@ -58,7 +58,7 @@ does not depend on maintainer suites merely because those suites evaluate it.
 ## Product And Maintainer Boundaries
 
 | Surface | Owner | Maintainer role |
-| --- | --- |
+| --- | --- | --- |
 | `bijux` routing, plugins, output, state, and recovery | `bijux-cli` | query public behavior and detect cross-surface drift |
 | DAG graph, execution, adapters, artifacts, and application commands | owning `bijux-dag-*` crate | compose contract and release evidence without replacing domain logic |
 | Python API, native loading, and subprocess compatibility | `bijux-cli-python` and its native boundary | run parity and packaging checks |

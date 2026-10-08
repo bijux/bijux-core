@@ -131,6 +131,10 @@ exclude_docs: |
   !/bijux-dev/makes/ci-targets.md
   !/bijux-dev/packages/bijux-dev.md
 
+validation:
+  links:
+    unrecognized_links: warn
+
 extra:
   bijux:
     repository: bijux-core
