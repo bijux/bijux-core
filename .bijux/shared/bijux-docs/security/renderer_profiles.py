@@ -1,12 +1,14 @@
 """Select source-owned renderer profiles and reject unmanaged import surfaces."""
 from __future__ import annotations
 
+from collections import Counter
 import hashlib
 import importlib.metadata as metadata
 import importlib.util
 import io
 import marshal
 import re
+import struct
 import types
 import json
 import os
@@ -45,6 +47,160 @@ def source_link_identity(path: Path, root: Path, *, stdlib=False):
     return {'external_startup_target': str(target)}
 
 
+def cache_code_equal(actual, expected, *, search_limit=100000):
+    """Bind executable values and non-reflexive constant reference graphs."""
+    # Compilation produces the graph that the cache writer serializes. Re-read
+    # that graph through the same interpreter to account for marshal interning.
+    expected = marshal.loads(marshal.dumps(expected))
+    steps = 0
+    nonreflexive = {}
+    visiting = set()
+
+    def has_nan(value):
+        # Equal reflexive constants can be interned differently by independent
+        # compilation and marshal reads. NaNs and their containing objects need
+        # reference bijections: collapsing them changes equality/set semantics.
+        identity = id(value)
+        if identity in nonreflexive:
+            return nonreflexive[identity]
+        if identity in visiting:
+            raise ProfileError('Renderer profile: cyclic executable constant graph')
+        visiting.add(identity)
+        kind = type(value)
+        if kind in {float, complex}:
+            result = value != value
+        elif kind is types.CodeType:
+            result = has_nan(value.co_consts)
+        elif kind in {tuple, frozenset}:
+            result = any(has_nan(item) for item in value)
+        elif kind is slice:
+            result = any(has_nan(item) for item in (value.start, value.stop, value.step))
+        else:
+            scalar(value)
+            result = False
+        visiting.remove(identity)
+        nonreflexive[identity] = result
+        return result
+
+    def scalar(value):
+        kind = type(value)
+        if kind is float:
+            return (kind, struct.pack('>d', value))
+        if kind is complex:
+            return (kind, struct.pack('>dd', value.real, value.imag))
+        if kind in {type(None), type(Ellipsis), bool, int, str, bytes}:
+            return (kind, value)
+        raise ProfileError('Renderer profile: unsupported executable constant type')
+
+    def shape(value):
+        kind = type(value)
+        if kind is types.CodeType:
+            return (kind, value.co_code, value.co_name, len(value.co_consts))
+        if kind in {tuple, frozenset}:
+            return (kind, len(value))
+        if kind is slice:
+            return (kind,)
+        return scalar(value)
+
+    def metadata(left, right):
+        if type(left) is not type(right):
+            return False
+        if type(left) is tuple:
+            return len(left) == len(right) and all(metadata(a, b) for a, b in zip(left, right))
+        return scalar(left) == scalar(right)
+
+    def reflexive_key(value):
+        kind = type(value)
+        if kind is types.CodeType:
+            return (kind, tuple((name, reflexive_key(getattr(value, name)))
+                                for name in dir(value)
+                                if name.startswith('co_') and name != 'co_filename'
+                                and not callable(getattr(value, name))))
+        if kind is tuple:
+            return (kind, tuple(reflexive_key(item) for item in value))
+        if kind is frozenset:
+            return (kind, frozenset(Counter(reflexive_key(item) for item in value).items()))
+        if kind is slice:
+            return (kind, reflexive_key(value.start), reflexive_key(value.stop), reflexive_key(value.step))
+        return scalar(value)
+
+    def match_pairs(pairs, unordered, forward, reverse):
+        nonlocal steps
+        while pairs:
+            steps += 1
+            if steps > search_limit:
+                raise ProfileError('Renderer profile: executable constant graph comparison budget exceeded')
+            left, right = pairs.pop()
+            if type(left) is not type(right):
+                return False
+            left_id, right_id = id(left), id(right)
+            if has_nan(left) != has_nan(right):
+                return False
+            if has_nan(left):
+                if left_id in forward:
+                    if forward[left_id] != right_id:
+                        return False
+                    continue
+                if right_id in reverse:
+                    return False
+                forward[left_id], reverse[right_id] = right_id, left_id
+            kind = type(left)
+            if kind is types.CodeType:
+                fields = tuple(name for name in dir(left) if name.startswith('co_') and not callable(getattr(left, name)))
+                if fields != tuple(name for name in dir(right) if name.startswith('co_') and not callable(getattr(right, name))):
+                    return False
+                for name in fields:
+                    if name == 'co_filename':
+                        continue
+                    if name == 'co_consts':
+                        pairs.append((left.co_consts, right.co_consts))
+                    elif not metadata(getattr(left, name), getattr(right, name)):
+                        return False
+            elif kind is tuple:
+                if len(left) != len(right):
+                    return False
+                pairs.extend(zip(left, right))
+            elif kind is slice:
+                pairs.extend(((left.start, right.start), (left.stop, right.stop), (left.step, right.step)))
+            elif kind is frozenset:
+                if len(left) != len(right):
+                    return False
+                if has_nan(left):
+                    unordered.append((tuple(left), tuple(right)))
+                elif reflexive_key(left) != reflexive_key(right):
+                    return False
+            elif scalar(left) != scalar(right):
+                return False
+        return True
+
+    def branches(left_items, right_items, pending, forward, reverse):
+        left, rest = left_items[0], left_items[1:]
+        left_shape = shape(left)
+        for index, right in enumerate(right_items):
+            if shape(right) == left_shape:
+                yield ([(left, right)], pending + [(rest, right_items[:index] + right_items[index + 1:])],
+                       forward.copy(), reverse.copy())
+
+    # Explicit search frames preserve global alias backtracking without adding
+    # a Python call frame for every member of a legitimate large constant set.
+    alternatives = [iter([([(actual, expected)], [], {}, {})])]
+    while alternatives:
+        try:
+            pairs, unordered, forward, reverse = next(alternatives[-1])
+        except StopIteration:
+            alternatives.pop()
+            continue
+        if not match_pairs(pairs, unordered, forward, reverse):
+            continue
+        while unordered and not unordered[-1][0]:
+            unordered.pop()
+        if not unordered:
+            return True
+        left_items, right_items = unordered.pop()
+        alternatives.append(branches(left_items, right_items, unordered, forward, reverse))
+    return False
+
+
 def validate_bytecode(path: Path, *, root: Path | None = None, stdlib=False):
     require('__pycache__' in path.parts and not path.is_symlink(), "Renderer profile: sourceless/unowned bytecode forbidden")
     try:
@@ -68,9 +224,7 @@ def validate_bytecode(path: Path, *, root: Path | None = None, stdlib=False):
     require(isinstance(actual,types.CodeType) and stream.read()==b'', 'Renderer profile: bytecode payload is not one code object')
     match=re.search(r'\.opt-([12])\.pyc$',path.name)
     expected=compile(source.read_bytes(),str(source),'exec',dont_inherit=True,optimize=int(match[1]) if match else 0)
-    def normalized(code):
-        return code.replace(co_filename='{source}',co_consts=tuple(normalized(value) if isinstance(value,types.CodeType) else value for value in code.co_consts))
-    require(normalized(actual)==normalized(expected),
+    require(cache_code_equal(actual, expected),
             'Renderer profile: cached executable bytecode differs from owned source: '+str(path))
 
 
@@ -167,6 +321,20 @@ def origins(root: Path, shared: Path, *, publication: bool, external_startup_sou
                 or (name=='sitecustomize' and path in external_paths),
                 "Renderer profile: loaded module outside reviewed runtime/source roots")
     owners=metadata.packages_distributions()
+    # Resolve each immutable distribution inventory once during this origin check.
+    # A later capture creates a fresh index and retains full physical validation.
+    distribution_members = {}
+
+    def distribution_identity(owner):
+        if owner not in distribution_members:
+            distribution = metadata.distribution(owner)
+            members = {
+                Path(distribution.locate_file(item)).resolve()
+                for item in distribution.files or [] if '..' not in item.parts
+            }
+            distribution_members[owner] = (distribution, members)
+        return distribution_members[owner]
+
     for name,module in list(sys.modules.items()):
         file=getattr(module,'__file__',None)
         if not file:continue
@@ -185,16 +353,14 @@ def origins(root: Path, shared: Path, *, publication: bool, external_startup_sou
             require(path.is_relative_to(stdlib),'Renderer profile: standard library import is shadowed')
         candidates=owners.get(top,[])
         if candidates:
-            members={Path(metadata.distribution(owner).locate_file(item)).resolve()
-                     for owner in candidates for item in metadata.distribution(owner).files or [] if '..' not in item.parts}
+            members = set().union(*(distribution_identity(owner)[1] for owner in candidates))
             require(path in members,'Renderer profile: installed producer namespace is shadowed: '+name+' at '+str(path))
     for name,distribution in [('mkdocs','mkdocs'),('material','mkdocs-material'),('jinja2','Jinja2'),('yaml','PyYAML')]:
         module=__import__(name)
         file=Path(module.__file__).resolve()
-        base=Path(metadata.distribution(distribution).locate_file('')).resolve()
+        owner, members = distribution_identity(distribution)
+        base=Path(owner.locate_file('')).resolve()
         require(base in installed and file.is_relative_to(base), "Renderer profile: loaded producer package is shadowed")
-        members={Path(metadata.distribution(distribution).locate_file(item)).resolve()
-                 for item in metadata.distribution(distribution).files or [] if '..' not in item.parts}
         require(file in members, "Renderer profile: loaded producer source absent installed inventory")
 
 

@@ -5,7 +5,7 @@ from pathlib import Path
 from .routes import Document, resolve
 
 
-def validate(site: Path, site_url: str, docs: dict[Path, Document]) -> tuple[list[str], int]:
+def validate(site: Path, site_url: str, docs: dict[Path, Document], *, verified_readers: dict | None = None) -> tuple[list[str], int]:
     errors = []
     index = site/'search/search_index.json'
     if not index.is_file():
@@ -30,8 +30,14 @@ def validate(site: Path, site_url: str, docs: dict[Path, Document]) -> tuple[lis
             # Public search eligibility is independently configurable; external noindex need not exclude native search.
             pass
     worker_targets = set()
+    verified_readers = verified_readers or {}
     for path,doc in docs.items():
         if path.name == '404.html' or doc.redirect:
+            continue
+        reader = verified_readers.get(path.relative_to(site).as_posix())
+        if reader is not None:
+            if doc.config:
+                errors.append(f'{path.relative_to(site)}: standalone report cannot impersonate Material configuration')
             continue
         try:
             config = json.loads(doc.config)

@@ -105,14 +105,14 @@ class Destination(HTMLParser):
         self.redirect |= tag == "meta" and (values.get("http-equiv") or "").lower() == "refresh"
 
 
-def normalize_redirects(configuration, site: Path, site_url: str, *, write: bool = True) -> dict:
+def normalize_redirects(configuration, site: Path, site_url: str, *, write: bool = True, source_root: Path | None = None) -> dict:
     """Preflight declared producer bytes and final destinations, then normalize stubs."""
     identity = identity_module()
     require(site.is_dir() and not site.is_symlink(), "Redirect: regular built site directory required")
     require(configuration.site_url == site_url, "Redirect: actual configuration production URL differs")
     plugin = configuration.plugins.get("redirects")
     inputs = {"processor_sha256": digest(Path(__file__).read_bytes()),
-              "resolved_config_sha256": identity.configuration_identity(configuration, Path(configuration.config_file_path).parent),
+              "resolved_config_sha256": identity.configuration_identity(configuration, source_root if source_root is not None else Path(configuration.config_file_path).parent),
               "plugin": None, "redirect_map_sha256": None}
     if plugin is None:
         return {"schema": 1, "policy": "exact-declared-redirects", "site_url": site_url,

@@ -86,7 +86,10 @@
     {% if hub_links %}
       {# Keep hub strip in header; responsive CSS controls visibility by viewport profile. #}
       <nav class="bijux-hub-strip" aria-label="Bijux sites" data-bijux-row-scope="{{ desktop_normal_row_scope }}" data-bijux-desktop-normal-only="true" data-bijux-phone-compact="hide">
-        <ul class="bijux-tabs__list bijux-tabs__list--hub">
+        <button type="button" class="bijux-registry-scroll" data-bijux-registry-scroll="previous" aria-label="Scroll Bijux sites backward" aria-controls="bijux-registry-links" hidden>
+          {% include ".icons/material/chevron-left.svg" %}
+        </button>
+        <ul id="bijux-registry-links" class="bijux-tabs__list bijux-tabs__list--hub">
           {% for entry in hub_links %}
             {% set item_class = "bijux-tabs__item" %}
             {% set current = "" %}
@@ -99,6 +102,9 @@
             </li>
           {% endfor %}
         </ul>
+        <button type="button" class="bijux-registry-scroll" data-bijux-registry-scroll="next" aria-label="Scroll Bijux sites forward" aria-controls="bijux-registry-links" hidden>
+          {% include ".icons/material/chevron-right.svg" %}
+        </button>
       </nav>
     {% endif %}
     <div class="bijux-header-tools" data-bijux-header-zone="tools">

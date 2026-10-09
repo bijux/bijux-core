@@ -1,34 +1,50 @@
 /* Header structure: hub strip and header tools surfaces. */
 .bijux-hub-strip {
+  align-items: center;
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  position: relative;
+}
+
+.bijux-hub-strip > .bijux-tabs__list {
   flex: 1 1 auto;
   min-width: 0;
   overflow-x: auto;
-  position: relative;
+}
+
+.bijux-registry-scroll {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  flex: 0 0 auto;
+  inline-size: 2.2rem;
+  block-size: 2.2rem;
+  justify-content: center;
+  min-inline-size: 44px;
+  min-block-size: 44px;
+}
+
+.bijux-registry-scroll svg {
+  inline-size: 1.2rem;
+  block-size: 1.2rem;
+  fill: currentColor;
+}
+
+.bijux-registry-scroll[aria-disabled="true"] { cursor: default; opacity: 0.55; }
+.bijux-registry-scroll:focus-visible { outline-offset: -3px; opacity: 1; }
+[dir="rtl"] .bijux-registry-scroll svg { transform: rotate(180deg); }
+
+body[data-bijux-drawer-ready="true"] .bijux-hub-strip > .bijux-tabs__list {
   scrollbar-width: none;
 }
 
-.bijux-hub-strip::-webkit-scrollbar {
+body[data-bijux-drawer-ready="true"] .bijux-hub-strip > .bijux-tabs__list::-webkit-scrollbar {
   display: none;
-}
-
-.bijux-hub-strip::before,
-.bijux-hub-strip::after {
-  content: "";
-  inset-block: 0;
-  pointer-events: none;
-  position: absolute;
-  width: 1.15rem;
-  z-index: 1;
-}
-
-.bijux-hub-strip::before {
-  background: linear-gradient(90deg, var(--bijux-hub-bg), rgba(30, 40, 82, 0));
-  inset-inline-start: 0;
-}
-
-.bijux-hub-strip::after {
-  background: linear-gradient(270deg, var(--bijux-hub-bg), rgba(30, 40, 82, 0));
-  inset-inline-end: 0;
 }
 
 .bijux-header-tools {

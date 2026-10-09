@@ -108,16 +108,26 @@ class InlineAttributes(HTMLParser):
                 "Script authority: executable attributes differ from reviewed classic snippets")
 
 
-def verify_ordinary(site: Path, shared: Path, renderer: dict, csp_report: dict, redirect_hashes: dict | None = None) -> dict:
+def verify_ordinary(site: Path, shared: Path, renderer: dict, csp_report: dict, redirect_hashes: dict | None = None, *, verified_readers=None) -> dict:
     """Redirect exclusions must come from independent declared-template verification."""
     redirect_hashes = redirect_hashes or {}
     source, policy, allowed, normalized = reconstruction(shared, renderer, csp_report)
+    capabilities, reports = {}, set()
+    if verified_readers is not None:
+        import importlib
+        adapter = importlib.import_module(policy.embedded_module().__package__ + '.rendering')
+        require(type(verified_readers) is adapter.VerifiedReaders, 'Script authority: static readers require an independently rederived in-process scope')
+        verified_readers.unchanged(site, csp_report)
+        capabilities, reports = verified_readers.capabilities, verified_readers.reports
     originals = {page.relative_to(site).as_posix(): page.read_bytes() for page in sorted(site.rglob("*.html"))}
     require(originals, "Script authority: no HTML")
     require(set(redirect_hashes) <= set(originals), "Script authority: undeclared redirect exclusion")
     report = []
     used = set(redirect_hashes.values())
     for name, data in originals.items():
+        if name in reports:
+            report.append({"path": name, "class": "source-owned-static-reader", "inline_hashes": []})
+            continue
         if name in redirect_hashes:
             continue
         content = data.decode()
@@ -137,7 +147,7 @@ def verify_ordinary(site: Path, shared: Path, renderer: dict, csp_report: dict, 
         scripts = policy.Scripts()
         scripts.feed(raw)
         require(scripts.current is None, "Script authority: unterminated script")
-        rebuilt, hashes = policy.qualify_html(raw, allowed, normalized)
+        rebuilt, hashes = policy.qualify_html(raw, allowed, normalized, capabilities.get(name))
         require(rebuilt == content, "Script authority: final policy differs from independently admitted script bodies")
         used.update(hashes)
         report.append({"path": name, "inline_hashes": hashes})

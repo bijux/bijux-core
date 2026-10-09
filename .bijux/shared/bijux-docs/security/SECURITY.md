@@ -76,6 +76,33 @@ mismatched bytecode fail. Generated catalog Markdown outside the tracked source
 requires its own generator/source attribution; a build-date fallback proves
 neither authored freshness nor science qualification.
 
+The `masterclass-catalogue` source recipe reconstructs derived Markdown and
+`artifacts/mkdocs.root.yml` from captured committed originals. `mkdocs.yml` remains
+the tracked configuration owner. Exact reviewed generator digests are fixed by
+shared source; each run binds its actual owner/configuration, explicit `SITE_URL`
+presence/value and original document map. Unknown recipes, generators, parent
+configuration inheritance, extra derived bytes, source changes, symlinks and
+hardlinks fail. A local publication-hook cache is accepted only when its original
+is captured and the existing bytecode validator proves exact compiled equivalence.
+
+Catalogue files retain their public routes while their native absolute source and
+edit identity point to committed originals. The reviewed public `on_files` and
+`on_page_read_source` events supply reconstructed text; native revision callbacks
+run unchanged against original Git history. Complete history is required, with
+replacement namespaces and grafts rejected. Explicit `GIT_GRAFT_FILE`, `GIT_DIR`,
+`GIT_COMMON_DIR` and `GIT_WORK_TREE` environment selections, including empty
+values, are rejected before capture and every native history call. Their presence
+can redirect Git ownership or history independently of unchanged source bytes.
+Build-time fallback configuration is preserved but cannot qualify a missing
+original history. No generated-file clock
+or altered native revision callback stands in for provenance.
+
+For this recipe, `capture-source` selects `--config mkdocs.yml --source-recipe masterclass-catalogue`; `render_publication.py` selects
+`--config artifacts/mkdocs.root.yml --source-recipe masterclass-catalogue` and the
+same source checkpoint. Ordinary tracked configurations retain their existing
+entrypoints. This capability does not approve a publication profile, select a
+consumer's dependencies or certify live delivery.
+
 Run [build_identity.py](build_identity.py) with the actual `DOCS_PYTHON` immediately
 before rendering and after CSP transformation. It records the loaded MkDocs
 configuration, resolved environment values as a digest, source/override inputs,
@@ -85,6 +112,32 @@ those boundaries. The guard's system Python is not substituted for the renderer.
 Generated inputs under `artifacts/` remain the reviewed builder's responsibility;
 authored renderer inputs outside artifacts must belong to the selected Git tree.
 
+Reviewed embedded reports may explicitly select `report_class: static-reader`
+for a passive notice with no scripts, bootstrap, resources or providers. This
+class requires the exact non-executable descriptor, tracked source bytes and
+source checkpoint. Its HTML attributes and CSS use a finite passive vocabulary;
+unknown elements, resource attributes, imports and fetch expressions fail. Its
+independently rederived CSP denies scripts, fonts, media, frames, workers and
+automatic connections; only the reviewed inline notice styles remain allowed.
+Ordinary user-followed anchors remain navigation. This capability preserves the
+existing interactive report contract and does not qualify reader discovery,
+provider behaviour, a hosted renderer or publication by itself.
+
+A descriptor may bind `reader_purpose` to an exact tracked JSON input containing
+reviewed report titles, descriptions, documentation routes and native search
+queries. The passive report receives reversible Return and Search links; the
+ordinary Material index and sitemap receive independently derived entries.
+Native targets must exist with their actual configuration and search worker.
+Search/index/sitemap/gzip changes participate in the same source-bound preflight
+and final verification as the report. Unknown reports retain ordinary route
+requirements; a path or receipt flag alone cannot exempt them.
+
+Candidate route qualification accepts `--embedded-csp-report`,
+`--completed-build-receipt` and `--source-sha` together and independently verifies
+the exact composition before interpreting standalone routes. This verification
+remains distinct from production dispatcher, renderer profile and consumer
+publication qualification.
+
 The publication manifest identifies every public file, the exact standard/source,
 policy and four retained receipts: clean source, completed actual renderer, passed
 route/search/public URL checks and applied early CSP. All artifact receipts must
@@ -93,11 +146,21 @@ and canonical override hashes must match accepted source; its installed-template
 hashes must match the actual renderer. Missing checks, stale receipts, changed
 exception policies and broadened or late CSP fail admission.
 
-Keep receipts outside the uploaded bundle. `verify --require-qualified` repeats
-source and receipt admission immediately before upload. Ordinary `verify` checks
-retained bytes/policy for offline previous-good recovery; it does not claim a new
-source qualification. Neither mode proves live deployment, repository environment
-protections, browser/manual acceptance or a provider's deployment identity.
+Keep receipts outside the uploaded bundle. Schema2 `verify` independently
+requalifies actual source, receipt files and trusted producer reconstruction once;
+`verify --require-qualified` additionally requires schema2 before upload. Serialized
+profile/qualification declarations never create authority. Schema1 verification
+checks its mechanical bundle policy and does not qualify a publication producer.
+
+For explicit offline previous-good recovery, `verify --bytes-only` compares the
+selected regular-file inventory, digests, size and policy identity to a retained
+manifest without opening qualification receipts or rebuilding. It returns only
+`retained-public-bytes-only`, with `verification_only: true`,
+`publication_approval: false` and `qualified_source_verified: false`. The operator
+must independently trust that historical manifest; this mode does not re-admit
+HTML/CSP, verify source/runtime authority or authorize deployment. It cannot be
+combined with `--require-qualified`. Actual source-qualified publication still
+requires a reviewed production renderer profile and the complete producer adapter.
 
 From a consumer with synchronized shared source:
 

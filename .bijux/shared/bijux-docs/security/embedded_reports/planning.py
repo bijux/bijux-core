@@ -22,13 +22,21 @@ from .html import (
     csp_hash,
     executable_scripts,
     parent_iframe,
-    reviewed_recipe,
+    report_class,
+    report_recipe,
     validate_report,
 )
 from .resources import registration_data
 
 
 def _report_capability(report, bodies):
+    if report_class(report) == "static-reader":
+        return {
+            "script_hashes": [], "script_sources": ["'none'"], "frame_uris": [],
+            "image_sources": ["'none'"], "connect_sources": ["'none'"],
+            "style_sources": ["'unsafe-inline'"], "worker_sources": ["'none'"],
+            "object_sources": ["'none'"],
+        }
     return {
         "script_hashes": [csp_hash(s["body"]) for s in bodies],
         "script_sources": ["'self'"],
@@ -43,6 +51,8 @@ def _report_capability(report, bodies):
 
 def _descriptor_inputs(descriptor):
     inputs = [descriptor["config"], *descriptor["producer_inputs"]]
+    if descriptor.get("reader_purpose") is not None:
+        inputs.append(descriptor["reader_purpose"])
     for report in descriptor["reports"]:
         inputs.append(report["source"])
         inputs.extend(
@@ -122,6 +132,10 @@ def plan_embedded_reports(
         repo_root, source_sha, _descriptor_inputs(descriptor)
     )
     _, initial_bundle = bundle_identity(site)
+    from .reader import purposes, insert, sitemap, search_index
+    reader_purposes = purposes(repo_root, site, descriptor)
+    reader_sitemap = sitemap(site, product_base, set(reader_purposes))
+    reader_index = search_index(site, reader_purposes)
     if (
         build_receipt.get("bundle_sha256") is not None
         and build_receipt["bundle_sha256"] != initial_bundle
@@ -147,74 +161,76 @@ def plan_embedded_reports(
             raise AdmissionError("emitted report differs from reviewed tracked source")
         document = validate_report(original.decode(), report, product_base)
         bodies = executable_scripts(document)
-        if len(bodies) != 1:
-            raise AdmissionError(
-                "reviewed report class requires exactly one executable body"
-            )
-        producer_paths = {item["path"] for item in descriptor["producer_inputs"]}
-        recipe_paths = {
-            report["recipe"]["template"],
-            *[
-                item["path"]
-                for item in report["recipe"]["expansions"]
-                if item.get("path")
-            ],
-        }
-        if not recipe_paths <= producer_paths:
-            raise AdmissionError(
-                "renderer recipe lacks tracked producer fingerprint closure"
-            )
-        recipe = reviewed_recipe(
-            repo_root, bodies[0]["body"], report["recipe"], product_base, output
-        )
-        providers = report["providers"]
-        if set(providers) != set(report["reviewed_provider_origins"]):
-            raise AdmissionError("provider origin is not owner-reviewed")
-        observed_providers = set()
-        for call in report["provider_calls"]:
-            callee = call["callee"]
-            if not re.fullmatch(r"[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*", callee):
-                raise AdmissionError("invalid reviewed provider call")
-            matches = list(re.finditer(re.escape(callee) + r"\s*\(", bodies[0]["body"]))
-            for match in matches:
-                literal = re.match(
-                    r"\s*(['\"])(https://[^'\"]+)\1", bodies[0]["body"][match.end() :]
+        if report_class(report) == "static-reader":
+            recipe = report_recipe(repo_root, document, report, product_base, output)
+            providers = {}
+        else:
+            if len(bodies) != 1:
+                raise AdmissionError(
+                    "reviewed report class requires exactly one executable body"
                 )
-                if literal is None:
-                    raise AdmissionError(
-                        "provider URL is not a reviewed static literal"
+            producer_paths = {item["path"] for item in descriptor["producer_inputs"]}
+            recipe_paths = {
+                report["recipe"]["template"],
+                *[
+                    item["path"]
+                    for item in report["recipe"]["expansions"]
+                    if item.get("path")
+                ],
+            }
+            if not recipe_paths <= producer_paths:
+                raise AdmissionError(
+                    "renderer recipe lacks tracked producer fingerprint closure"
+                )
+            recipe = report_recipe(repo_root, document, report, product_base, output)
+            providers = report["providers"]
+            if set(providers) != set(report["reviewed_provider_origins"]):
+                raise AdmissionError("provider origin is not owner-reviewed")
+            observed_providers = set()
+            for call in report["provider_calls"]:
+                callee = call["callee"]
+                if not re.fullmatch(r"[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*", callee):
+                    raise AdmissionError("invalid reviewed provider call")
+                matches = list(re.finditer(re.escape(callee) + r"\s*\(", bodies[0]["body"]))
+                for match in matches:
+                    literal = re.match(
+                        r"\s*(['\"])(https://[^'\"]+)\1", bodies[0]["body"][match.end() :]
                     )
-                target = urlsplit(literal.group(2))
-                observed_providers.add(target.scheme + "://" + target.netloc)
-        if observed_providers != set(providers):
-            raise AdmissionError(
-                "declared providers differ from actual reviewed executable calls"
-            )
-        for origin, policy in providers.items():
-            url = urlsplit(origin)
-            if (
-                url.scheme != "https"
-                or not url.hostname
-                or url.path
-                or url.query
-                or url.fragment
-                or url.username
-                or url.password
-            ):
-                raise AdmissionError("provider must be an exact HTTPS origin")
-            if (
-                not policy.get("purpose")
-                or not policy.get("activation")
-                or not policy.get("attribution")
-                or not policy.get("terms")
-            ):
+                    if literal is None:
+                        raise AdmissionError(
+                            "provider URL is not a reviewed static literal"
+                        )
+                    target = urlsplit(literal.group(2))
+                    observed_providers.add(target.scheme + "://" + target.netloc)
+            if observed_providers != set(providers):
                 raise AdmissionError(
-                    "provider privacy/attribution contract is incomplete"
+                    "declared providers differ from actual reviewed executable calls"
                 )
-            if origin not in bodies[0]["body"]:
-                raise AdmissionError(
-                    "declared provider is not in reviewed executable source"
-                )
+            for origin, policy in providers.items():
+                url = urlsplit(origin)
+                if (
+                    url.scheme != "https"
+                    or not url.hostname
+                    or url.path
+                    or url.query
+                    or url.fragment
+                    or url.username
+                    or url.password
+                ):
+                    raise AdmissionError("provider must be an exact HTTPS origin")
+                if (
+                    not policy.get("purpose")
+                    or not policy.get("activation")
+                    or not policy.get("attribution")
+                    or not policy.get("terms")
+                ):
+                    raise AdmissionError(
+                        "provider privacy/attribution contract is incomplete"
+                    )
+                if origin not in bodies[0]["body"]:
+                    raise AdmissionError(
+                        "declared provider is not in reviewed executable source"
+                    )
         resource_records = []
         chunks = 0
         for resource_output, resource in sorted(report["resources"].items()):
@@ -242,29 +258,30 @@ def plan_embedded_reports(
             elif resource["kind"] not in ("reviewed-script", "reviewed-style", "image"):
                 raise AdmissionError("unreviewed resource kind")
             resource_records.append(record)
-        # Unknown sibling executable files in this owned resource class cannot hide
-        # outside its finite manifest while script-src self is enabled.
-        root = Path(output).parent
-        observed = {
-            p.relative_to(site).as_posix()
-            for p in (site / root).rglob("*")
-            if p.is_file() and p.suffix.lower() in (".js", ".css")
-        }
-        if any(p not in report["resources"] for p in observed):
-            raise AdmissionError("undeclared executable/style resource in report tree")
-        bootstrap = [
-            s
-            for s in document.scripts
-            if s["attrs"].get("id") == report["bootstrap_id"]
-        ]
-        if (
-            len(bootstrap) != 1
-            or bootstrap[0]["attrs"].get("type") != "application/json"
-        ):
-            raise AdmissionError("owned bootstrap is absent")
-        data = json_data(bootstrap[0]["body"])
-        if digest(canonical(data)) != report["bootstrap_sha256"]:
-            raise AdmissionError("bootstrap manifest differs")
+        if report_class(report) == "interactive":
+            # Unknown sibling executable files in this owned resource class cannot hide
+            # outside its finite manifest while script-src self is enabled.
+            root = Path(output).parent
+            observed = {
+                p.relative_to(site).as_posix()
+                for p in (site / root).rglob("*")
+                if p.is_file() and p.suffix.lower() in (".js", ".css")
+            }
+            if any(p not in report["resources"] for p in observed):
+                raise AdmissionError("undeclared executable/style resource in report tree")
+            bootstrap = [
+                s
+                for s in document.scripts
+                if s["attrs"].get("id") == report["bootstrap_id"]
+            ]
+            if (
+                len(bootstrap) != 1
+                or bootstrap[0]["attrs"].get("type") != "application/json"
+            ):
+                raise AdmissionError("owned bootstrap is absent")
+            data = json_data(bootstrap[0]["body"])
+            if digest(canonical(data)) != report["bootstrap_sha256"]:
+                raise AdmissionError("bootstrap manifest differs")
         canonical_url = product_base + output
         if any(
             tag == "link" and attrs.get("rel") == "canonical"
@@ -276,7 +293,7 @@ def plan_embedded_reports(
         )
         if original.decode().count("<head>") != 1:
             raise AdmissionError("report head boundary is ambiguous")
-        normalized = original.decode().replace("<head>", "<head>" + marker, 1)
+        normalized = insert(original.decode().replace("<head>", "<head>" + marker, 1), output, reader_purposes.get(output))
         capability = _report_capability(report, bodies)
         records.append(
             {
@@ -363,6 +380,9 @@ def plan_embedded_reports(
         "resolved_config_sha256": build_receipt["resolved_config_sha256"],
         "site_url": product_base,
         "initial_bundle_sha256": initial_bundle,
+        "reader_purposes": reader_purposes,
+        "reader_sitemap": reader_sitemap,
+        "reader_index": reader_index,
         "records": records,
         "navigation": navigation,
         "limitations": [
@@ -426,6 +446,11 @@ def final_receipt(plan, final_build_receipt, final_policy_records):
     expected_inputs = source_inputs(
         Path(plan["repo"]), plan["source_sha"], _descriptor_inputs(descriptor)
     )
+    from .reader import purposes, insert, verify_sitemap, verify_search_index
+    if purposes(Path(plan["repo"]), site, descriptor) != plan.get("reader_purposes", {}):
+        raise AdmissionError("reader purpose differs from independently tracked source")
+    verify_sitemap(plan, site)
+    verify_search_index(plan, site)
     if expected_inputs != plan["source_inputs"]:
         raise AdmissionError("plan source input closure differs")
     _config(Path(plan["repo"]), descriptor, plan["build_receipt"])
@@ -506,6 +531,7 @@ def final_receipt(plan, final_build_receipt, final_policy_records):
                 + '">',
                 1,
             )
+            expected_html = insert(expected_html, record["path"], plan.get("reader_purposes", {}).get(record["path"]))
             expected_html = normalize(
                 expected_html, record["path"], plan["site_url"], ownership
             )["normalized_html"]
@@ -519,7 +545,7 @@ def final_receipt(plan, final_build_receipt, final_policy_records):
                 )
             expected = {
                 "script-src": [
-                    "'self'",
+                    *capability["script_sources"],
                     *["'" + h + "'" for h in capability["script_hashes"]],
                 ],
                 "script-src-attr": ["'none'"],
@@ -532,6 +558,9 @@ def final_receipt(plan, final_build_receipt, final_policy_records):
                 "worker-src": capability["worker_sources"],
                 "object-src": capability["object_sources"],
             }
+            if report_class(owned) == "static-reader":
+                expected.update({name: ["'none'"] for name in
+                                 ("default-src", "font-src", "media-src", "manifest-src")})
             for directive, values in expected.items():
                 if sorted(policy.get(directive, [])) != sorted(values):
                     raise AdmissionError("final report CSP exceeds reviewed capability")

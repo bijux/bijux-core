@@ -21,7 +21,7 @@
       "source": "bijux-docs/assets/javascripts/material-search.430a43a148880186a0981dcff9aea38caff90b29d2744b91a38ebe37f6213a19.js"
     },
     "docs/assets/javascripts/mermaid-init.js": {
-      "sha256": "4491cdb29a6eb9ac88aa83481c4310c2366fa05d4326c25714f8bfa4ec7a522e",
+      "sha256": "0478713c7f91dd39c1c3fa26e0344256cd488d487e3cd48c3897fd00e5b38d94",
       "source": "bijux-docs/scripts/mermaid-init.js"
     },
     "docs/assets/javascripts/navigation-sync.js": {
@@ -29,7 +29,7 @@
       "source": "bijux-docs/scripts/nav-sync.js"
     },
     "docs/assets/javascripts/shell/bootstrap.js": {
-      "sha256": "93415c347914140affbba42dea91a67d63f8b8b8555025107f095210a281439e",
+      "sha256": "59477074ab9975592f45a8cbd772d6da3a850f8247befbf901d9201a46bb7631",
       "source": "bijux-docs/scripts/bootstrap.js"
     },
     "docs/assets/javascripts/shell/content-reflow.js": {
@@ -41,7 +41,7 @@
       "source": "bijux-docs/scripts/detail-tabs.js"
     },
     "docs/assets/javascripts/shell/nav-reveal.js": {
-      "sha256": "4ac289f4d0f8be71e654df9690c19748391cbca300d4e893b9559b74e9617636",
+      "sha256": "465b42a2e85bc00965f681dc74256122fd5723e30acba4430789b9b7e8c64843",
       "source": "bijux-docs/scripts/nav-reveal.js"
     },
     "docs/assets/javascripts/shell/nav-state.js": {
@@ -53,7 +53,7 @@
       "source": "bijux-docs/scripts/search-recovery.js"
     },
     "docs/assets/javascripts/shell/theme-persistence.js": {
-      "sha256": "a9011e3aa0f3c5c0bb0979dbd7a59d6d2c8e257f387849a73a1ed6bf9215543b",
+      "sha256": "b5a1788c68a144c6fba1232fb46964fecca99c8d7e7c09da2ab02eaa38676269",
       "source": "bijux-docs/scripts/theme-persistence.js"
     },
     "docs/assets/javascripts/shell/viewport-profile.js": {
@@ -97,7 +97,7 @@
       "source": "bijux-docs/styles/02-layout.css"
     },
     "docs/assets/styles/03-header.css": {
-      "sha256": "1e5e87daeaca11fa9148eaf6f7c8f81bf949c0b8d4e0ed507c5600dd9f505d7c",
+      "sha256": "c8ecbbc1bfe5afe5751b0769b2fa04ca862afd696c7a851cc63fae1698786d00",
       "source": "bijux-docs/styles/03-header.css"
     },
     "docs/assets/styles/04-nav.css": {
@@ -117,7 +117,7 @@
       "source": "bijux-docs/styles/07-utilities.css"
     },
     "docs/assets/styles/08-responsive.css": {
-      "sha256": "e4038058ea66d060a7c3043200cace87d55481e5f532ddcd6d188ef97cd4f4a6",
+      "sha256": "e4958d971e8521b03755a1c9d3651901a6219323d546ddc4a6a2e52f2092a2a0",
       "source": "bijux-docs/styles/08-responsive.css"
     },
     "docs/assets/styles/extra.css": {
@@ -141,7 +141,7 @@
       "source": "bijux-docs/partials/footer.html"
     },
     "docs/overrides/partials/header.html": {
-      "sha256": "aec12b5f7163c5c44788486d91fff4e6c8d92955277e08a13c24f6324fe168ee",
+      "sha256": "f717c2ac9f8b743631e35dc5e59fc486fe6e05b5539433a25533a59fdcc414db",
       "source": "bijux-docs/partials/header.html"
     },
     "docs/overrides/partials/javascripts/base.html": {
@@ -157,11 +157,11 @@
       "source": "bijux-docs/partials/logo.html"
     },
     "docs/overrides/partials/nav-item.html": {
-      "sha256": "ab7aae29d2f12dbfb459764733d253fcf20340ed7ae3a1494885e2a0232c93c2",
+      "sha256": "9b3f63f187af8910bb8e0492d7fe6a4e5fcc1b7d3ecfc3ab25898f9af2ac98d0",
       "source": "bijux-docs/partials/nav-item.html"
     },
     "docs/overrides/partials/nav.html": {
-      "sha256": "ff929e02a7a2bc4a5715c536e22f28bb8c4a35ea84250d06752267a1ca21d3af",
+      "sha256": "9272069ca6847dcb019a95975c5b6b76c7dad385e05255c81e204d6be4cbf542",
       "source": "bijux-docs/partials/nav.html"
     },
     "docs/overrides/partials/search.html": {
@@ -177,6 +177,6 @@
   "source": {
     "mode": "accepted-github",
     "origin": "https://github.com/bijux/bijux-std.git",
-    "sha": "ab56c5afb37c53bd23a0b9f8e48ed50dedcc71ca"
+    "sha": "5d09609bd23ccbecd9c58e2dd2069627c3b32332"
   }
 }

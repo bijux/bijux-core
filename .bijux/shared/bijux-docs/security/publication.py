@@ -342,7 +342,11 @@ def applied_csp(policy: str, admitted_hashes: set[str], capability: dict | None 
             expected.update({"base-uri": ["'none'"], "form-action": ["'none'"],
                              "worker-src": capability["worker_sources"],
                              "connect-src": capability["connect_sources"],
-                             "img-src": capability["image_sources"]})
+                             "img-src": capability["image_sources"],
+                             "style-src": capability["style_sources"]})
+    if capability is not None and capability.get("script_sources") == ["'none'"]:
+        expected.update({name: ["'none'"] for name in
+                         ("default-src", "font-src", "media-src", "manifest-src")})
     directives = {}
     for section in policy.split(";"):
         tokens = section.strip().split()
@@ -352,6 +356,10 @@ def applied_csp(policy: str, admitted_hashes: set[str], capability: dict | None 
         directives[tokens[0]] = tokens[1:]
     script = directives.pop("script-src", [])
     require(directives == expected, "CSP receipt: policy differs from admitted static capabilities")
+    if capability is not None and capability.get("script_sources") == ["'none'"]:
+        require(script == ["'none'"] and capability.get("script_hashes") == [],
+                "CSP receipt: non-executable reader gained script authority")
+        return set()
     require(script and script[0] == "'self'", "CSP receipt: script policy missing")
     hashes = set(script[1:])
     require(all(re.fullmatch(r"'sha256-[A-Za-z0-9+/]{43}='", value) and value in admitted_hashes for value in hashes),
@@ -563,9 +571,22 @@ def qualified_manifest(repo_root: Path, site_dir: str, site_url: str, source_sha
     require(source["repository_source"]["sha"] == source_sha, "source identity: receipt differs from selected source")
     require(source["site_url"] == site_url and source["site_dir"] == site_dir,
             "source identity: receipt selects another public artifact")
-    require(records["csp"]["receipt"].get("embedded") is None,
-            "Embedded publication: independently reconstructed producer capability admission is required; local candidate verification cannot grant publication")
-    result = bundle_manifest(root, site_dir, site_url, source_sha, policy, source["standard"]["sha"])
+    embedded = None
+    if records["csp"]["receipt"].get("embedded") is not None:
+        embedded_module()
+        readers = importlib.import_module("bijux_publication_embedded.publication")
+        try:
+            embedded = readers.verify_readers(selected, records["csp"]["receipt"],
+                                              records["build"]["receipt"], repository=root,
+                                              identity=identity, checkpoint=source)
+        except (ValueError, KeyError, OSError) as error:
+            raise AdmissionError(
+                "Embedded publication: independently reconstructed producer capability admission is required: " + str(error)
+            ) from error
+        require(embedded["site_url"] == site_url, "Embedded publication: source-owned site identity differs")
+    result = bundle_manifest(root, site_dir, site_url, source_sha, policy, source["standard"]["sha"],
+                             embedded_report_routes=embedded["report_routes"] if embedded else None,
+                             embedded_parent_routes=(set(embedded["capabilities"]) - embedded["report_routes"]) if embedded else None)
     for name in ("build", "verification", "csp"):
         receipt = records[name]["receipt"]
         require(receipt.get("schema") == 1, f"{name} receipt: unsupported schema")
@@ -579,6 +600,13 @@ def qualified_manifest(repo_root: Path, site_dir: str, site_url: str, source_sha
             "build receipt: another source checkpoint")
     require(build.get("processor_sha256") == hashlib.sha256(Path(__file__).with_name("build_identity.py").read_bytes()).hexdigest(),
             "build receipt: identity processor differs from accepted source")
+    require(build.get("derivation") == source.get("derivation"),
+            "source identity: build derivation differs from owner checkpoint")
+    if source.get("derivation"):
+        require(build.get("effective_config") == source["derivation"]["configuration"],
+                "source identity: exact reconstructed configuration required")
+    else:
+        require("effective_config" not in build, "source identity: unreviewed derived configuration")
     config = build["config"]
     require(hashlib.sha256(identity.regular(root, config["path"]).read_bytes()).hexdigest() == config["sha256"],
             "build receipt: actual renderer configuration changed")
@@ -638,10 +666,12 @@ def qualified_manifest(repo_root: Path, site_dir: str, site_url: str, source_sha
     require(csp.get("pages") == len(html), "CSP receipt: incomplete public HTML coverage")
     used_hashes = set()
     for entry in html:
-        parsed = DocumentPolicy()
+        capability = embedded["capabilities"].get(entry["path"]) if embedded else None
+        parsed = DocumentPolicy(owned_report=bool(embedded and entry["path"] in embedded["report_routes"]),
+                                owned_parent=bool(capability and "script_hashes" not in capability))
         parsed.feed((selected / entry["path"]).read_text())
         require(len(parsed.csp) == 1 and parsed.csp_early, "CSP receipt: missing or late effective policy")
-        page_hashes = applied_csp(parsed.csp[0], set(csp.get("script_hashes", [])))
+        page_hashes = applied_csp(parsed.csp[0], set(csp.get("script_hashes", [])), capability)
         require(page_hashes.intersection(redirect_hashes.values()) == ({redirect_hashes[entry["path"]]} if entry["path"] in redirect_hashes else set()),
                 "Redirect receipt: executable hash admitted on another route")
         used_hashes.update(page_hashes)
@@ -658,14 +688,44 @@ def qualified_manifest(repo_root: Path, site_dir: str, site_url: str, source_sha
 
 
 def verify_manifest(repo_root: Path, manifest: dict, policy: dict) -> dict:
-    current = bundle_manifest(repo_root, manifest["site_dir"], manifest["site_url"],
-                              manifest["repository_source_sha"], policy, manifest.get("standard_sha"))
     if manifest.get("schema") == 2:
-        current = current | {key: manifest[key] for key in ("qualification", "producer_authority", "scope", "limitations")}
-        current["schema"] = 2
+        # Serialized qualification/profile fields are assertions to verify again,
+        # never executable or producer authority merely because bytes still match.
+        records = manifest.get("qualification")
+        require(isinstance(records, dict) and set(records) == {"source", "build", "verification", "csp"},
+                "public bundle: complete source-owned qualification records required")
+        current = qualified_manifest(repo_root, manifest["site_dir"], manifest["site_url"],
+                                     manifest["repository_source_sha"], policy,
+                                     *(records[name]["path"] for name in ("source", "build", "verification", "csp")))
+    else:
+        current = bundle_manifest(repo_root, manifest["site_dir"], manifest["site_url"],
+                                  manifest["repository_source_sha"], policy, manifest.get("standard_sha"))
     require(current == manifest, "public bundle: changed after qualification or policy identity differs")
     return current
 
+
+
+def verify_retained_bytes(repo_root: Path, manifest: dict, policy: dict) -> dict:
+    """Compare an explicitly selected historical bundle without granting authority.
+
+    An offline recovery operator must independently trust the retained manifest.
+    Its serialized source/profile/CSP declarations are not verified or returned.
+    """
+    require(manifest.get("schema") in {1, 2}, "retained bytes: supported inventory required")
+    site = site_directory(repo_root, manifest["site_dir"], exists=True)
+    files, digest = public_bundle_identity(site)
+    total = sum(item["bytes"] for item in files)
+    require(files == manifest.get("files") and digest == manifest.get("bundle_sha256")
+            and len(files) == manifest.get("file_count") and total == manifest.get("bytes"),
+            "retained bytes: physical inventory differs from selected historical manifest")
+    policy_digest = hashlib.sha256(json.dumps(policy, sort_keys=True).encode()).hexdigest()
+    require(policy_digest == manifest.get("policy_sha256"), "retained bytes: policy identity differs")
+    require(total <= policy["maximum_bytes"] and len(files) <= policy["maximum_files"],
+            "retained bytes: current inventory budget exceeded")
+    return {"schema": 1, "scope": "retained-public-bytes-only", "verification_only": True,
+            "publication_approval": False, "qualified_source_verified": False,
+            "site_dir": manifest["site_dir"], "bundle_sha256": digest,
+            "file_count": len(files), "bytes": total, "policy_sha256": policy_digest}
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -685,7 +745,10 @@ def main() -> int:
     verify = commands.add_parser("verify")
     verify.add_argument("--manifest", type=Path, required=True)
     verify.add_argument("--policy", type=Path, default=POLICY)
-    verify.add_argument("--require-qualified", action="store_true")
+    mode = verify.add_mutually_exclusive_group()
+    mode.add_argument("--require-qualified", action="store_true")
+    mode.add_argument("--bytes-only", action="store_true",
+                      help="Compare selected retained bytes offline; grants no source, runtime or publication authority")
     args = parser.parse_args()
     try:
         if args.command == "config":
@@ -708,15 +771,12 @@ def main() -> int:
             output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
         else:
             retained = json.loads(args.manifest.read_text())
-            result = verify_manifest(args.repo_root, retained, load_policy(args.policy))
-            if args.require_qualified:
-                require(result.get("schema") == 2, "publication: qualified identity manifest required")
-                records = result["qualification"]
-                current = qualified_manifest(args.repo_root, result["site_dir"], result["site_url"],
-                                             result["repository_source_sha"], load_policy(args.policy),
-                                             records["source"]["path"], records["build"]["path"],
-                                             records["verification"]["path"], records["csp"]["path"])
-                require(current == result, "publication: qualification or source identity changed before upload")
+            if args.bytes_only:
+                result = verify_retained_bytes(args.repo_root, retained, load_policy(args.policy))
+            else:
+                if args.require_qualified:
+                    require(retained.get("schema") == 2, "publication: qualified identity manifest required")
+                result = verify_manifest(args.repo_root, retained, load_policy(args.policy))
         summary = {k: v for k, v in result.items() if k not in {"files", "qualification"}}
         if "qualification" in result:
             summary["qualification_receipts"] = {key: {"path": value["path"], "sha256": value["sha256"]}

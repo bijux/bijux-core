@@ -6,7 +6,7 @@ retained as authored additions; they do not replace a shared controller.
 
 | Source | Responsibility | Lifetime |
 | --- | --- | --- |
-| `theme-persistence.js` | Fixed cross-project palette choice, bounded storage fallback, admitted Material palette index and theme notifications. | Window storage binding; palette options bind when mounted. |
+| `theme-persistence.js` | Fixed cross-project palette choice, bounded storage fallback, admitted Material palette index, native palette keyboard controls and theme notifications. | Window storage binding; palette options and native controls bind once when mounted. |
 | `viewport-profile.js` | CSS-viewport classification and read-only viewport observations. | Once per window; emits on profile changes. |
 | `nav-state.js` | Current product/site path normalization and active-link state. | Reads current server-rendered document on coordinated mounts. |
 | `detail-tabs.js` | Header detail-strip visibility and active state from authored destinations. | Coordinated document mount; course-strip selectors are retained compatibility. |
@@ -14,7 +14,7 @@ retained as authored additions; they do not replace a shared controller.
 | `search-recovery.js` | Named failure/loading feedback, keyboard Retry, native result visibility and query preservation. | Document signal owns listeners and temporary hidden/inert state. Index-ready never overrides worker failure. |
 | `content-reflow.js` | Named local scrolling only for actual overflow; focused unmodified horizontal/edge keys preserve native selection and descendant control behavior. | Coordinated document signal; ResizeObserver/MutationObserver schedule measurements; abort restores owned annotations and disconnects delivery. |
 | `external-links.js` | Preserves authored target/download/referrer intent, isolates explicit `_blank` openers, and annotates declared actions with visible/accessibly described warnings. It never opens windows or intercepts navigation. | Coordinator signal owns annotations and mutation observation; dispose restores only owned state and releases detached links. |
-| `bootstrap.js` | Native-label enhancement, compact modal drawer/search interaction, current-document binding and focus intent. | One window coordinator; new `AbortController` per document, previous mount aborted before rebinding. |
+| `bootstrap.js` | Native menu/search label enhancement, compact modal drawer/search interaction, current-document binding and focus intent. | One window coordinator; new `AbortController` per document, previous mount aborted before rebinding. |
 | `mermaid-init.js` | Sole strict diagram owner with lazy admitted vendor, preserved source and useful retry. | Serialized render ownership; stale document results cannot commit; theme changes request fresh rendering. |
 | `nav-sync.js` | Compatibility entrypoint projected as `assets/javascripts/navigation-sync.js`. | Delegates to the coordinator; contains no second navigation model. |
 

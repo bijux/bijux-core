@@ -7,6 +7,51 @@
   let generation = 0;
   let sequence = 0;
   let rendering = Promise.resolve();
+  // Native history restoration can precede asynchronous diagram layout. Keep the
+  // departure position in the owning history entry, never in a URL-wide cache.
+  const readerHistoryKey = "bijuxDiagramReaderPosition";
+  const navigation = performance.getEntriesByType("navigation")[0];
+  const readerState = history.state;
+  const savedReader = Object.prototype.toString.call(readerState) === "[object Object]" &&
+    Object.prototype.hasOwnProperty.call(readerState, readerHistoryKey) ? readerState[readerHistoryKey] : null;
+  const ownsReaderPosition = Object.prototype.toString.call(savedReader) === "[object Object]" &&
+    ["owner", "version", "href", "x", "y"].every(key => Object.prototype.hasOwnProperty.call(savedReader, key));
+  let readerRestoration = navigation?.type === "back_forward" && ownsReaderPosition && savedReader.owner === "bijux-docs" && savedReader.version === 1 &&
+    savedReader.href === location.href && Number.isFinite(savedReader.x) && savedReader.x >= 0 &&
+    Number.isFinite(savedReader.y) && savedReader.y >= 0 ? savedReader : null;
+
+  function cancelReaderRestoration(event) {
+    if (event.isTrusted) readerRestoration = null;
+  }
+  for (const type of ["pointerdown", "touchstart", "wheel", "keydown"]) {
+    window.addEventListener(type, cancelReaderRestoration, { capture: true, passive: true });
+  }
+
+  function captureReaderPosition() {
+    if (!document.querySelector(".md-typeset .bijux-diagram")) return;
+    const state = history.state;
+    if (state !== null && (Object.prototype.toString.call(state) !== "[object Object]")) return;
+    if (state && Object.prototype.hasOwnProperty.call(state, readerHistoryKey) &&
+        (state[readerHistoryKey]?.owner !== "bijux-docs" || state[readerHistoryKey]?.version !== 1)) return;
+    try {
+      history.replaceState({ ...state, [readerHistoryKey]: {
+        owner: "bijux-docs", version: 1, href: location.href, x: window.scrollX, y: window.scrollY,
+      } }, "");
+    } catch (_) {
+      // A history entry may become unavailable while its document is leaving.
+    }
+  }
+
+  function restoreReaderPosition(current) {
+    const position = readerRestoration;
+    if (!position) return;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (current !== generation || readerRestoration !== position) return;
+      readerRestoration = null;
+      window.scrollTo({ left: position.x, top: position.y, behavior: "instant" });
+    }));
+  }
+
   // The self-hosted library must never start its own document scan on load.
   window.mermaidConfig = { startOnLoad: false, securityLevel: "strict" };
 
@@ -142,13 +187,25 @@
     if (!nodes.length) return;
     const theme = document.body.getAttribute("data-md-color-scheme") === "slate" ? "dark" : "default";
     // Mermaid owns shared parser/config state; serialize renders and reject stale completions.
-    rendering = rendering.catch(() => {}).then(() => render(current, nodes, theme)).catch(() => {});
+    rendering = rendering.catch(() => {}).then(() => render(current, nodes, theme)).catch(() => {}).then(() => restoreReaderPosition(current));
   }
 
   if (window.document$ && typeof window.document$.subscribe === "function") window.document$.subscribe(request);
   else if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", request, { once: true });
   else request();
   window.addEventListener("bijux:theme-change", request);
-  window.addEventListener("pagehide", () => { generation += 1; });
+  document.addEventListener("click", event => {
+    if (!event.isTrusted || event.defaultPrevented || event.button !== 0 ||
+        event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    const link = event.target.closest?.("a[href]");
+    if (!link || link.hasAttribute("download") || link.target && link.target !== "_self") return;
+    let destination;
+    try { destination = new URL(link.href, location.href); } catch (_) { return; }
+    if (!["http:", "https:"].includes(destination.protocol) ||
+        destination.origin === location.origin && destination.pathname === location.pathname &&
+        destination.search === location.search) return;
+    captureReaderPosition();
+  }, true);
+  window.addEventListener("pagehide", () => { readerRestoration = null; generation += 1; });
   window.addEventListener("pageshow", event => { if (event.persisted) request(); });
 })();

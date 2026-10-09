@@ -99,7 +99,7 @@ base templates are inputs to that producer, not competing controllers.
 | `theme-persistence.js` | Shared palette persistence consumes authored native palette options; Material retains visual theme semantics. | Palette units and preferences browser gate |
 | `viewport-profile.js` | Shared window profile classifier emits read-only observations. | Viewport source tests and generated responsive-boundary journeys |
 | `nav-state.js`, `detail-tabs.js` | Shared active-path and header-detail state consumes server-rendered destinations. | Navigation projection and deep-page/history journeys |
-| `nav-reveal.js` | Shared container scroll reveal consumes the active navigation state. | Generated resize/navigation journeys; compatibility aliases retained |
+| `nav-reveal.js` | Shared container scroll reveal and named desktop registry overflow actions consume active navigation state; the coordinator owns their document lifetime. | Registry lifecycle units and generated desktop/resize/navigation journeys; compatibility aliases retained |
 | `content-reflow.js` | Shared progressive annotation of measured code/table overflow; authored source, line anchors, cells, labels and controls remain owned by their authors. | `unit/content-reflow.test.cjs`; `ui/generated-specs/reader-reflow.spec.js` via `ui-test-reader` |
 | `external-links.js` | Shared progressive warnings and explicit `_blank` opener isolation; products own href, target, download and referrer intent. The coordinator owns mount/disposal. | `ui/generated-specs/external-links.spec.js` via `ui-test-link-policy`; `tests/test_docs_external_link_projection.py` |
 | `bootstrap.js` | Shared document-lifetime coordinator owns control upgrade, compact drawer/search interaction, binding and disposal. | Search focus/input units; generated shell/drawer/search journeys |
@@ -149,6 +149,12 @@ previous lifetime before rebinding. Compact drawer modality owns temporary
 background inertness, focus containment, Escape/restoration, and close-on-resize;
 dispose restores previous values. Desktop navigation uses ordinary destination
 anchors. Material instant navigation and ordinary full loads both remain valid.
+An overflowing desktop site registry exposes named backward/forward actions
+with at least 44 px targets. They scroll the owning list without changing
+destinations; ordinary Tab reveals the complete focused link. Boundary actions
+remain focusable with accurate `aria-disabled` state. Resize hands focus to a
+visible current link or compact drawer control. Aborting the enhancement hides
+its actions and restores the native scrolling list.
 Bindings apply to their declared component owner. The shared drawer applies
 to the Bijux header and navigation markup; it does not require an unrelated
 Material-native header to expose Bijux readiness attributes or replace its

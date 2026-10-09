@@ -57,6 +57,13 @@ args=(--repo-root "${repo_root}" --site-dir "${DOCS_SITE_DIR}" --site-url "${sit
 if [[ -n "${BIJUX_DOCS_DEVELOPMENT_LINK_POLICY:-}" ]]; then
   args+=(--development-link-policy "${BIJUX_DOCS_DEVELOPMENT_LINK_POLICY}")
 fi
+if [[ -n "${BIJUX_DOCS_READER_OWNER:-}" ]]; then
+  [[ -n "${BIJUX_DOCS_READER_SOURCE_SHA:-}" ]] || { echo 'ERROR: reader verifier requires exact committed source SHA' >&2; exit 1; }
+  args+=(--embedded-csp-report artifacts/website-security/csp.json
+         --completed-build-receipt artifacts/website-security/build-identity.json
+         --source-sha "${BIJUX_DOCS_READER_SOURCE_SHA}" --reader-owner "${BIJUX_DOCS_READER_OWNER}")
+  if [[ -n "${DOCS_SOURCE_IDENTITY:-}" ]]; then args+=(--source-identity "${DOCS_SOURCE_IDENTITY}"); fi
+fi
 "${python_bin}" "${shared_root}/tooling/quality/validate_site_routes.py" "${args[@]}"
 phase='source_after'
 verify_docs_authority "${repo_root}" "${shared_root}"
@@ -66,7 +73,7 @@ from pathlib import Path
 root=Path(sys.argv[1]);path=root/sys.argv[2];report=json.loads(path.read_text())
 source=os.environ.get('BIJUX_STD_ROOT')
 candidate=os.environ.get('BIJUX_STD_LOCAL_VERIFY')=='1' or os.environ.get('BIJUX_STD_ALLOW_LOCAL_SOURCE')=='1'
-report['verification_only'] = candidate or not bool(os.environ.get('DOCS_SOURCE_IDENTITY'))
+report['verification_only'] = report['verification_only'] or candidate or not bool(os.environ.get('DOCS_SOURCE_IDENTITY'))
 report['source_checks']={'before':True,'after':True,'mode':'local_candidate' if candidate else 'exact_fetched',
     'standard_sha':subprocess.check_output(['git','-C',source,'rev-parse','HEAD'],text=True).strip() if source and not candidate else None,
     'origin':subprocess.check_output(['git','-C',source,'remote','get-url','origin'],text=True).strip() if source and not candidate else None}

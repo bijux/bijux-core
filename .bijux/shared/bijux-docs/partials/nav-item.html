@@ -1,17 +1,46 @@
-{%- macro render(nav_item, path, level) -%}
+{%- macro render(nav_item, path, level, authored=none, page_occurrences=none) -%}
+  {%- set label = nav_item.title -%}
+  {%- set authored_children = none -%}
+  {%- if authored is mapping and authored | length == 1 -%}
+    {%- set authored_name = authored | first -%}
+    {%- set authored_value = authored[authored_name] -%}
+    {%- if nav_item.children and authored_name == nav_item.title -%}
+      {%- if authored_value is mapping or (authored_value is sequence and authored_value is not string) -%}
+        {%- set authored_children = authored_value -%}
+      {%- endif -%}
+    {%- elif authored_value is string -%}
+      {# Page objects can be reused by MkDocs; an occurrence's label belongs to
+         its matched authored source, not the first shared Page title. #}
+      {%- if nav_item.is_page and authored_value.lstrip("/") == nav_item.file.src_uri -%}
+        {%- if page_occurrences and page_occurrences.get(nav_item.file.src_uri, 0) > 1 -%}
+          {%- set label = authored_name | e -%}
+        {%- endif -%}
+      {%- endif -%}
+    {%- endif -%}
+  {%- endif -%}
   <li class="bijux-tree__item{{ ' bijux-tree__item--active' if nav_item.active else '' }}">
     {%- if nav_item.children -%}
       <details class="bijux-tree__group"{{ ' open' if nav_item.active else '' }}>
-        <summary class="bijux-tree__summary" id="{{ path }}">{{ nav_item.title }}</summary>
+        <summary class="bijux-tree__summary" id="{{ path }}">{{ label }}</summary>
         <ul class="md-nav__list bijux-tree__children" aria-labelledby="{{ path }}">
           {%- for child in nav_item.children -%}
-            {{ render(child, path ~ "-" ~ loop.index, level + 1) }}
+            {%- set child_authored = none -%}
+            {%- if authored_children is mapping -%}
+              {%- set names = authored_children | list -%}
+              {%- if loop.index0 < names | length -%}
+                {%- set name = names[loop.index0] -%}
+                {%- set child_authored = {name: authored_children[name]} -%}
+              {%- endif -%}
+            {%- elif authored_children is sequence and loop.index0 < authored_children | length -%}
+              {%- set child_authored = authored_children[loop.index0] -%}
+            {%- endif -%}
+            {{ render(child, path ~ "-" ~ loop.index, level + 1, child_authored, page_occurrences) }}
           {%- endfor -%}
         </ul>
       </details>
     {%- else -%}
       <a href="{{ nav_item.url | url }}" class="md-nav__link{{ ' md-nav__link--active' if nav_item == page else '' }}"{{ ' aria-current="page"' if nav_item == page else '' }}>
-        <span class="md-ellipsis">{{ nav_item.title }}</span>
+        <span class="md-ellipsis">{{ label }}</span>
       </a>
     {%- endif -%}
   </li>

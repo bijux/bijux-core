@@ -191,6 +191,16 @@ def validate(site: Path, site_url: str, docs: dict[Path, Document], network_urls
                 errors.append('sitemap.xml: missing eligible canonical routes: '+', '.join(sorted(missing)))
         except ET.ParseError:
             errors.append('sitemap.xml: invalid XML')
+    compressed = site/'sitemap.xml.gz'
+    if compressed.exists():
+        import gzip
+        from io import BytesIO
+        try:
+            plain = sitemap.read_bytes()
+            if compressed.is_symlink() or gzip.GzipFile(fileobj=BytesIO(compressed.read_bytes())).read(len(plain)+1) != plain:
+                errors.append('sitemap.xml.gz: content differs from the plain sitemap')
+        except (OSError,EOFError):
+            errors.append('sitemap.xml.gz: invalid compressed sitemap')
     return errors
 
 

@@ -44,6 +44,12 @@
 }
 
 @media screen and (min-width: 76.25em) {
+  /* Native in-flow disclosures need an owning desktop hit surface. Material's
+     zero-height sticky shell otherwise leaves the visible tree outside its box. */
+  .md-sidebar.md-sidebar--primary:has([data-bijux-nav-variant="complete"]) {
+    height: auto;
+  }
+
   .md-grid {
     max-width: min(calc(100vw - 3rem), var(--bijux-shell-width));
   }

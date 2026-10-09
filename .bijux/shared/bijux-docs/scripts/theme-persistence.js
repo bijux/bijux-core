@@ -199,13 +199,13 @@
     window.scrollTo(position.x, position.y);
   }
 
-  function applyOption(themeKey, option, persistGlobal) {
+  function applyOption(themeKey, option, persistGlobal, preserveScroll = true) {
     const index = paletteOptions().indexOf(option);
     if (index < 0) {
       return false;
     }
 
-    const scrollBeforeThemeChange = captureScrollPosition();
+    const scrollBeforeThemeChange = preserveScroll ? captureScrollPosition() : null;
 
     option.checked = true;
     const effective = modeFromOption(option) === "auto" ? optionByMode(window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light") || option : option;
@@ -226,10 +226,14 @@
       })
     );
 
-    // Keep the reader anchored while the palette and theme subscribers restyle.
-    restoreScrollPosition(scrollBeforeThemeChange);
-    requestAnimationFrame(() => restoreScrollPosition(scrollBeforeThemeChange));
-    setTimeout(() => restoreScrollPosition(scrollBeforeThemeChange), 80);
+    // Explicit palette changes keep the reader anchored while subscribers restyle.
+    // Startup preference application leaves native and diagram history restoration
+    // in control instead of reclaiming an earlier position in a delayed callback.
+    if (scrollBeforeThemeChange) {
+      restoreScrollPosition(scrollBeforeThemeChange);
+      requestAnimationFrame(() => restoreScrollPosition(scrollBeforeThemeChange));
+      setTimeout(() => restoreScrollPosition(scrollBeforeThemeChange), 80);
+    }
 
     return true;
   }
@@ -276,7 +280,7 @@
       if (savedChoice.signature) {
         const signedOption = findOptionBySignature(savedChoice.signature);
         if (signedOption) {
-          applyOption(themeKey, signedOption, false);
+          applyOption(themeKey, signedOption, false, false);
           return;
         }
       }
@@ -284,7 +288,7 @@
       if (savedChoice.mode) {
         const modeOption = optionByMode(savedChoice.mode);
         if (modeOption) {
-          applyOption(themeKey, modeOption, false);
+          applyOption(themeKey, modeOption, false, false);
           return;
         }
       }
@@ -293,7 +297,7 @@
         const legacyMode = savedChoice.scheme === "slate" ? "dark" : "light";
         const legacyOption = optionByMode(legacyMode);
         if (legacyOption) {
-          applyOption(themeKey, legacyOption, false);
+          applyOption(themeKey, legacyOption, false, false);
           return;
         }
       }
@@ -329,6 +333,49 @@
         applyOption(themeKey, option, true);
         refreshThemeToggleButtons();
       });
+    }
+  }
+
+  function upgradeNativePaletteControls() {
+    for (const label of document.querySelectorAll("[data-md-component='palette'] label.md-header__button[for]")) {
+      const target = label.getAttribute("for");
+      const option = paletteOptions().find(candidate => candidate.id === target);
+      const palette = label.closest("[data-md-component='palette']");
+      if (!option || !palette.contains(option)) continue;
+
+      // Keep the native radio's next sibling and target identity: Material owns visibility.
+      const button = document.createElement("button");
+      for (const attribute of label.attributes) {
+        if (!["role", "tabindex"].includes(attribute.name)) button.setAttribute(attribute.name, attribute.value);
+      }
+      button.type = "button";
+      button.setAttribute("aria-controls", target);
+      if (!button.hasAttribute("aria-label")) button.setAttribute("aria-label", label.getAttribute("title") || label.textContent.trim());
+      button.replaceChildren(...label.childNodes);
+      button.addEventListener("keydown", event => {
+        // Material's form Enter handler focuses a hidden radio; native buttons activate themselves.
+        if (event.key === "Enter") event.stopPropagation();
+      });
+      let pointerHadFocus = false;
+      button.addEventListener("pointerdown", () => {
+        pointerHadFocus = document.activeElement === button;
+      });
+      button.addEventListener("pointercancel", () => { pointerHadFocus = false; });
+      button.addEventListener("click", event => {
+        // Some engines blur native buttons during pointer activation; retain only this control's focus.
+        const retainedPointerFocus = event.detail > 0 && pointerHadFocus && document.activeElement === document.body;
+        pointerHadFocus = false;
+        const current = paletteOptions().find(candidate => candidate.id === target);
+        if (!current || !palette.contains(current)) return;
+        const hadFocus = document.activeElement === button || retainedPointerFocus;
+        current.checked = true;
+        current.dispatchEvent(new Event("change", { bubbles: true }));
+        if (hadFocus && button.hidden) {
+          const successor = [...palette.querySelectorAll("button.md-header__button[for]")].find(candidate => !candidate.hidden);
+          successor?.focus({ preventScroll: true });
+        }
+      });
+      label.replaceWith(button);
     }
   }
 
@@ -386,6 +433,7 @@
   function init() {
     const themeKey = resolveThemeKey();
     bindPaletteChanges(themeKey);
+    upgradeNativePaletteControls();
     bindThemeToggle(themeKey);
     initializeGlobalTheme(themeKey);
     bindCrossTabSync(themeKey);

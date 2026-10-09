@@ -218,13 +218,16 @@ def smoke(root: str, *, canonical_root: str, deep_path: str = "", asset_path: st
         selected = identity.artifact(repo, str(manifest_path))
         manifest = json.loads(selected.read_text(encoding="utf-8"))
         publication = identity.publication()
-        publication.verify_manifest(repo, manifest, publication.load_policy())
+        (publication.verify_manifest if manifest.get("schema") == 1 else publication.verify_retained_bytes)(
+            repo, manifest, publication.load_policy())
         if manifest["site_url"] != canonical_root:
             raise ValueError("monitor manifest: wrong public identity")
         expected_files = {item["path"]: item["sha256"] for item in manifest["files"]}
         binding = {"kind": "retained_artifact_sample", "manifest_sha256": hashlib.sha256(selected.read_bytes()).hexdigest(),
                    "repository_source_sha": manifest["repository_source_sha"], "standard_sha": manifest.get("standard_sha"),
-                   "claim": "Matching sampled bytes do not establish full deployment or requalify accepted source"}
+                   "verification_mode": "mechanical-bundle" if manifest.get("schema") == 1 else "retained-public-bytes-only",
+                   "verification_only": True, "publication_approval": False, "qualified_source_verified": False,
+                   "claim": "Selected historical manifest must be independently trusted; matching sampled bytes do not establish full deployment or requalify accepted source"}
     checks, cache = [], {}
     def fetch(path, status=200):
         if path not in cache:
@@ -296,7 +299,8 @@ def smoke(root: str, *, canonical_root: str, deep_path: str = "", asset_path: st
     if execution_source(repo) != source:
         raise ValueError("monitor execution source changed during observation")
     if manifest is not None:
-        publication.verify_manifest(repo, manifest, publication.load_policy())
+        (publication.verify_manifest if manifest.get("schema") == 1 else publication.verify_retained_bytes)(
+            repo, manifest, publication.load_policy())
         if hashlib.sha256(selected.read_bytes()).hexdigest() != binding["manifest_sha256"]:
             raise ValueError("retained manifest changed during observation")
     return {"schema": 2, "timestamp": datetime.now(timezone.utc).isoformat(), "root": public_url(root),

@@ -2,6 +2,11 @@
 {% set hub_links = bijux.hub_links if bijux and bijux.hub_links else [] %}
 {% set active_repository = bijux.repository if bijux and bijux.repository else "" %}
 {% import "partials/nav-item.html" as item with context %}
+{% set page_occurrences = {} %}
+{% for document in nav.pages %}
+  {% set source = document.file.src_uri %}
+  {% set _ = page_occurrences.update({source: page_occurrences.get(source, 0) + 1}) %}
+{% endfor %}
 <nav id="bijux-navigation" class="md-nav md-nav--primary bijux-nav bijux-nav--mobile" aria-label="{{ config.site_name | e }} documentation navigation" data-md-level="0" data-bijux-nav-variant="complete">
   <div class="bijux-nav__title">
     <a href="{{ config.extra.homepage | d(nav.homepage.url, true) | url }}" class="md-nav__button md-logo" aria-label="{{ config.site_name }}" data-md-component="logo">
@@ -14,7 +19,17 @@
   </div>
   <ul class="md-nav__list bijux-tree" data-md-scrollfix>
     {% for nav_item in nav %}
-      {{ item.render(nav_item, "bijux-node-" ~ loop.index, 1) }}
+      {%- set authored = none -%}
+      {%- if config.nav is mapping -%}
+        {%- set names = config.nav | list -%}
+        {%- if loop.index0 < names | length -%}
+          {%- set name = names[loop.index0] -%}
+          {%- set authored = {name: config.nav[name]} -%}
+        {%- endif -%}
+      {%- elif config.nav is sequence and config.nav is not string and loop.index0 < config.nav | length -%}
+        {%- set authored = config.nav[loop.index0] -%}
+      {%- endif -%}
+      {{ item.render(nav_item, "bijux-node-" ~ loop.index, 1, authored, page_occurrences) }}
     {% endfor %}
   </ul>
   {% if hub_links %}

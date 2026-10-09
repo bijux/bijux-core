@@ -57,9 +57,12 @@ It records actual module/URL-validator digests and owned local Git identity wher
 available, without claiming that this checkout identifies an accepted deployment.
 
 Optional `--manifest artifacts/website-security/site.manifest.json` first verifies
-the retained publication artifact through the existing admission API, then compares
-each successful sampled response with its declared file digest. This identifies
-sampled expected bytes; it does not observe every deployed file or requalify source.
+the retained publication artifact, then compares each successful sampled response
+with its declared file digest. Schema 1 retains mechanical HTML/CSP admission;
+schema 2 performs only a physical inventory/policy/budget comparison without
+opening source receipts or reconstructing the producer. Independently trust the
+selected historical manifest. Both modes report no publication or source authority;
+sampled expected bytes do not observe every deployed file or requalify source.
 Missing, changed or wrong-identity retained artifacts fail before observation.
 
 Requests connect directly, without inherited proxy settings, cookies or browser
@@ -117,9 +120,9 @@ require current evidence. No live stress test or new infrastructure is assumed.
    and artifact. Verify actual retention/access; propose 30 days for ordinary diagnostic
    evidence and 90 days for recovery evidence, subject to provider/account limits.
 2. Rebuild or copy the previous-good artifact into the declared output location.
-   `publication.py verify --manifest ...` must identify identical intended bytes and
-   policy. Missing/expired artifacts require a tested source rebuild, not a guessed SHA.
-   This offline check does not requalify source. Republishing through
+   `publication.py verify --bytes-only --manifest ...` must identify identical intended
+   physical bytes and policy against an independently trusted historical manifest. Missing/expired artifacts require a tested source rebuild, not a guessed SHA.
+   This offline check grants no source, runtime, CSP or publication authority. Republishing through
    `--require-qualified` needs the retained source/config/actual toolchain and receipts
    or a fresh qualified rebuild; do not replace their digests with guessed current data.
 3. Run root/deep/phone navigation/search/canonical/diagram checks on the restored

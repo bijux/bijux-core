@@ -90,7 +90,7 @@ def hooks(configuration,root,*,publication=False):
     return records
 
 
-def revision_history(configuration,root,*,publication=False):
+def revision_history(configuration,root,*,publication=False,catalogue=None):
     plugin=configuration.plugins.get('git-revision-date-localized')
     if plugin is None:return None
     import importlib.metadata as metadata
@@ -105,7 +105,12 @@ def revision_history(configuration,root,*,publication=False):
     require(bool(history),'Producer capability: actual source revision history required')
     if publication:
         from mkdocs.structure.files import get_files
-        for document in get_files(configuration).documentation_pages():
+        documents = get_files(configuration)
+        if catalogue is not None:
+            require(git(root,'rev-parse','--is-shallow-repository') == 'false',
+                    'Producer capability: catalogue publication needs complete native original history')
+            documents = catalogue.sources.files(documents, configuration)
+        for document in documents.documentation_pages():
             path=Path(document.abs_src_path).relative_to(root).as_posix()
             git(root,'ls-files','--error-unmatch',path)
             require(bool(git(root,'log','-1','--format=%H','HEAD','--',path)),
@@ -114,7 +119,7 @@ def revision_history(configuration,root,*,publication=False):
             'source_config':dict(plugin.config),'fallback_preserved':True,'publication_history_verified':publication}
 
 
-def callback_records(configuration,root):
+def callback_records(configuration,root,catalogue=None):
     """Bind registered event callbacks, including the registry actually executed."""
     installed={Path(sysconfig.get_path(name)).resolve() for name in ('purelib','platlib')}
     hook_functions={value for module in configuration.hooks.values() for name,value in vars(module).items() if name.startswith('on_') and inspect.isfunction(value)}
@@ -132,25 +137,35 @@ def callback_records(configuration,root):
             path=Path(inspect.getsourcefile(function) or '').absolute()
             require(path.is_file() and not path.is_symlink(),'Producer capability: callback source must be regular')
             owned_hook=function in hook_functions
-            require(owned_hook and path.is_relative_to(root) or not owned_hook and any(path.is_relative_to(directory) for directory in installed),
+            owned_catalogue = (catalogue is not None and inspect.ismethod(callback)
+                               and callback.__self__ is catalogue.plugin
+                               and configuration.plugins.get('bijux/catalogue-sources') is catalogue.plugin)
+            require(owned_hook and path.is_relative_to(root)
+                    or owned_catalogue and path == Path(catalogue.helper.__file__).absolute()
+                    or not owned_hook and not owned_catalogue and any(path.is_relative_to(directory) for directory in installed),
                     'Producer capability: callback source outside reviewed roots')
             source=path.read_bytes()
             if path not in compiled:
                 compiled[path]=list(codes(compile(source,str(path),'exec',dont_inherit=True,optimize=sys.flags.optimize)))
             require(any(code==function.__code__ for code in compiled[path]),'Producer capability: registered callback executable differs from source')
             result.append({'event':event,'index':index,'owner':function.__module__,'function':function.__qualname__,
-                           'source':path.relative_to(root).as_posix() if owned_hook else next(path.relative_to(directory).as_posix() for directory in installed if path.is_relative_to(directory)),
-                           'source_sha256':digest(source),'class':'reviewed-hook' if owned_hook else 'installed-profile'})
+                           'source':path.relative_to(root).as_posix() if owned_hook else path.relative_to(catalogue.shared).as_posix() if owned_catalogue else next(path.relative_to(directory).as_posix() for directory in installed if path.is_relative_to(directory)),
+                           'source_sha256':digest(source),'class':'reviewed-hook' if owned_hook else 'reviewed-standard-catalogue' if owned_catalogue else 'installed-profile'})
     return result
 
-def preflight(configuration,root,*,publication=False):
+def preflight(configuration,root,*,publication=False,catalogue=None):
     declared_hooks={name for name,plugin in configuration.plugins.items() if any(plugin is hook for hook in configuration.hooks.values())}
-    require(set(configuration.plugins)<=PLUGINS|declared_hooks,'Producer capability: plugin requires a reviewed adapter')
+    declared_catalogue = set()
+    if catalogue is not None:
+        require(configuration.plugins.get('bijux/catalogue-sources') is catalogue.plugin,
+                'Producer capability: exact producer-owned catalogue plugin required')
+        declared_catalogue = {'bijux/catalogue-sources'}
+    require(set(configuration.plugins)<=PLUGINS|declared_hooks|declared_catalogue,'Producer capability: plugin requires a reviewed adapter')
     social=configuration.plugins.get('material/social')
     if social is not None:
         require(social.config.get('enabled') is False,'Producer capability: active social generation requires its own reviewed producer')
-    return {'hooks':hooks(configuration,root,publication=publication),'callbacks':callback_records(configuration,root),
-            'revision':revision_history(configuration,root,publication=publication)}
+    return {'hooks':hooks(configuration,root,publication=publication),'callbacks':callback_records(configuration,root,catalogue),
+            'revision':revision_history(configuration,root,publication=publication,catalogue=catalogue)}
 
 
 def verify_outputs(site,records):

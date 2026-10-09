@@ -113,8 +113,21 @@ def fetched_standard(root: Path, expected: str, *, fetch: bool) -> dict:
     return {"sha": expected, "origin": origin, "shared_tree_sha256": tree_identity(root / "shared/bijux-docs")}
 
 
+def catalogue_derivation(root: Path, recipe: str, expected=None):
+    """Only the adjacent reviewed helper may reconstruct catalogue selection."""
+    path = Path(__file__).with_name("catalogue_recipe.py")
+    require(path.is_file() and not path.is_symlink(), "Catalogue identity: reviewed shared helper required")
+    captured = path.read_bytes()
+    spec = importlib.util.spec_from_file_location("bijux_catalogue_identity", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    result = module.derive(root, path.parent.parent, recipe, expected=expected)
+    require(path.read_bytes() == captured, "Catalogue identity: helper changed during reconstruction")
+    return result
+
+
 def source_checkpoint(root: Path, source_sha: str, standard_root: str,
-                      site_url: str, site_dir: str, build_command: str, verify_command: str, config: str = "mkdocs.yml") -> dict:
+                      site_url: str, site_dir: str, build_command: str, verify_command: str, config: str = "mkdocs.yml", source_recipe: str | None = None) -> dict:
     for key in ("BIJUX_STD_LOCAL_VERIFY", "BIJUX_STD_ALLOW_LOCAL_SOURCE"):
         require(os.environ.get(key, "0") != "1", "Publication identity: local verification bypass forbidden")
     boundary = publication()
@@ -136,13 +149,18 @@ def source_checkpoint(root: Path, source_sha: str, standard_root: str,
     require(tree_identity(shared) == authority["shared_tree_sha256"],
             "Standard identity: consumed shared documentation differs from fetched accepted source")
     require(build_command.strip() and verify_command.strip(), "Publication identity: build and verifier commands required")
-    return {"schema": 1, "scope": "clean-source-and-fetched-standard", "verification_only": False,
+    result = {"schema": 1, "scope": "clean-source-and-fetched-standard", "verification_only": False,
             "repository_source": source, "standard": authority,
             "standard_root": standard.relative_to(root).as_posix(),
             "pin_sha256": digest(pin_path.read_bytes()), "shared_root": shared.relative_to(root).as_posix(),
             "site_url": site_url, "site_dir": site_dir, "config": owned_config,
             "build_command_sha256": digest(build_command.encode()),
             "verify_command_sha256": digest(verify_command.encode())}
+    if source_recipe:
+        derived = catalogue_derivation(root, source_recipe)
+        require(derived.record["owner"] == owned_config, "Catalogue identity: tracked configuration owner differs")
+        result["derivation"] = derived.record
+    return result
 
 
 def verify_source(root: Path, checkpoint: dict) -> None:
@@ -167,9 +185,14 @@ def verify_source(root: Path, checkpoint: dict) -> None:
     require(authority == checkpoint["standard"], "Standard identity: fetched source changed")
     require(tree_identity(root / checkpoint["shared_root"]) == authority["shared_tree_sha256"],
             "Standard identity: consumed shared source changed")
+    if "derivation" in checkpoint:
+        record = checkpoint["derivation"]
+        require(isinstance(record, dict) and record.get("owner") == config,
+                "Catalogue identity: tracked owner checkpoint required")
+        catalogue_derivation(root, record.get("recipe"), record)
 
 
-def renderer(configuration=None) -> dict:
+def renderer(configuration=None, catalogue=None) -> dict:
     # Execute this module with DOCS_PYTHON, the same interpreter as the adjacent build.
     packages = {name: importlib.metadata.version(name) for name in
                 ("mkdocs", "mkdocs-material", "Jinja2", "PyYAML", "Markdown", "Pygments", "pymdown-extensions")}
@@ -179,7 +202,11 @@ def renderer(configuration=None) -> dict:
         for name, plugin in configuration.plugins.items():
             module = plugin.__name__ if isinstance(plugin, types.ModuleType) else type(plugin).__module__
             distributions = owners.get(module.split(".")[0], [])
-            loaded = plugin if isinstance(plugin, types.ModuleType) else sys.modules.get(module)
+            if catalogue is not None and name == "bijux/catalogue-sources":
+                require(plugin is catalogue.plugin, "Catalogue identity: foreign renderer plugin")
+                loaded = catalogue.helper
+            else:
+                loaded = plugin if isinstance(plugin, types.ModuleType) else sys.modules.get(module)
             source = Path(loaded.__file__) if loaded is not None and getattr(loaded, "__file__", None) else None
             require(source is not None and source.is_file() and not source.is_symlink(),
                     "Build identity: actual plugin source fingerprint missing")
@@ -227,7 +254,7 @@ def configuration_identity(configuration, root: Path) -> str:
     return json_digest(normalize(configuration))
 
 
-def source_inputs(configuration, root: Path, *, publication_scope: bool) -> list[dict]:
+def source_inputs(configuration, root: Path, *, publication_scope: bool, catalogue=None) -> list[dict]:
     directories = [Path(configuration.docs_dir)]
     custom = configuration.theme.get("custom_dir")
     if custom:
@@ -239,6 +266,8 @@ def source_inputs(configuration, root: Path, *, publication_scope: bool) -> list
         regular(root, relative)
         if publication_scope:
             git(root, "ls-files", "--error-unmatch", relative)
+    if catalogue is not None:
+        return catalogue.input_records(configuration)
     records = []
     for directory in sorted(set(directories)):
         require(directory.is_relative_to(root), "Build identity: renderer source input must belong to the repository")
@@ -252,32 +281,49 @@ def source_inputs(configuration, root: Path, *, publication_scope: bool) -> list
     return records
 
 
-def begin(root: Path, config: str, site_dir: str, site_url: str, source_path: str | None) -> dict:
+def begin(root: Path, config: str, site_dir: str, site_url: str, source_path: str | None,
+          source_recipe: str | None = None) -> dict:
     from mkdocs.config import load_config
     path = regular(root, config)
-    configuration = load_config(config_file=str(path), site_dir=str(root / site_dir))
+    actual_source = None
+    if source_path:
+        actual_source = json.loads(regular(root, source_path).read_text())
+        verify_source(root, actual_source)
+        record = actual_source.get("derivation")
+        require(record is None or isinstance(record, dict), "Catalogue identity: typed derivation record required")
+        require(source_recipe is None or record is not None and record.get("recipe") == source_recipe,
+                "Catalogue identity: selected recipe differs from source checkpoint")
+        source_recipe = record.get("recipe") if record else None
+    catalogue = catalogue_derivation(root, source_recipe,
+                                     actual_source.get("derivation") if actual_source else None) if source_recipe else None
+    if catalogue:
+        require(config == catalogue.record["configuration"]["path"], "Catalogue identity: derived config selection differs")
+        configuration = catalogue.configuration(root / site_dir)
+        owned = catalogue.record["owner"]
+    else:
+        configuration = load_config(config_file=str(path), site_dir=str(root / site_dir))
+        owned = {"path": config, "sha256": digest(path.read_bytes())}
     site_url = site_url or configuration.site_url
     require(isinstance(site_url, str) and bool(site_url), "Build identity: actual config production URL required")
     boundary = publication()
     boundary.validate_url(site_url)
     boundary.site_directory(root, site_dir)
     require(configuration.site_url == site_url, "Build identity: actual MkDocs config production URL differs")
-    actual_source = None
-    if source_path:
-        source = regular(root, source_path)
-        actual_source = json.loads(source.read_text())
-        verify_source(root, actual_source)
+    if actual_source:
         require(actual_source["site_url"] == site_url and actual_source["site_dir"] == site_dir,
                 "Build identity: source checkpoint selects another artifact")
-        require(actual_source["config"] == {"path": config, "sha256": digest(path.read_bytes())}, "Build identity: owner-selected config differs")
-    return {"schema": 1, "scope": "actual-mkdocs-renderer", "state": "prepared",
-            "verification_only": actual_source is None, "site_url": site_url, "site_dir": site_dir,
-            "config": {"path": config, "sha256": digest(path.read_bytes())}, "renderer": renderer(configuration),
-            "resolved_config_sha256": configuration_identity(configuration, root),
-            "renderer_inputs": source_inputs(configuration, root, publication_scope=actual_source is not None),
-            "processor_sha256": digest(Path(__file__).read_bytes()),
-            "source_checkpoint": actual_source,
-            "source_checkpoint_sha256": json_digest(actual_source) if actual_source else None}
+        require(actual_source["config"] == owned, "Build identity: owner-selected config differs")
+    result = {"schema": 1, "scope": "actual-mkdocs-renderer", "state": "prepared",
+              "verification_only": actual_source is None, "site_url": site_url, "site_dir": site_dir,
+              "config": owned, "renderer": renderer(configuration, catalogue),
+              "resolved_config_sha256": configuration_identity(configuration, root),
+              "renderer_inputs": source_inputs(configuration, root, publication_scope=actual_source is not None, catalogue=catalogue),
+              "processor_sha256": digest(Path(__file__).read_bytes()),
+              "source_checkpoint": actual_source,
+              "source_checkpoint_sha256": json_digest(actual_source) if actual_source else None}
+    if catalogue:
+        result.update(effective_config=catalogue.record["configuration"], derivation=catalogue.record)
+    return result
 
 
 def finish(root: Path, receipt: dict) -> dict:
@@ -286,14 +332,25 @@ def finish(root: Path, receipt: dict) -> dict:
             "Build identity: effective renderer configuration changed")
     require(digest(Path(__file__).read_bytes()) == receipt["processor_sha256"], "Build identity: identity processor changed")
     from mkdocs.config import load_config
-    actual_config = load_config(config_file=str(root / receipt["config"]["path"]), site_dir=str(root / receipt["site_dir"]))
-    require(renderer(actual_config) == receipt["renderer"], "Build identity: actual renderer toolchain changed")
+    record = receipt.get("derivation")
+    require(record is None or isinstance(record, dict), "Catalogue identity: typed derivation record required")
+    catalogue = catalogue_derivation(root, record.get("recipe"), record) if record else None
+    if catalogue:
+        require(receipt.get("effective_config") == catalogue.record["configuration"],
+                "Catalogue identity: effective configuration differs")
+        actual_config = catalogue.configuration(root / receipt["site_dir"])
+    else:
+        require("effective_config" not in receipt, "Build identity: unreviewed derived configuration")
+        actual_config = load_config(config_file=str(root / receipt["config"]["path"]), site_dir=str(root / receipt["site_dir"]))
+    require(renderer(actual_config, catalogue) == receipt["renderer"], "Build identity: actual renderer toolchain changed")
     require(configuration_identity(actual_config, root) == receipt["resolved_config_sha256"],
             "Build identity: resolved renderer configuration/environment changed")
-    require(source_inputs(actual_config, root, publication_scope=receipt["source_checkpoint"] is not None) == receipt["renderer_inputs"],
+    require(source_inputs(actual_config, root, publication_scope=receipt["source_checkpoint"] is not None, catalogue=catalogue) == receipt["renderer_inputs"],
             "Build identity: renderer source inputs changed during build")
     if receipt["source_checkpoint"]:
         verify_source(root, receipt["source_checkpoint"])
+        require(receipt.get("derivation") == receipt["source_checkpoint"].get("derivation"),
+                "Catalogue identity: build/source derivation differs")
     module = publication()
     site = module.site_directory(root, receipt["site_dir"], exists=True)
     _, bundle = module.public_bundle_identity(site)
@@ -308,9 +365,11 @@ def main() -> int:
     for name in ("source-sha", "standard-root", "site-url", "site-dir", "build-command", "verify-command", "output"):
         capture.add_argument("--" + name, required=True)
     capture.add_argument("--config", default="mkdocs.yml")
+    capture.add_argument("--source-recipe", choices=["masterclass-catalogue"])
     prepare = commands.add_parser("begin")
     for name in ("config", "site-dir", "site-url", "output"):
         prepare.add_argument("--" + name, required=True)
+    prepare.add_argument("--source-recipe", choices=["masterclass-catalogue"])
     prepare.add_argument("--source-checkpoint", default=os.environ.get("DOCS_SOURCE_IDENTITY"))
     complete = commands.add_parser("finish")
     complete.add_argument("--receipt", required=True)
@@ -319,10 +378,10 @@ def main() -> int:
     try:
         if args.command == "capture-source":
             result = source_checkpoint(root, args.source_sha, args.standard_root, args.site_url, args.site_dir,
-                                       args.build_command, args.verify_command, args.config)
+                                       args.build_command, args.verify_command, args.config, args.source_recipe)
             output = artifact(root, args.output)
         elif args.command == "begin":
-            result = begin(root, args.config, args.site_dir, args.site_url, args.source_checkpoint)
+            result = begin(root, args.config, args.site_dir, args.site_url, args.source_checkpoint, args.source_recipe)
             output = artifact(root, args.output)
         else:
             output = artifact(root, args.receipt)

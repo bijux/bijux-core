@@ -15,6 +15,8 @@ class Document(HTMLParser):
         self.scripts = []
         self.tags = []
         self.current = None
+        self.styles = []
+        self.current_style = None
         self.feed(source)
         self.close()
         if self.current is not None:
@@ -28,6 +30,11 @@ class Document(HTMLParser):
         if any(name.lower().startswith("on") for name in attrs):
             raise AdmissionError("event handler attribute")
         self.tags.append((tag, attrs))
+        if tag == "style":
+            if self.current_style is not None:
+                raise AdmissionError("nested style")
+            self.current_style = []
+            self.styles.append(self.current_style)
         if tag == "script":
             if self.current is not None:
                 raise AdmissionError("nested script")
@@ -35,10 +42,14 @@ class Document(HTMLParser):
             self.scripts.append(self.current)
 
     def handle_data(self, value):
+        if self.current_style is not None:
+            self.current_style.append(value)
         if self.current is not None:
             self.current["body"] += value
 
     def handle_endtag(self, tag):
+        if tag == "style":
+            self.current_style = None
         if tag == "script":
             self.current = None
 
@@ -118,8 +129,124 @@ def reviewed_recipe(repo, body, recipe, product_base, report_path):
     }
 
 
+def report_class(report):
+    kind = report.get("report_class", "interactive")
+    if kind not in ("interactive", "static-reader"):
+        raise AdmissionError("unknown reviewed report class")
+    return kind
+
+
+def report_recipe(repo, document, report, product_base, output):
+    if report_class(report) == "static-reader":
+        return {"class": "static-reader", "source_sha256": report["source"]["sha256"]}
+    return reviewed_recipe(
+        repo, executable_scripts(document)[0]["body"], report["recipe"], product_base, output
+    )
+
+
+# This class admits passive notices, not arbitrary CSS or browser resources.
+_STATIC_LENGTH = r"(?:0|(?:[0-9]+(?:\.[0-9]+)?)(?:px|rem|em|vh|vw|%))"
+_STATIC_NUMBER = r"(?:[0-9]+(?:\.[0-9]+)?)"
+_STATIC_COLOR = r"(?:white|black|transparent|\#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?|rgba?\([0-9., ]+\))"
+_STATIC_SELECTOR = r"(?:[a-zA-Z][a-zA-Z0-9-]*|[.#][a-zA-Z_][a-zA-Z0-9_-]*)"
+_STATIC_VALUES = {
+    **{name: _STATIC_LENGTH for name in ("margin-top", "max-width", "min-height", "font-size", "border-radius")},
+    **{name: _STATIC_LENGTH + r"(?:\s+" + _STATIC_LENGTH + r"){0,3}" for name in ("margin", "padding")},
+    **{name: _STATIC_COLOR for name in ("color", "background", "background-color")},
+    "line-height": _STATIC_NUMBER + r"|" + _STATIC_LENGTH,
+    "display": r"block|inline|inline-block|grid|flex|none",
+    "place-items": r"center|start|end|stretch",
+    "font-family": r"(?:ui-sans-serif|system-ui|sans-serif|serif|monospace|ui-monospace)(?:\s*,\s*(?:ui-sans-serif|system-ui|sans-serif|serif|monospace|ui-monospace))*",
+    "border": _STATIC_LENGTH + r"\s+(?:solid|dashed|dotted)\s+" + _STATIC_COLOR,
+    "box-shadow": _STATIC_LENGTH + r"\s+" + _STATIC_LENGTH + r"\s+" + _STATIC_LENGTH + r"\s+" + _STATIC_COLOR,
+}
+
+
+def static_reader_css(content, *, declarations=False):
+    """Admit only finite notice layout/color declarations with no fetch grammar."""
+    if any(token in content for token in ("@", "\\", "/*", "*/")):
+        raise AdmissionError("static reader CSS is outside its finite grammar")
+    if declarations:
+        chunks = [content]
+    else:
+        chunks = []
+        remaining = content.strip()
+        while remaining:
+            match = re.match(r"([^{}]+)\{([^{}]*)\}", remaining)
+            if match is None:
+                raise AdmissionError("static reader CSS rule is outside its finite grammar")
+            selectors = match[1].strip().split(",")
+            if any(re.fullmatch(_STATIC_SELECTOR, selector.strip()) is None for selector in selectors):
+                raise AdmissionError("static reader CSS selector is outside its finite grammar")
+            chunks.append(match[2])
+            remaining = remaining[match.end():].strip()
+    for chunk in chunks:
+        for declaration in chunk.split(";"):
+            if not declaration.strip():
+                continue
+            if declaration.count(":") != 1:
+                raise AdmissionError("static reader CSS declaration is outside its finite grammar")
+            name, value = (part.strip() for part in declaration.split(":", 1))
+            pattern = _STATIC_VALUES.get(name)
+            if pattern is None or re.fullmatch(pattern, value) is None:
+                raise AdmissionError("static reader CSS property/value is outside its finite grammar")
+            for color in re.findall(r"rgba?\([0-9., ]+\)", value):
+                components = [component.strip() for component in color[color.index("(")+1:-1].split(",")]
+                expected = 4 if color.startswith("rgba") else 3
+                if (len(components) != expected
+                    or any(re.fullmatch(r"[0-9]{1,3}", c) is None or not 0 <= int(c) <= 255 for c in components[:3])
+                    or (expected == 4 and (re.fullmatch(r"(?:0(?:\.[0-9]+)?|1(?:\.0+)?)", components[3]) is None))):
+                    raise AdmissionError("static reader CSS color is outside its finite grammar")
+
+
+def validate_static_reader(document, report):
+    expected = {"report_class", "output", "source", "resources", "reviewed_scripts",
+                "providers", "reviewed_provider_origins", "provider_calls"}
+    if set(report) != expected:
+        raise AdmissionError("static reader requires its exact non-executable descriptor")
+    if (document.scripts or report["resources"] != {} or report["providers"] != {}
+        or report["reviewed_scripts"] != [] or report["reviewed_provider_origins"] != []
+        or report["provider_calls"] != []):
+        raise AdmissionError("static reader cannot own scripts, resources, bootstrap or providers")
+    passive = {"html", "head", "meta", "title", "style", "body", "main", "section", "article",
+               "header", "footer", "nav", "aside", "div", "span", "h1", "h2", "h3", "h4", "h5", "h6",
+               "p", "a", "br", "hr", "ul", "ol", "li", "dl", "dt", "dd", "strong", "em", "small",
+               "code", "pre", "blockquote", "table", "thead", "tbody", "tr", "th", "td", "caption", "link"}
+    global_attributes = {"class", "id", "lang", "dir", "title", "role", "aria-label", "aria-labelledby", "style"}
+    for tag, attrs in document.tags:
+        if tag not in passive:
+            raise AdmissionError("static reader has an unsupported active/resource element")
+        permitted = global_attributes | ({"href", "target", "rel"} if tag == "a" else set())
+        if tag == "meta":
+            if attrs == {"charset": "utf-8"}:
+                continue
+            if attrs == {"name": "viewport", "content": "width=device-width, initial-scale=1"}:
+                continue
+            raise AdmissionError("static reader has unsupported metadata")
+        if tag == "link":
+            if attrs == {"rel": "icon", "href": "data:,"}:
+                continue
+            raise AdmissionError("static reader cannot load a linked resource")
+        if set(attrs) - permitted:
+            raise AdmissionError("static reader has an unsupported attribute")
+        if "style" in attrs:
+            static_reader_css(attrs["style"], declarations=True)
+        if tag == "a":
+            href = attrs.get("href", "")
+            if (any(ord(c) < 32 for c in href) or urlsplit(href).scheme not in ("", "http", "https", "mailto", "tel")
+                or attrs.get("target", "_self") not in ("_self", "_blank")
+                or set(attrs.get("rel", "").split()) - {"noopener", "noreferrer"}):
+                raise AdmissionError("static reader has an unsupported navigation attribute")
+    if document.current_style is not None:
+        raise AdmissionError("static reader has an unclosed style element")
+    for style in document.styles:
+        static_reader_css("".join(style))
+
+
 def validate_report(source, report, product_base):
     doc = Document(source)
+    if report_class(report) == "static-reader":
+        validate_static_reader(doc, report)
     local = set(report["resources"])
     for tag, attrs in doc.tags:
         if tag in ("base", "iframe", "object", "embed", "form"):

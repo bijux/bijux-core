@@ -6,6 +6,7 @@
   let lifetime;
   let closeDrawer;
   let readingIntent = false;
+  let readerFocus = null;
   const compact = window.matchMedia("(max-width: 76.2344em)");
 
   function upgradeControls() {
@@ -384,6 +385,8 @@
   }
 
   function runShellNavigationSync() {
+    // Instant replacement can remove the focused reader without emitting a new focus event.
+    const disconnectedReader = readerFocus && !readerFocus.isConnected && document.activeElement === document.body;
     lifetime?.abort();
     delete document.body.dataset.bijuxDrawerReady;
     delete document.body.dataset.bijuxDrawerOpen;
@@ -397,17 +400,21 @@
       shell.searchRecovery?.bind(lifetime.signal);
       shell.contentReflow?.bind(lifetime.signal);
       shell.externalLinks?.bind(lifetime.signal);
+      shell.navReveal?.bind(lifetime.signal);
       window.dispatchEvent(new Event("bijux:search-location"));
       shell.detailTabs?.runDetailTabsSync?.();
       shell.navReveal?.runDesktopNavigationSync?.();
       const focusReading = readingIntent === true ||
         (readingIntent && readingIntent.href === window.location.href);
       readingIntent = false;
-      if (focusReading) {
-        const heading = document.querySelector(".md-content h1");
-        if (heading) {
-          heading.setAttribute("tabindex", "-1");
-          heading.focus({ preventScroll: true });
+      if (focusReading || disconnectedReader) {
+        const reader = document.querySelector(".md-content h1") || document.querySelector("main");
+        if (reader) {
+          if (reader.matches("main") && !reader.hasAttribute("aria-label") && !reader.hasAttribute("aria-labelledby")) {
+            reader.setAttribute("aria-label", document.title || "Documentation");
+          }
+          reader.setAttribute("tabindex", "-1");
+          reader.focus({ preventScroll: true });
         }
       }
       // Material's generic JS class does not establish this owned lifecycle.
@@ -422,6 +429,17 @@
   function ensureBound() {
     if (shell.bootstrap.bound) return;
     shell.bootstrap.bound = true;
+    document.addEventListener("focusin", event => {
+      const node = event.target;
+      readerFocus = (node.closest?.(".md-content") || node.matches?.("main")) ? node : null;
+    });
+    document.addEventListener("focusout", event => {
+      const node = event.target;
+      // A native blur remains intentional if its node survives the current document change.
+      queueMicrotask(() => {
+        if (readerFocus === node && node.isConnected && document.activeElement === document.body) readerFocus = null;
+      });
+    });
     if (window.document$ && typeof window.document$.subscribe === "function") {
       window.document$.subscribe(runShellNavigationSync);
     } else if (document.readyState === "loading") {
@@ -429,6 +447,7 @@
     } else runShellNavigationSync();
     window.addEventListener("pagehide", () => {
       readingIntent = false;
+      readerFocus = null;
       lifetime?.abort();
     });
     window.addEventListener("pageshow", event => { if (event.persisted) runShellNavigationSync(); });
