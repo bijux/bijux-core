@@ -12,6 +12,8 @@ last_reviewed: 2026-10-08
 `bijux-core` is the release and verification workspace for the `bijux` command
 runtime and the local-first `bijux-dag` toolchain.
 
+[CLI installation](bijux-cli/operations/installation-and-setup.md) · [First-run tutorial](bijux-dag/operations/first-run-tutorial.md)
+
 ## Start With One Product
 
 | What you want to do | Prepare the command | Continue with |
