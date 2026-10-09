@@ -1,0 +1,28 @@
+version = 1
+
+[python]
+requires = ">=3.11,<4"
+interpreter = "python3.11"
+
+[tools]
+ruff = ">=0.6,<1"
+mypy = ">=1.11,<3"
+pytest = ">=8.4,<10"
+pytest-cov = ">=6,<8"
+tox = ">=4.11,<5"
+tox-gh-actions = ">=3.1,<4"
+
+[openapi]
+package-name = "bijux-openapi-tooling"
+node = ">=22.12.0"
+generator = "2.41.0"
+redocly = "2.47.0"
+
+[tox]
+minversion = "4.11"
+workdir = "{tox_root}/artifacts/root/tox"
+basepython = "python3.11"
+required-setenv = [
+  "PIP_DISABLE_PIP_VERSION_CHECK",
+  "PYTHONDONTWRITEBYTECODE",
+]

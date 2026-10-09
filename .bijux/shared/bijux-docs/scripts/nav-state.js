@@ -103,7 +103,7 @@
         link
           .closest(".bijux-tabs__item")
           ?.classList.add("md-tabs__item--active", "bijux-tabs__item--active");
-        link.setAttribute("aria-current", "page");
+        link.setAttribute("aria-current", linkPath === normalizeCurrentPath(window.location.pathname) ? "page" : "location");
       }
     }
 

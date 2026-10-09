@@ -8,30 +8,12 @@ on:
 
 permissions:
   contents: read
-  actions: read
   pull-requests: write
 
 jobs:
-  policy-gate:
-    name: policy-prerequisites
-    if: ${{ github.event.pull_request.user.login != 'dependabot[bot]' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository policy scripts
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Wait for policy and standards prerequisites
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          BIJUX_REQUIRED_WORKFLOWS: .github/workflows/pr-approval-policy.yml
-        run: |
-          set -euo pipefail
-          python3 .github/scripts/check_workflow_prerequisites.py
-
   enable:
-    needs: policy-gate
-    if: ${{ github.event.pull_request.user.login != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Enable auto-merge when CODEOWNERS approval is present
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0

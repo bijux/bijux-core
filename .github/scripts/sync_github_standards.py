@@ -7,7 +7,6 @@ import json
 import os
 import shutil
 import subprocess
-import time
 from pathlib import Path
 from typing import Any
 
@@ -141,6 +140,29 @@ def verify_shared_checksums(repo_dir: Path) -> None:
             "Managed shared checksums verification failed:\n"
             f"{details}"
         )
+
+
+def refresh_shared_checksums(repo_dir: Path) -> None:
+    """Rebind managed checksums after repository-specific rendering."""
+    checksum_file = repo_dir / ".github/bijux-std-shared.sha256"
+    if not checksum_file.exists():
+        raise FileNotFoundError(f"Missing checksum file: {checksum_file}")
+
+    refreshed: list[str] = []
+    for raw_line in checksum_file.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        parts = line.split(maxsplit=1)
+        if len(parts) != 2:
+            raise ValueError(f"Malformed checksum line: {raw_line}")
+        relative_path = parts[1]
+        path = repo_dir / relative_path
+        if not path.is_file():
+            raise FileNotFoundError(f"Missing managed file: {relative_path}")
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        refreshed.append(f"{digest}  {relative_path}")
+    checksum_file.write_text("\n".join(refreshed) + "\n", encoding="utf-8")
 
 
 def load_manifest() -> dict[str, Any]:
@@ -283,31 +305,25 @@ def create_pr(repo_dir: Path, args: argparse.Namespace, branch_name: str) -> dic
     return json.loads(pr_json)
 
 
-def wait_for_merge(repo_dir: Path, pr_number: int, timeout_seconds: int, interval_seconds: int) -> dict:
-    deadline = time.time() + timeout_seconds
-    while True:
-        info = json.loads(
-            run(
-                [
-                    "gh",
-                    "pr",
-                    "view",
-                    str(pr_number),
-                    "--json",
-                    "number,url,state,mergeStateStatus,isDraft",
-                ],
-                cwd=repo_dir,
-            )
+def observe_merge(repo_dir: Path, pr_number: int) -> dict:
+    info = json.loads(
+        run(
+            [
+                "gh",
+                "pr",
+                "view",
+                str(pr_number),
+                "--json",
+                "number,url,state,mergeStateStatus,isDraft",
+            ],
+            cwd=repo_dir,
         )
-        if info.get("state") == "MERGED":
-            return {"status": "merged", "details": info}
-        if info.get("state") == "CLOSED":
-            return {"status": "closed", "details": info}
-
-        if time.time() >= deadline:
-            return {"status": "timeout", "details": info}
-
-        time.sleep(interval_seconds)
+    )
+    if info.get("state") == "MERGED":
+        return {"status": "merged", "details": info}
+    if info.get("state") == "CLOSED":
+        return {"status": "closed", "details": info}
+    return {"status": "waiting_external", "details": info}
 
 
 def main() -> None:
@@ -315,9 +331,7 @@ def main() -> None:
     parser.add_argument("--repo", action="append", default=[], help="Repository name (repeatable)")
     parser.add_argument("--create-branch", action="store_true", help="Create per-repo branch before commit")
     parser.add_argument("--open-pr", action="store_true", help="Push and open PR for each changed repository")
-    parser.add_argument("--track-merge-status", action="store_true", help="Poll opened PRs until merged/closed/timeout")
-    parser.add_argument("--merge-timeout-seconds", type=int, default=3600, help="Maximum polling duration per PR")
-    parser.add_argument("--merge-poll-interval-seconds", type=int, default=60, help="Polling interval")
+    parser.add_argument("--track-merge-status", action="store_true", help="Observe each opened PR once")
     parser.add_argument("--advance-std-sha", action="store_true", help="Write current bijux-std commit SHA pin into each target repo")
     parser.add_argument("--base-branch", default="main", help="PR base branch")
     parser.add_argument("--branch-prefix", default="chore/github-standards-sync", help="Branch prefix")
@@ -331,6 +345,8 @@ def main() -> None:
 
     render_script = STD_REPO / ".github/scripts/render_repo_configs.py"
     subprocess.run(["python3", str(render_script), "--repo", "bijux-std"], check=True)
+    refresh_shared_checksums(STD_REPO)
+    verify_shared_checksums(STD_REPO)
 
     pr_records: list[tuple[str, int, str]] = []
     changed_repos: list[str] = []
@@ -339,6 +355,7 @@ def main() -> None:
         repo_dir = resolve_repository_checkout(repo)
         copy_shared_files(repo)
         subprocess.run(["python3", str(render_script), "--repo", repo], check=True)
+        refresh_shared_checksums(repo_dir)
 
         if args.advance_std_sha:
             write_std_pin(repo, std_sha)
@@ -367,12 +384,7 @@ def main() -> None:
     if args.track_merge_status and pr_records:
         print("merge_status:")
         for repo, pr_number, pr_url in pr_records:
-            result = wait_for_merge(
-                resolve_repository_checkout(repo),
-                pr_number,
-                timeout_seconds=args.merge_timeout_seconds,
-                interval_seconds=args.merge_poll_interval_seconds,
-            )
+            result = observe_merge(resolve_repository_checkout(repo), pr_number)
             print(f"  - {repo}: {result['status']} ({pr_url})")
 
 

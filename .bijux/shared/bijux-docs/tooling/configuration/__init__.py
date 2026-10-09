@@ -1,0 +1,1 @@
+"""Bijux documentation configuration contracts."""

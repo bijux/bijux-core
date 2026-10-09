@@ -1,0 +1,11 @@
+{# Repository navigation is always available; provider facts require an explicit opt-in. #}
+{% set bijux = config.extra.bijux if config.extra and config.extra.bijux else {} %}
+<a href="{{ config.repo_url }}" title="{{ lang.t('source') }}" aria-label="{{ (lang.t('source') ~ ': ' ~ config.repo_name) | e }}" class="md-source"{% if bijux.repository_facts is sameas true %} data-md-component="source"{% endif %}>
+  <div class="md-source__icon md-icon">
+    {% set icon = config.theme.icon.repo or "fontawesome/brands/git-alt" %}
+    {% include ".icons/" ~ icon ~ ".svg" %}
+  </div>
+  <div class="md-source__repository">
+    {{ config.repo_name }}
+  </div>
+</a>

@@ -1,0 +1,182 @@
+{
+  "files": {
+    "docs/assets/bijux_icon.png": {
+      "sha256": "8b0f7851d7a2c9fe3adef8638af58f395cda37d12eee720c82965c3bab735f7b",
+      "source": "bijux-docs/assets/bijux_icon.png"
+    },
+    "docs/assets/bijux_logo.png": {
+      "sha256": "a6c7cae1ce559fd2813f5b5aa10331a0c41b805ea04907a387e0acfb9a40da49",
+      "source": "bijux-docs/assets/bijux_logo.png"
+    },
+    "docs/assets/bijux_logo_hq.png": {
+      "sha256": "92d45837e0c2a9cd68d3db74e131f829e519b6416a34ef36408ac79b47c94223",
+      "source": "bijux-docs/assets/bijux_logo_hq.png"
+    },
+    "docs/assets/javascripts/external-links.js": {
+      "sha256": "051fec9ad5e5488b47ec1ae18b108750d19a5faed105965fb3cb743cf94a008f",
+      "source": "bijux-docs/scripts/external-links.js"
+    },
+    "docs/assets/javascripts/material-search.430a43a148880186a0981dcff9aea38caff90b29d2744b91a38ebe37f6213a19.js": {
+      "sha256": "430a43a148880186a0981dcff9aea38caff90b29d2744b91a38ebe37f6213a19",
+      "source": "bijux-docs/assets/javascripts/material-search.430a43a148880186a0981dcff9aea38caff90b29d2744b91a38ebe37f6213a19.js"
+    },
+    "docs/assets/javascripts/mermaid-init.js": {
+      "sha256": "4491cdb29a6eb9ac88aa83481c4310c2366fa05d4326c25714f8bfa4ec7a522e",
+      "source": "bijux-docs/scripts/mermaid-init.js"
+    },
+    "docs/assets/javascripts/navigation-sync.js": {
+      "sha256": "1f4e2527242ea4b7895b3e249183672a20698209735eb0b390beb9909aab6678",
+      "source": "bijux-docs/scripts/nav-sync.js"
+    },
+    "docs/assets/javascripts/shell/bootstrap.js": {
+      "sha256": "93415c347914140affbba42dea91a67d63f8b8b8555025107f095210a281439e",
+      "source": "bijux-docs/scripts/bootstrap.js"
+    },
+    "docs/assets/javascripts/shell/content-reflow.js": {
+      "sha256": "7baa024ef0fc5b6d6e6583265ab34b2a2222ecfe7644c90c32bca50fea8c48b3",
+      "source": "bijux-docs/scripts/content-reflow.js"
+    },
+    "docs/assets/javascripts/shell/detail-tabs.js": {
+      "sha256": "e4236b86d44b9a745734a32591edb8f393e1af0ae18f864dda3f1dbb3b8f504c",
+      "source": "bijux-docs/scripts/detail-tabs.js"
+    },
+    "docs/assets/javascripts/shell/nav-reveal.js": {
+      "sha256": "4ac289f4d0f8be71e654df9690c19748391cbca300d4e893b9559b74e9617636",
+      "source": "bijux-docs/scripts/nav-reveal.js"
+    },
+    "docs/assets/javascripts/shell/nav-state.js": {
+      "sha256": "f4e7f5761a3f56a14d7bc8a69d6aac78cd9921ea84b8c03d7c2a32009f3aa8d1",
+      "source": "bijux-docs/scripts/nav-state.js"
+    },
+    "docs/assets/javascripts/shell/search-recovery.js": {
+      "sha256": "d52fd252d55e67c45c1df3113115aef7878ac43339866f9dc25b10ac2d73124c",
+      "source": "bijux-docs/scripts/search-recovery.js"
+    },
+    "docs/assets/javascripts/shell/theme-persistence.js": {
+      "sha256": "a9011e3aa0f3c5c0bb0979dbd7a59d6d2c8e257f387849a73a1ed6bf9215543b",
+      "source": "bijux-docs/scripts/theme-persistence.js"
+    },
+    "docs/assets/javascripts/shell/viewport-profile.js": {
+      "sha256": "de051151e878a57253ca843cb3ac8a953e7316e952c556a29b375e9aadeaefde",
+      "source": "bijux-docs/scripts/viewport-profile.js"
+    },
+    "docs/assets/javascripts/vendor/THIRD-PARTY-LICENSES.txt": {
+      "sha256": "dc176484e5bce18733e7e5ec03f9ca04ca1359240b26805464036049d3e5650b",
+      "source": "bijux-docs/assets/javascripts/vendor/THIRD-PARTY-LICENSES.txt"
+    },
+    "docs/assets/javascripts/vendor/mermaid-11.17.2.min.js": {
+      "sha256": "d7db2d59ac3457fb61477895a767b0642222f85133ac124beee47c0cc41e8139",
+      "source": "bijux-docs/assets/javascripts/vendor/mermaid-11.17.2.min.js"
+    },
+    "docs/assets/javascripts/vendor/mermaid-11.17.2.min.js.LEGAL.txt": {
+      "sha256": "63e9022c5c1157ac16f67a05895fd57030c9f2e2fb7b9f9cfb060e8307612e18",
+      "source": "bijux-docs/assets/javascripts/vendor/mermaid-11.17.2.min.js.LEGAL.txt"
+    },
+    "docs/assets/site-icons/apple-touch-icon-precomposed.png": {
+      "sha256": "12db5d3ae8a643027a9bc9a06ddc46319ad253312300c3d57b9830d561b32edc",
+      "source": "bijux-docs/assets/site-icons/apple-touch-icon-precomposed.png"
+    },
+    "docs/assets/site-icons/apple-touch-icon.png": {
+      "sha256": "12db5d3ae8a643027a9bc9a06ddc46319ad253312300c3d57b9830d561b32edc",
+      "source": "bijux-docs/assets/site-icons/apple-touch-icon.png"
+    },
+    "docs/assets/site-icons/favicon.ico": {
+      "sha256": "3b02a44e816640fab17584671fcb698d1e3b06131432e1dad44d8402a8d80fea",
+      "source": "bijux-docs/assets/site-icons/favicon.ico"
+    },
+    "docs/assets/styles/00-tokens.css": {
+      "sha256": "cfebc03d2cb8e743aa70944512dc8070f6e92e186de7f6ce6aecf38e706e447b",
+      "source": "bijux-docs/styles/00-tokens.css"
+    },
+    "docs/assets/styles/01-theme.css": {
+      "sha256": "b86fd59825e745d3158e52dac3b762f7c2378588b2fddf7a1e0775be41788564",
+      "source": "bijux-docs/styles/01-theme.css"
+    },
+    "docs/assets/styles/02-layout.css": {
+      "sha256": "b5c2da8889d4bc821399d1ea82e28162a005f41b79c8f85a8bf8cf312a88cf2a",
+      "source": "bijux-docs/styles/02-layout.css"
+    },
+    "docs/assets/styles/03-header.css": {
+      "sha256": "1e5e87daeaca11fa9148eaf6f7c8f81bf949c0b8d4e0ed507c5600dd9f505d7c",
+      "source": "bijux-docs/styles/03-header.css"
+    },
+    "docs/assets/styles/04-nav.css": {
+      "sha256": "98a3f4a0fef99cad9c044f2822459d20994801146bed359cacac87245810d1f6",
+      "source": "bijux-docs/styles/04-nav.css"
+    },
+    "docs/assets/styles/05-content.css": {
+      "sha256": "5efbddd5f4d1ce2cbf11e56bcd77aea4f38a945cef23ed40edd8f57c08b92305",
+      "source": "bijux-docs/styles/05-content.css"
+    },
+    "docs/assets/styles/06-components.css": {
+      "sha256": "8891db65f4169b866cb17f0f1f8e3a741372559c187358ccf8954a02cf813919",
+      "source": "bijux-docs/styles/06-components.css"
+    },
+    "docs/assets/styles/07-utilities.css": {
+      "sha256": "55018003aa2a6e022180765841105879be5b3c6c4e015e95545048ff61194cdc",
+      "source": "bijux-docs/styles/07-utilities.css"
+    },
+    "docs/assets/styles/08-responsive.css": {
+      "sha256": "e4038058ea66d060a7c3043200cace87d55481e5f532ddcd6d188ef97cd4f4a6",
+      "source": "bijux-docs/styles/08-responsive.css"
+    },
+    "docs/assets/styles/extra.css": {
+      "sha256": "350dcc4a0e03061b814d8a138e14aa185b022aa6d99f8d441c8b57c3aeeda5d1",
+      "source": "bijux-docs/styles/extra.css"
+    },
+    "docs/overrides/main.html": {
+      "sha256": "5d0f46520746804968785c34057f454926a3829f71bc6b45d925a1b338a720d3",
+      "source": "bijux-docs/partials/main.html"
+    },
+    "docs/overrides/partials/bijux-nav.html": {
+      "sha256": "7a22ffa6d36644e2e0b17267199b5ad16db2bc0b506f46b274beddb637cfaace",
+      "source": "bijux-docs/partials/bijux-nav.html"
+    },
+    "docs/overrides/partials/footer-profile-links.html": {
+      "sha256": "169c0992a24ee6dc0ace82f2ba5ab6700de71301f8edc87695ee9a8a249f8167",
+      "source": "bijux-docs/partials/footer-profile-links.html"
+    },
+    "docs/overrides/partials/footer.html": {
+      "sha256": "6b2515f932f13efdcd23a3102efe6db4a0fe8613e30229b5d15defe913241f36",
+      "source": "bijux-docs/partials/footer.html"
+    },
+    "docs/overrides/partials/header.html": {
+      "sha256": "aec12b5f7163c5c44788486d91fff4e6c8d92955277e08a13c24f6324fe168ee",
+      "source": "bijux-docs/partials/header.html"
+    },
+    "docs/overrides/partials/javascripts/base.html": {
+      "sha256": "c8515cf70b0cc7a2cb055573d03a8aeb11c66aad554df649ac1ab19977cf3d51",
+      "source": "bijux-docs/partials/javascripts/base.html"
+    },
+    "docs/overrides/partials/javascripts/palette.html": {
+      "sha256": "12396c6aa175c26a7c2cf6f5b8db980ca96f2bf641e9f087f9d421e4afe700c8",
+      "source": "bijux-docs/partials/javascripts/palette.html"
+    },
+    "docs/overrides/partials/logo.html": {
+      "sha256": "14ef434c780b5c19871ca0f3f0d449f98ce999a448ff7c511752770daa9cef9e",
+      "source": "bijux-docs/partials/logo.html"
+    },
+    "docs/overrides/partials/nav-item.html": {
+      "sha256": "ab7aae29d2f12dbfb459764733d253fcf20340ed7ae3a1494885e2a0232c93c2",
+      "source": "bijux-docs/partials/nav-item.html"
+    },
+    "docs/overrides/partials/nav.html": {
+      "sha256": "ff929e02a7a2bc4a5715c536e22f28bb8c4a35ea84250d06752267a1ca21d3af",
+      "source": "bijux-docs/partials/nav.html"
+    },
+    "docs/overrides/partials/search.html": {
+      "sha256": "1f9a02106f276b185dd72cdb1d1430b391418504e1fbd90ecc4cf23b9811901a",
+      "source": "bijux-docs/partials/search.html"
+    },
+    "docs/overrides/partials/source.html": {
+      "sha256": "bb84852011ed775a285b6489993dc75448db14a5401d4a5623b94c1e744203b7",
+      "source": "bijux-docs/partials/source.html"
+    }
+  },
+  "schema": 1,
+  "source": {
+    "mode": "accepted-github",
+    "origin": "https://github.com/bijux/bijux-std.git",
+    "sha": "ab56c5afb37c53bd23a0b9f8e48ed50dedcc71ca"
+  }
+}

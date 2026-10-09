@@ -19,3 +19,8 @@
 ## Release and Risk
 - [ ] Breaking change impact is documented.
 - [ ] Rollback path is documented when operational risk exists.
+
+## Changelog
+
+- [ ] Record this PR’s meaningful changes directly in `CHANGELOG.md`, with its actual PR link and a concise summary.
+- [ ] Keep the newest PR first and distinguish pending review from verified merge history.

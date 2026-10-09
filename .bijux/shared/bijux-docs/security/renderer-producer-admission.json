@@ -1,0 +1,1031 @@
+{
+  "schema": 2,
+  "profiles": [
+    {
+      "id": "darwin-arm64-cpython-314-docs",
+      "usage": "verification-only",
+      "environment": {
+        "platform": {
+          "system": "Darwin",
+          "machine": "arm64",
+          "python": "3.14.4",
+          "implementation": "cpython",
+          "cache_tag": "cpython-314"
+        },
+        "executable_sha256": "02a8df1726463faedb3adef289b3d1bdeabb7785c837fd8c174023aeeeb4d312",
+        "stdlib": {
+          "files_count": 2497,
+          "files_sha256": "567307fc2b028e0c02eb3b27136294d1cd2a1150b801cedd95e3bafe92c41674"
+        },
+        "physical_roots": [
+          {
+            "root": "site-packages",
+            "files_count": 17306,
+            "files_sha256": "15a3161d67861dd5a4d34393abbe05ea664c6d7911625f5828ee0247cbf447a5"
+          }
+        ],
+        "startup_inputs": [
+          {
+            "path": "stdlib/sitecustomize.py",
+            "sha256": "cbf9d8d0f07943b63ed5e5983e2b33d91fadc54251e66df7eb7c31f1b816b5d6",
+            "source": "# This file is created by Homebrew and is executed on each python startup.\n# Don't print from here, or else python command line scripts may fail!\n# <https://docs.brew.sh/Homebrew-and-Python>\nimport re\nimport os\nimport site\nimport sys\nif sys.version_info[:2] != (3, 14):\n    # This can only happen if the user has set the PYTHONPATH to a mismatching site-packages directory.\n    # Every Python looks at the PYTHONPATH variable and we can't fix it here in sitecustomize.py,\n    # because the PYTHONPATH is evaluated after the sitecustomize.py. Many modules (e.g. PyQt4) are\n    # built only for a specific version of Python and will fail with cryptic error messages.\n    # In the end this means: Don't set the PYTHONPATH permanently if you use different Python versions.\n    exit(f'Your PYTHONPATH points to a site-packages dir for Python 3.14 '\n         f'but you are running Python {sys.version_info[0]}.{sys.version_info[1]}!\\n'\n         f'     PYTHONPATH is currently: \"{os.environ[\"PYTHONPATH\"]}\"\\n'\n         f'     You should `unset PYTHONPATH` to fix this.')\n# Only do this for a brewed python:\nif os.path.realpath(sys.executable).startswith('/opt/homebrew/Cellar/python@3.14'):\n    # Shuffle /Library site-packages to the end of sys.path\n    library_site = '/Library/Python/3.14/site-packages'\n    library_packages = [p for p in sys.path if p.startswith(library_site)]\n    sys.path = [p for p in sys.path if not p.startswith(library_site)]\n    # .pth files have already been processed so don't use addsitedir\n    sys.path.extend(library_packages)\n    # the Cellar site-packages is a symlink to the HOMEBREW_PREFIX\n    # site_packages; prefer the shorter paths\n    long_prefix = re.compile(r'/opt/homebrew/Cellar/python@3.14/[0-9\\._abrc]+/(?:Frameworks/Python\\.framework/Versions/3.14/)?lib/python3.14/site-packages')\n    sys.path = [long_prefix.sub('/opt/homebrew/lib/python3.14/site-packages', p) for p in sys.path]\n    # Set the sys.executable to use the opt_prefix. Only do this if PYTHONEXECUTABLE is not\n    # explicitly set and we are not in a virtualenv:\n    if 'PYTHONEXECUTABLE' not in os.environ and sys.prefix == sys.base_prefix:\n        sys.executable = sys._base_executable = '/opt/homebrew/opt/python@3.14/bin/python3.14'\nif 'PYTHONHOME' not in os.environ:\n    cellar_prefix = re.compile(r'/opt/homebrew/Cellar/python@3.14/[0-9\\._abrc]+(?=/|$)')\n    if os.path.realpath(sys.base_prefix).startswith('/opt/homebrew/Cellar/python@3.14'):\n        new_prefix = cellar_prefix.sub('/opt/homebrew/opt/python@3.14', sys.base_prefix)\n        site.PREFIXES[:] = [new_prefix if x == sys.base_prefix else x for x in site.PREFIXES]\n        if sys.prefix == sys.base_prefix:\n            sys.prefix = new_prefix\n        sys.base_prefix = new_prefix\n    if os.path.realpath(sys.base_exec_prefix).startswith('/opt/homebrew/Cellar/python@3.14'):\n        new_exec_prefix = cellar_prefix.sub('/opt/homebrew/opt/python@3.14', sys.base_exec_prefix)\n        site.PREFIXES[:] = [new_exec_prefix if x == sys.base_exec_prefix else x for x in site.PREFIXES]\n        if sys.exec_prefix == sys.base_exec_prefix:\n            sys.exec_prefix = new_exec_prefix\n        sys.base_exec_prefix = new_exec_prefix\n# Make site.getsitepackages() return the HOMEBREW_PREFIX site-packages,\n# but only if we are outside a venv or in one with include-system-site-packages.\nif sys.base_prefix in site.PREFIXES:\n    site.PREFIXES.insert(site.PREFIXES.index(sys.base_prefix), '/opt/homebrew')\n    site.addsitedir('/opt/homebrew/lib/python3.14/site-packages')\n# Check for and add the prefix of split Python formulae.\nfor split_module in [\"tk\", \"gdbm\"]:\n    split_prefix = f\"/opt/homebrew/opt/python-{split_module}@3.14/libexec\"\n    if os.path.isdir(split_prefix):\n        sys.path.append(split_prefix)\n",
+            "resolved_target": "/opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/sitecustomize.py"
+          }
+        ],
+        "packages": [
+          {
+            "name": "babel",
+            "version": "2.18.0",
+            "files_count": 1118,
+            "files_sha256": "e3c2db438e6f623271d7bcb5dafb5ed8584890c306bbe1405ce0437926471dff"
+          },
+          {
+            "name": "backrefs",
+            "version": "8.0",
+            "files_count": 39,
+            "files_sha256": "e850084d69930a44bf4832d24ecab5d1b1611d1c69efa8363ef7878479d0f7c2"
+          },
+          {
+            "name": "certifi",
+            "version": "2026.7.22",
+            "files_count": 11,
+            "files_sha256": "c9c0397564526a56ad87e539aaedf46b50c105feae6438aa02758db6d3e7168c"
+          },
+          {
+            "name": "charset-normalizer",
+            "version": "3.5.2",
+            "files_count": 20,
+            "files_sha256": "adebcc55490a28b540a89bce5e389a584e657f6120da9ee36492daeeaf7d961a"
+          },
+          {
+            "name": "click",
+            "version": "8.5.0",
+            "files_count": 21,
+            "files_sha256": "4b8f893fb60a09f003b97804b07a6602039f05e49047fcc92825fce0160b6259"
+          },
+          {
+            "name": "colorama",
+            "version": "0.4.6",
+            "files_count": 16,
+            "files_sha256": "610650200ca972753c59250d424e6a5fca2fc39cf589cf49fc4bf86e8afa5142"
+          },
+          {
+            "name": "ghp-import",
+            "version": "2.1.0",
+            "files_count": 6,
+            "files_sha256": "9d8cf327f251c1e5bb1ccb1905f5defc96fafab200a0fc323e89be6aeb76d227"
+          },
+          {
+            "name": "idna",
+            "version": "3.20",
+            "files_count": 15,
+            "files_sha256": "c66981c6ce6c3b6083a9e8709199d4b3680fa0ce217484c50cafc4d154ba35ba"
+          },
+          {
+            "name": "Jinja2",
+            "version": "3.1.6",
+            "files_count": 30,
+            "files_sha256": "3680a122ae9e3b1e4231dc2f4a9b9435bcdea9d2ed37eb56e4371c564c8c9721"
+          },
+          {
+            "name": "Markdown",
+            "version": "3.11",
+            "files_count": 38,
+            "files_sha256": "3519056f65d07b0bb2f6b313da3457abb90d22e9238fdd9d34da7a274d42fbb3"
+          },
+          {
+            "name": "MarkupSafe",
+            "version": "3.0.4",
+            "files_count": 10,
+            "files_sha256": "f6868b23b462444be61acb1a60a9240cb9f7399c76fa5e340fc406063c34e0bb"
+          },
+          {
+            "name": "mergedeep",
+            "version": "1.3.4",
+            "files_count": 7,
+            "files_sha256": "6ddf3f4122f5f57bb35c308d31202ba1d70e0fc103aa1f781bb54add278d5496"
+          },
+          {
+            "name": "mkdocs",
+            "version": "1.6.1",
+            "files_count": 173,
+            "files_sha256": "705361b88cd1ff814dd87969c3c956b4762d53130a4d73f91acfdf426521d685"
+          },
+          {
+            "name": "mkdocs-autorefs",
+            "version": "1.4.4",
+            "files_count": 13,
+            "files_sha256": "2ef4a53720dc6556e8c1af2f8d2deea986131e645faab97a149090e71430f94e"
+          },
+          {
+            "name": "mkdocs-get-deps",
+            "version": "0.2.2",
+            "files_count": 9,
+            "files_sha256": "54f081eb52f45ca87db9d521fbcf449df4fabafd12a256f1ddd0f7b86a2a1825"
+          },
+          {
+            "name": "mkdocs-material",
+            "version": "9.7.7",
+            "files_count": 14590,
+            "files_sha256": "5f99d37f599e8534bfe184db406cd19c874ef055b954e924a0c950de1be7ec62"
+          },
+          {
+            "name": "mkdocs-material-extensions",
+            "version": "1.3.1",
+            "files_count": 6,
+            "files_sha256": "42cf5f10e90327bb809217f1d3c19eff3b1bc5c0e03acb7228f82e659826543c"
+          },
+          {
+            "name": "mkdocs-redirects",
+            "version": "1.2.3",
+            "files_count": 6,
+            "files_sha256": "0a1609baaa0b701bf8cd67065086eed777ae2e0d15a73438829e2b4373d542bc"
+          },
+          {
+            "name": "packaging",
+            "version": "26.3",
+            "files_count": 28,
+            "files_sha256": "425e394d8fce70bc0bb2692bb38caacb7d9207aff8a98e80c77b16fde3d7558e"
+          },
+          {
+            "name": "paginate",
+            "version": "0.5.7",
+            "files_count": 6,
+            "files_sha256": "17536d1100eddbd8bd636fcfb12984b8926a44da525b6a617cc531fa0f33a11f"
+          },
+          {
+            "name": "pathspec",
+            "version": "1.1.1",
+            "files_count": 35,
+            "files_sha256": "d7e37977f8d97c614e2787570a2082a5640051f799f6d2e9c4de7fb790f19bb0"
+          },
+          {
+            "name": "pip",
+            "version": "26.1",
+            "files_count": 464,
+            "files_sha256": "573a66590849d78a375e3693fdb4f3e67edde87ae437967497fe12b37e916096"
+          },
+          {
+            "name": "platformdirs",
+            "version": "4.12.3",
+            "files_count": 17,
+            "files_sha256": "f2bc5e977bbdbe48c3fb38045df055aa881d4119d0a6872a65051b8060bc59ff"
+          },
+          {
+            "name": "properdocs",
+            "version": "1.6.7",
+            "files_count": 77,
+            "files_sha256": "c70bd176cf50c3eeb6ef449625ae9812505cd7c2cf45fe109d386806650a3d91"
+          },
+          {
+            "name": "Pygments",
+            "version": "2.21.0",
+            "files_count": 348,
+            "files_sha256": "37f1628303cb6d91e4a0f85fe6bd2aa9a51f6a2095ddd629378b4346e3102199"
+          },
+          {
+            "name": "pymdown-extensions",
+            "version": "11.0.1",
+            "files_count": 46,
+            "files_sha256": "4cd4d487e6d450f8d81350c74d54ccc812b30e2e16e817ae48d9ac64765668e0"
+          },
+          {
+            "name": "python-dateutil",
+            "version": "2.9.0.post0",
+            "files_count": 24,
+            "files_sha256": "38d168b6410a4d55acf83d9adaa3c496e6cdbe164efbab992df0a0c49a85da41"
+          },
+          {
+            "name": "PyYAML",
+            "version": "6.0.3",
+            "files_count": 23,
+            "files_sha256": "3c3f19b58a3e778ffb65e3061a1d2b2e7bb0ac8398a358cd961d22557973b2a0"
+          },
+          {
+            "name": "pyyaml_env_tag",
+            "version": "1.1",
+            "files_count": 5,
+            "files_sha256": "8b332143dff13e0fc67d98d7b475d2f53cd96bbeda6d0431269843b0d5c5193a"
+          },
+          {
+            "name": "requests",
+            "version": "2.34.2",
+            "files_count": 25,
+            "files_sha256": "9a9ca53953ec7394e8b5f9dd5631600f0e37a1335ef92461ea882b8b497f560f"
+          },
+          {
+            "name": "six",
+            "version": "1.17.0",
+            "files_count": 5,
+            "files_sha256": "a7be5df061c1a06f7387874bb476434e38134698490f7330bae780a23f7d334d"
+          },
+          {
+            "name": "urllib3",
+            "version": "2.8.0",
+            "files_count": 41,
+            "files_sha256": "cc892498503d9305f9c35ec09c1b6b12a688a8730714cd2a26b0ba95dfe84b36"
+          },
+          {
+            "name": "watchdog",
+            "version": "6.0.0",
+            "files_count": 34,
+            "files_sha256": "82afd6fb4a4fee81de5d12d87b88b528ad710d12adaf7299bb67de14a6b5f513"
+          }
+        ]
+      }
+    },
+    {
+      "id": "darwin-arm64-cpython-314-atlas",
+      "usage": "verification-only",
+      "environment": {
+        "platform": {
+          "system": "Darwin",
+          "machine": "arm64",
+          "python": "3.14.4",
+          "implementation": "cpython",
+          "cache_tag": "cpython-314"
+        },
+        "executable_sha256": "02a8df1726463faedb3adef289b3d1bdeabb7785c837fd8c174023aeeeb4d312",
+        "stdlib": {
+          "files_count": 2497,
+          "files_sha256": "567307fc2b028e0c02eb3b27136294d1cd2a1150b801cedd95e3bafe92c41674"
+        },
+        "physical_roots": [
+          {
+            "root": "site-packages",
+            "files_count": 17434,
+            "files_sha256": "47950a787eaf460506e421661a868c43816b491a0dec9b795fa3b72d47347cfa"
+          }
+        ],
+        "startup_inputs": [
+          {
+            "path": "stdlib/sitecustomize.py",
+            "sha256": "cbf9d8d0f07943b63ed5e5983e2b33d91fadc54251e66df7eb7c31f1b816b5d6",
+            "source": "# This file is created by Homebrew and is executed on each python startup.\n# Don't print from here, or else python command line scripts may fail!\n# <https://docs.brew.sh/Homebrew-and-Python>\nimport re\nimport os\nimport site\nimport sys\nif sys.version_info[:2] != (3, 14):\n    # This can only happen if the user has set the PYTHONPATH to a mismatching site-packages directory.\n    # Every Python looks at the PYTHONPATH variable and we can't fix it here in sitecustomize.py,\n    # because the PYTHONPATH is evaluated after the sitecustomize.py. Many modules (e.g. PyQt4) are\n    # built only for a specific version of Python and will fail with cryptic error messages.\n    # In the end this means: Don't set the PYTHONPATH permanently if you use different Python versions.\n    exit(f'Your PYTHONPATH points to a site-packages dir for Python 3.14 '\n         f'but you are running Python {sys.version_info[0]}.{sys.version_info[1]}!\\n'\n         f'     PYTHONPATH is currently: \"{os.environ[\"PYTHONPATH\"]}\"\\n'\n         f'     You should `unset PYTHONPATH` to fix this.')\n# Only do this for a brewed python:\nif os.path.realpath(sys.executable).startswith('/opt/homebrew/Cellar/python@3.14'):\n    # Shuffle /Library site-packages to the end of sys.path\n    library_site = '/Library/Python/3.14/site-packages'\n    library_packages = [p for p in sys.path if p.startswith(library_site)]\n    sys.path = [p for p in sys.path if not p.startswith(library_site)]\n    # .pth files have already been processed so don't use addsitedir\n    sys.path.extend(library_packages)\n    # the Cellar site-packages is a symlink to the HOMEBREW_PREFIX\n    # site_packages; prefer the shorter paths\n    long_prefix = re.compile(r'/opt/homebrew/Cellar/python@3.14/[0-9\\._abrc]+/(?:Frameworks/Python\\.framework/Versions/3.14/)?lib/python3.14/site-packages')\n    sys.path = [long_prefix.sub('/opt/homebrew/lib/python3.14/site-packages', p) for p in sys.path]\n    # Set the sys.executable to use the opt_prefix. Only do this if PYTHONEXECUTABLE is not\n    # explicitly set and we are not in a virtualenv:\n    if 'PYTHONEXECUTABLE' not in os.environ and sys.prefix == sys.base_prefix:\n        sys.executable = sys._base_executable = '/opt/homebrew/opt/python@3.14/bin/python3.14'\nif 'PYTHONHOME' not in os.environ:\n    cellar_prefix = re.compile(r'/opt/homebrew/Cellar/python@3.14/[0-9\\._abrc]+(?=/|$)')\n    if os.path.realpath(sys.base_prefix).startswith('/opt/homebrew/Cellar/python@3.14'):\n        new_prefix = cellar_prefix.sub('/opt/homebrew/opt/python@3.14', sys.base_prefix)\n        site.PREFIXES[:] = [new_prefix if x == sys.base_prefix else x for x in site.PREFIXES]\n        if sys.prefix == sys.base_prefix:\n            sys.prefix = new_prefix\n        sys.base_prefix = new_prefix\n    if os.path.realpath(sys.base_exec_prefix).startswith('/opt/homebrew/Cellar/python@3.14'):\n        new_exec_prefix = cellar_prefix.sub('/opt/homebrew/opt/python@3.14', sys.base_exec_prefix)\n        site.PREFIXES[:] = [new_exec_prefix if x == sys.base_exec_prefix else x for x in site.PREFIXES]\n        if sys.exec_prefix == sys.base_exec_prefix:\n            sys.exec_prefix = new_exec_prefix\n        sys.base_exec_prefix = new_exec_prefix\n# Make site.getsitepackages() return the HOMEBREW_PREFIX site-packages,\n# but only if we are outside a venv or in one with include-system-site-packages.\nif sys.base_prefix in site.PREFIXES:\n    site.PREFIXES.insert(site.PREFIXES.index(sys.base_prefix), '/opt/homebrew')\n    site.addsitedir('/opt/homebrew/lib/python3.14/site-packages')\n# Check for and add the prefix of split Python formulae.\nfor split_module in [\"tk\", \"gdbm\"]:\n    split_prefix = f\"/opt/homebrew/opt/python-{split_module}@3.14/libexec\"\n    if os.path.isdir(split_prefix):\n        sys.path.append(split_prefix)\n",
+            "resolved_target": "/opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/sitecustomize.py"
+          }
+        ],
+        "packages": [
+          {
+            "name": "babel",
+            "version": "2.18.0",
+            "files_count": 1118,
+            "files_sha256": "e3c2db438e6f623271d7bcb5dafb5ed8584890c306bbe1405ce0437926471dff"
+          },
+          {
+            "name": "backrefs",
+            "version": "8.0",
+            "files_count": 39,
+            "files_sha256": "e850084d69930a44bf4832d24ecab5d1b1611d1c69efa8363ef7878479d0f7c2"
+          },
+          {
+            "name": "certifi",
+            "version": "2026.7.22",
+            "files_count": 11,
+            "files_sha256": "c9c0397564526a56ad87e539aaedf46b50c105feae6438aa02758db6d3e7168c"
+          },
+          {
+            "name": "charset-normalizer",
+            "version": "3.5.2",
+            "files_count": 20,
+            "files_sha256": "adebcc55490a28b540a89bce5e389a584e657f6120da9ee36492daeeaf7d961a"
+          },
+          {
+            "name": "click",
+            "version": "8.5.0",
+            "files_count": 21,
+            "files_sha256": "4b8f893fb60a09f003b97804b07a6602039f05e49047fcc92825fce0160b6259"
+          },
+          {
+            "name": "codespell",
+            "version": "2.4.3",
+            "files_count": 24,
+            "files_sha256": "e5bed5bb490118346893d9ea9f96d752939cf799f52c0bd9bcd72b2248dc05a7"
+          },
+          {
+            "name": "colorama",
+            "version": "0.4.6",
+            "files_count": 16,
+            "files_sha256": "610650200ca972753c59250d424e6a5fca2fc39cf589cf49fc4bf86e8afa5142"
+          },
+          {
+            "name": "ghp-import",
+            "version": "2.1.0",
+            "files_count": 6,
+            "files_sha256": "9d8cf327f251c1e5bb1ccb1905f5defc96fafab200a0fc323e89be6aeb76d227"
+          },
+          {
+            "name": "gitdb",
+            "version": "4.0.12",
+            "files_count": 30,
+            "files_sha256": "f2839004050d1f9b3d7fcadef5139d5f890e5919133ddf500ce033b24623f784"
+          },
+          {
+            "name": "GitPython",
+            "version": "3.2.0",
+            "files_count": 43,
+            "files_sha256": "cd719f9b2a9f9fa66cdf59ae93e08e9760a3177da89004e0aa9ff21ddd128e46"
+          },
+          {
+            "name": "idna",
+            "version": "3.20",
+            "files_count": 15,
+            "files_sha256": "c66981c6ce6c3b6083a9e8709199d4b3680fa0ce217484c50cafc4d154ba35ba"
+          },
+          {
+            "name": "Jinja2",
+            "version": "3.1.6",
+            "files_count": 30,
+            "files_sha256": "3680a122ae9e3b1e4231dc2f4a9b9435bcdea9d2ed37eb56e4371c564c8c9721"
+          },
+          {
+            "name": "Markdown",
+            "version": "3.11",
+            "files_count": 38,
+            "files_sha256": "3519056f65d07b0bb2f6b313da3457abb90d22e9238fdd9d34da7a274d42fbb3"
+          },
+          {
+            "name": "MarkupSafe",
+            "version": "3.0.4",
+            "files_count": 10,
+            "files_sha256": "f6868b23b462444be61acb1a60a9240cb9f7399c76fa5e340fc406063c34e0bb"
+          },
+          {
+            "name": "mergedeep",
+            "version": "1.3.4",
+            "files_count": 7,
+            "files_sha256": "6ddf3f4122f5f57bb35c308d31202ba1d70e0fc103aa1f781bb54add278d5496"
+          },
+          {
+            "name": "mkdocs",
+            "version": "1.6.1",
+            "files_count": 173,
+            "files_sha256": "705361b88cd1ff814dd87969c3c956b4762d53130a4d73f91acfdf426521d685"
+          },
+          {
+            "name": "mkdocs-autorefs",
+            "version": "1.4.4",
+            "files_count": 13,
+            "files_sha256": "2ef4a53720dc6556e8c1af2f8d2deea986131e645faab97a149090e71430f94e"
+          },
+          {
+            "name": "mkdocs-get-deps",
+            "version": "0.2.2",
+            "files_count": 9,
+            "files_sha256": "54f081eb52f45ca87db9d521fbcf449df4fabafd12a256f1ddd0f7b86a2a1825"
+          },
+          {
+            "name": "mkdocs-git-revision-date-localized-plugin",
+            "version": "1.5.3",
+            "files_count": 14,
+            "files_sha256": "4bd6e824fade95096778ece13260fb8099b30fa9467e584d7a10c974771ed937"
+          },
+          {
+            "name": "mkdocs-material",
+            "version": "9.7.7",
+            "files_count": 14590,
+            "files_sha256": "5f99d37f599e8534bfe184db406cd19c874ef055b954e924a0c950de1be7ec62"
+          },
+          {
+            "name": "mkdocs-material-extensions",
+            "version": "1.3.1",
+            "files_count": 6,
+            "files_sha256": "42cf5f10e90327bb809217f1d3c19eff3b1bc5c0e03acb7228f82e659826543c"
+          },
+          {
+            "name": "mkdocs-redirects",
+            "version": "1.2.3",
+            "files_count": 6,
+            "files_sha256": "0a1609baaa0b701bf8cd67065086eed777ae2e0d15a73438829e2b4373d542bc"
+          },
+          {
+            "name": "packaging",
+            "version": "26.3",
+            "files_count": 28,
+            "files_sha256": "425e394d8fce70bc0bb2692bb38caacb7d9207aff8a98e80c77b16fde3d7558e"
+          },
+          {
+            "name": "paginate",
+            "version": "0.5.7",
+            "files_count": 6,
+            "files_sha256": "17536d1100eddbd8bd636fcfb12984b8926a44da525b6a617cc531fa0f33a11f"
+          },
+          {
+            "name": "pathspec",
+            "version": "1.1.1",
+            "files_count": 35,
+            "files_sha256": "d7e37977f8d97c614e2787570a2082a5640051f799f6d2e9c4de7fb790f19bb0"
+          },
+          {
+            "name": "pip",
+            "version": "26.1",
+            "files_count": 464,
+            "files_sha256": "573a66590849d78a375e3693fdb4f3e67edde87ae437967497fe12b37e916096"
+          },
+          {
+            "name": "platformdirs",
+            "version": "4.12.3",
+            "files_count": 17,
+            "files_sha256": "f2bc5e977bbdbe48c3fb38045df055aa881d4119d0a6872a65051b8060bc59ff"
+          },
+          {
+            "name": "properdocs",
+            "version": "1.6.7",
+            "files_count": 77,
+            "files_sha256": "c70bd176cf50c3eeb6ef449625ae9812505cd7c2cf45fe109d386806650a3d91"
+          },
+          {
+            "name": "Pygments",
+            "version": "2.21.0",
+            "files_count": 348,
+            "files_sha256": "37f1628303cb6d91e4a0f85fe6bd2aa9a51f6a2095ddd629378b4346e3102199"
+          },
+          {
+            "name": "pymdown-extensions",
+            "version": "12.1",
+            "files_count": 48,
+            "files_sha256": "bce1d5b18f3d523abe5f7349be564e45bdd39be1ad34e730680a302e52b6071e"
+          },
+          {
+            "name": "python-dateutil",
+            "version": "2.9.0.post0",
+            "files_count": 24,
+            "files_sha256": "38d168b6410a4d55acf83d9adaa3c496e6cdbe164efbab992df0a0c49a85da41"
+          },
+          {
+            "name": "PyYAML",
+            "version": "6.0.3",
+            "files_count": 23,
+            "files_sha256": "3c3f19b58a3e778ffb65e3061a1d2b2e7bb0ac8398a358cd961d22557973b2a0"
+          },
+          {
+            "name": "pyyaml_env_tag",
+            "version": "1.1",
+            "files_count": 5,
+            "files_sha256": "8b332143dff13e0fc67d98d7b475d2f53cd96bbeda6d0431269843b0d5c5193a"
+          },
+          {
+            "name": "requests",
+            "version": "2.34.2",
+            "files_count": 25,
+            "files_sha256": "9a9ca53953ec7394e8b5f9dd5631600f0e37a1335ef92461ea882b8b497f560f"
+          },
+          {
+            "name": "six",
+            "version": "1.17.0",
+            "files_count": 5,
+            "files_sha256": "a7be5df061c1a06f7387874bb476434e38134698490f7330bae780a23f7d334d"
+          },
+          {
+            "name": "smmap",
+            "version": "5.0.3",
+            "files_count": 15,
+            "files_sha256": "bb6c81a41d2d7d745b3c33d9a1538dfc6f1f8c8a3c194f8c3fd3f7f03338f797"
+          },
+          {
+            "name": "urllib3",
+            "version": "2.8.0",
+            "files_count": 41,
+            "files_sha256": "cc892498503d9305f9c35ec09c1b6b12a688a8730714cd2a26b0ba95dfe84b36"
+          },
+          {
+            "name": "watchdog",
+            "version": "6.0.0",
+            "files_count": 34,
+            "files_sha256": "00d8a731d663956bb60dd974b7ed2c00c562cd56c55ab184111038c08735a8a2"
+          }
+        ]
+      }
+    },
+    {
+      "id": "darwin-arm64-cpython-314-masterclass",
+      "usage": "verification-only",
+      "environment": {
+        "platform": {
+          "system": "Darwin",
+          "machine": "arm64",
+          "python": "3.14.4",
+          "implementation": "cpython",
+          "cache_tag": "cpython-314"
+        },
+        "executable_sha256": "02a8df1726463faedb3adef289b3d1bdeabb7785c837fd8c174023aeeeb4d312",
+        "stdlib": {
+          "files_count": 2497,
+          "files_sha256": "567307fc2b028e0c02eb3b27136294d1cd2a1150b801cedd95e3bafe92c41674"
+        },
+        "physical_roots": [
+          {
+            "root": "site-packages",
+            "files_count": 17473,
+            "files_sha256": "0b09375f9de9e31eb50d4e8c7571cb627fadf1ab5fd600be4a2c13610156875f"
+          }
+        ],
+        "startup_inputs": [
+          {
+            "path": "stdlib/sitecustomize.py",
+            "sha256": "cbf9d8d0f07943b63ed5e5983e2b33d91fadc54251e66df7eb7c31f1b816b5d6",
+            "source": "# This file is created by Homebrew and is executed on each python startup.\n# Don't print from here, or else python command line scripts may fail!\n# <https://docs.brew.sh/Homebrew-and-Python>\nimport re\nimport os\nimport site\nimport sys\nif sys.version_info[:2] != (3, 14):\n    # This can only happen if the user has set the PYTHONPATH to a mismatching site-packages directory.\n    # Every Python looks at the PYTHONPATH variable and we can't fix it here in sitecustomize.py,\n    # because the PYTHONPATH is evaluated after the sitecustomize.py. Many modules (e.g. PyQt4) are\n    # built only for a specific version of Python and will fail with cryptic error messages.\n    # In the end this means: Don't set the PYTHONPATH permanently if you use different Python versions.\n    exit(f'Your PYTHONPATH points to a site-packages dir for Python 3.14 '\n         f'but you are running Python {sys.version_info[0]}.{sys.version_info[1]}!\\n'\n         f'     PYTHONPATH is currently: \"{os.environ[\"PYTHONPATH\"]}\"\\n'\n         f'     You should `unset PYTHONPATH` to fix this.')\n# Only do this for a brewed python:\nif os.path.realpath(sys.executable).startswith('/opt/homebrew/Cellar/python@3.14'):\n    # Shuffle /Library site-packages to the end of sys.path\n    library_site = '/Library/Python/3.14/site-packages'\n    library_packages = [p for p in sys.path if p.startswith(library_site)]\n    sys.path = [p for p in sys.path if not p.startswith(library_site)]\n    # .pth files have already been processed so don't use addsitedir\n    sys.path.extend(library_packages)\n    # the Cellar site-packages is a symlink to the HOMEBREW_PREFIX\n    # site_packages; prefer the shorter paths\n    long_prefix = re.compile(r'/opt/homebrew/Cellar/python@3.14/[0-9\\._abrc]+/(?:Frameworks/Python\\.framework/Versions/3.14/)?lib/python3.14/site-packages')\n    sys.path = [long_prefix.sub('/opt/homebrew/lib/python3.14/site-packages', p) for p in sys.path]\n    # Set the sys.executable to use the opt_prefix. Only do this if PYTHONEXECUTABLE is not\n    # explicitly set and we are not in a virtualenv:\n    if 'PYTHONEXECUTABLE' not in os.environ and sys.prefix == sys.base_prefix:\n        sys.executable = sys._base_executable = '/opt/homebrew/opt/python@3.14/bin/python3.14'\nif 'PYTHONHOME' not in os.environ:\n    cellar_prefix = re.compile(r'/opt/homebrew/Cellar/python@3.14/[0-9\\._abrc]+(?=/|$)')\n    if os.path.realpath(sys.base_prefix).startswith('/opt/homebrew/Cellar/python@3.14'):\n        new_prefix = cellar_prefix.sub('/opt/homebrew/opt/python@3.14', sys.base_prefix)\n        site.PREFIXES[:] = [new_prefix if x == sys.base_prefix else x for x in site.PREFIXES]\n        if sys.prefix == sys.base_prefix:\n            sys.prefix = new_prefix\n        sys.base_prefix = new_prefix\n    if os.path.realpath(sys.base_exec_prefix).startswith('/opt/homebrew/Cellar/python@3.14'):\n        new_exec_prefix = cellar_prefix.sub('/opt/homebrew/opt/python@3.14', sys.base_exec_prefix)\n        site.PREFIXES[:] = [new_exec_prefix if x == sys.base_exec_prefix else x for x in site.PREFIXES]\n        if sys.exec_prefix == sys.base_exec_prefix:\n            sys.exec_prefix = new_exec_prefix\n        sys.base_exec_prefix = new_exec_prefix\n# Make site.getsitepackages() return the HOMEBREW_PREFIX site-packages,\n# but only if we are outside a venv or in one with include-system-site-packages.\nif sys.base_prefix in site.PREFIXES:\n    site.PREFIXES.insert(site.PREFIXES.index(sys.base_prefix), '/opt/homebrew')\n    site.addsitedir('/opt/homebrew/lib/python3.14/site-packages')\n# Check for and add the prefix of split Python formulae.\nfor split_module in [\"tk\", \"gdbm\"]:\n    split_prefix = f\"/opt/homebrew/opt/python-{split_module}@3.14/libexec\"\n    if os.path.isdir(split_prefix):\n        sys.path.append(split_prefix)\n",
+            "resolved_target": "/opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/sitecustomize.py"
+          }
+        ],
+        "packages": [
+          {
+            "name": "babel",
+            "version": "2.18.0",
+            "files_count": 1118,
+            "files_sha256": "e3c2db438e6f623271d7bcb5dafb5ed8584890c306bbe1405ce0437926471dff"
+          },
+          {
+            "name": "backrefs",
+            "version": "8.0",
+            "files_count": 39,
+            "files_sha256": "e850084d69930a44bf4832d24ecab5d1b1611d1c69efa8363ef7878479d0f7c2"
+          },
+          {
+            "name": "certifi",
+            "version": "2026.7.22",
+            "files_count": 11,
+            "files_sha256": "c9c0397564526a56ad87e539aaedf46b50c105feae6438aa02758db6d3e7168c"
+          },
+          {
+            "name": "charset-normalizer",
+            "version": "3.5.2",
+            "files_count": 20,
+            "files_sha256": "adebcc55490a28b540a89bce5e389a584e657f6120da9ee36492daeeaf7d961a"
+          },
+          {
+            "name": "click",
+            "version": "8.5.0",
+            "files_count": 21,
+            "files_sha256": "4b8f893fb60a09f003b97804b07a6602039f05e49047fcc92825fce0160b6259"
+          },
+          {
+            "name": "colorama",
+            "version": "0.4.6",
+            "files_count": 16,
+            "files_sha256": "610650200ca972753c59250d424e6a5fca2fc39cf589cf49fc4bf86e8afa5142"
+          },
+          {
+            "name": "csscompressor",
+            "version": "0.9.5",
+            "files_count": 12,
+            "files_sha256": "d003818ac6eabeb667bafdacddc87e4180ae4605a2542c2c6ef1b4f0341d2d17"
+          },
+          {
+            "name": "ghp-import",
+            "version": "2.1.0",
+            "files_count": 6,
+            "files_sha256": "9d8cf327f251c1e5bb1ccb1905f5defc96fafab200a0fc323e89be6aeb76d227"
+          },
+          {
+            "name": "gitdb",
+            "version": "4.0.12",
+            "files_count": 30,
+            "files_sha256": "f2839004050d1f9b3d7fcadef5139d5f890e5919133ddf500ce033b24623f784"
+          },
+          {
+            "name": "GitPython",
+            "version": "3.2.0",
+            "files_count": 43,
+            "files_sha256": "cd719f9b2a9f9fa66cdf59ae93e08e9760a3177da89004e0aa9ff21ddd128e46"
+          },
+          {
+            "name": "hjson",
+            "version": "3.1.0",
+            "files_count": 39,
+            "files_sha256": "653e1333cc8ac1b9b7647ba138e1861a05d92af83868b0a354bedefaf8e0fcdc"
+          },
+          {
+            "name": "htmlmin2",
+            "version": "0.1.13",
+            "files_count": 18,
+            "files_sha256": "8c59635dd9d1fb570c7f6312b4983ce67a070474d5a50fed4a3e15b7eb89d875"
+          },
+          {
+            "name": "idna",
+            "version": "3.20",
+            "files_count": 15,
+            "files_sha256": "c66981c6ce6c3b6083a9e8709199d4b3680fa0ce217484c50cafc4d154ba35ba"
+          },
+          {
+            "name": "Jinja2",
+            "version": "3.1.6",
+            "files_count": 30,
+            "files_sha256": "3680a122ae9e3b1e4231dc2f4a9b9435bcdea9d2ed37eb56e4371c564c8c9721"
+          },
+          {
+            "name": "jsmin",
+            "version": "3.0.1",
+            "files_count": 7,
+            "files_sha256": "bf5d0bd0a158a160dbb46c0a4adfbc22d16caa56b431b55d2486fe9af13556c5"
+          },
+          {
+            "name": "Markdown",
+            "version": "3.11",
+            "files_count": 38,
+            "files_sha256": "3519056f65d07b0bb2f6b313da3457abb90d22e9238fdd9d34da7a274d42fbb3"
+          },
+          {
+            "name": "MarkupSafe",
+            "version": "3.0.4",
+            "files_count": 10,
+            "files_sha256": "f6868b23b462444be61acb1a60a9240cb9f7399c76fa5e340fc406063c34e0bb"
+          },
+          {
+            "name": "mergedeep",
+            "version": "1.3.4",
+            "files_count": 7,
+            "files_sha256": "6ddf3f4122f5f57bb35c308d31202ba1d70e0fc103aa1f781bb54add278d5496"
+          },
+          {
+            "name": "mkdocs",
+            "version": "1.6.1",
+            "files_count": 173,
+            "files_sha256": "705361b88cd1ff814dd87969c3c956b4762d53130a4d73f91acfdf426521d685"
+          },
+          {
+            "name": "mkdocs-autorefs",
+            "version": "1.4.4",
+            "files_count": 13,
+            "files_sha256": "2ef4a53720dc6556e8c1af2f8d2deea986131e645faab97a149090e71430f94e"
+          },
+          {
+            "name": "mkdocs-get-deps",
+            "version": "0.2.2",
+            "files_count": 9,
+            "files_sha256": "54f081eb52f45ca87db9d521fbcf449df4fabafd12a256f1ddd0f7b86a2a1825"
+          },
+          {
+            "name": "mkdocs-git-revision-date-localized-plugin",
+            "version": "1.6.0",
+            "files_count": 15,
+            "files_sha256": "76fddbd8ab7c0d9b07617a6f0195939b9087b38d0445e1af2401de181d44cd02"
+          },
+          {
+            "name": "mkdocs-macros-plugin",
+            "version": "1.5.0",
+            "files_count": 51,
+            "files_sha256": "a95505cf8e0913f26e8039677f4112fbc9cb659e9eeb1954a6f05254ca3531c4"
+          },
+          {
+            "name": "mkdocs-material",
+            "version": "9.7.7",
+            "files_count": 14590,
+            "files_sha256": "5f99d37f599e8534bfe184db406cd19c874ef055b954e924a0c950de1be7ec62"
+          },
+          {
+            "name": "mkdocs-material-extensions",
+            "version": "1.3.1",
+            "files_count": 6,
+            "files_sha256": "42cf5f10e90327bb809217f1d3c19eff3b1bc5c0e03acb7228f82e659826543c"
+          },
+          {
+            "name": "mkdocs-minify-plugin",
+            "version": "0.8.0",
+            "files_count": 7,
+            "files_sha256": "ab840f5240d0cccbaa178008300c3ba088fff9cfbb7f55959f2d8246d3c7edf3"
+          },
+          {
+            "name": "packaging",
+            "version": "26.3",
+            "files_count": 28,
+            "files_sha256": "425e394d8fce70bc0bb2692bb38caacb7d9207aff8a98e80c77b16fde3d7558e"
+          },
+          {
+            "name": "paginate",
+            "version": "0.5.7",
+            "files_count": 6,
+            "files_sha256": "17536d1100eddbd8bd636fcfb12984b8926a44da525b6a617cc531fa0f33a11f"
+          },
+          {
+            "name": "pathspec",
+            "version": "1.1.1",
+            "files_count": 35,
+            "files_sha256": "d7e37977f8d97c614e2787570a2082a5640051f799f6d2e9c4de7fb790f19bb0"
+          },
+          {
+            "name": "pip",
+            "version": "26.1",
+            "files_count": 464,
+            "files_sha256": "573a66590849d78a375e3693fdb4f3e67edde87ae437967497fe12b37e916096"
+          },
+          {
+            "name": "platformdirs",
+            "version": "4.12.4",
+            "files_count": 17,
+            "files_sha256": "c59391d36fca7ec41b6f89cf3e571a96bd871966e1cd8a62772d2432db411a8e"
+          },
+          {
+            "name": "Pygments",
+            "version": "2.21.0",
+            "files_count": 348,
+            "files_sha256": "37f1628303cb6d91e4a0f85fe6bd2aa9a51f6a2095ddd629378b4346e3102199"
+          },
+          {
+            "name": "pymdown-extensions",
+            "version": "11.0.2",
+            "files_count": 46,
+            "files_sha256": "5daa43df0194a5de42ad926e01fe6ff11672e49e0c93ffe5f9fb86691345edc7"
+          },
+          {
+            "name": "python-dateutil",
+            "version": "2.9.0.post0",
+            "files_count": 24,
+            "files_sha256": "38d168b6410a4d55acf83d9adaa3c496e6cdbe164efbab992df0a0c49a85da41"
+          },
+          {
+            "name": "PyYAML",
+            "version": "6.0.3",
+            "files_count": 23,
+            "files_sha256": "3c3f19b58a3e778ffb65e3061a1d2b2e7bb0ac8398a358cd961d22557973b2a0"
+          },
+          {
+            "name": "pyyaml_env_tag",
+            "version": "1.1",
+            "files_count": 5,
+            "files_sha256": "8b332143dff13e0fc67d98d7b475d2f53cd96bbeda6d0431269843b0d5c5193a"
+          },
+          {
+            "name": "requests",
+            "version": "2.34.2",
+            "files_count": 25,
+            "files_sha256": "9a9ca53953ec7394e8b5f9dd5631600f0e37a1335ef92461ea882b8b497f560f"
+          },
+          {
+            "name": "six",
+            "version": "1.17.0",
+            "files_count": 5,
+            "files_sha256": "a7be5df061c1a06f7387874bb476434e38134698490f7330bae780a23f7d334d"
+          },
+          {
+            "name": "smmap",
+            "version": "5.0.3",
+            "files_count": 15,
+            "files_sha256": "bb6c81a41d2d7d745b3c33d9a1538dfc6f1f8c8a3c194f8c3fd3f7f03338f797"
+          },
+          {
+            "name": "super_collections",
+            "version": "0.6.2",
+            "files_count": 6,
+            "files_sha256": "8316aba08f0006637affdeab25702976516c8a42fd37787130474ff939d9c070"
+          },
+          {
+            "name": "termcolor",
+            "version": "3.3.0",
+            "files_count": 7,
+            "files_sha256": "023299cb48c287f4c1e3d1d7d921f6c4b2fdae45147e34b465bce94b800aa562"
+          },
+          {
+            "name": "urllib3",
+            "version": "2.8.0",
+            "files_count": 41,
+            "files_sha256": "cc892498503d9305f9c35ec09c1b6b12a688a8730714cd2a26b0ba95dfe84b36"
+          },
+          {
+            "name": "watchdog",
+            "version": "6.0.0",
+            "files_count": 34,
+            "files_sha256": "a0f46f4f76ff7931253d92165b4b51f0f3b47e48f3215634acc0b319892cf61f"
+          }
+        ]
+      }
+    },
+    {
+      "id": "darwin-arm64-cpython-314-redirect-fixtures",
+      "usage": "verification-only",
+      "environment": {
+        "platform": {
+          "system": "Darwin",
+          "machine": "arm64",
+          "python": "3.14.4",
+          "implementation": "cpython",
+          "cache_tag": "cpython-314"
+        },
+        "executable_sha256": "02a8df1726463faedb3adef289b3d1bdeabb7785c837fd8c174023aeeeb4d312",
+        "stdlib": {
+          "files_count": 2497,
+          "files_sha256": "567307fc2b028e0c02eb3b27136294d1cd2a1150b801cedd95e3bafe92c41674"
+        },
+        "physical_roots": [
+          {
+            "root": "site-packages",
+            "files_count": 17306,
+            "files_sha256": "ce63d274b7434c5584fe0bed6eb1d726c90c6da3a45b801efd648efdc1cba9d9"
+          }
+        ],
+        "startup_inputs": [
+          {
+            "path": "stdlib/sitecustomize.py",
+            "sha256": "cbf9d8d0f07943b63ed5e5983e2b33d91fadc54251e66df7eb7c31f1b816b5d6",
+            "source": "# This file is created by Homebrew and is executed on each python startup.\n# Don't print from here, or else python command line scripts may fail!\n# <https://docs.brew.sh/Homebrew-and-Python>\nimport re\nimport os\nimport site\nimport sys\nif sys.version_info[:2] != (3, 14):\n    # This can only happen if the user has set the PYTHONPATH to a mismatching site-packages directory.\n    # Every Python looks at the PYTHONPATH variable and we can't fix it here in sitecustomize.py,\n    # because the PYTHONPATH is evaluated after the sitecustomize.py. Many modules (e.g. PyQt4) are\n    # built only for a specific version of Python and will fail with cryptic error messages.\n    # In the end this means: Don't set the PYTHONPATH permanently if you use different Python versions.\n    exit(f'Your PYTHONPATH points to a site-packages dir for Python 3.14 '\n         f'but you are running Python {sys.version_info[0]}.{sys.version_info[1]}!\\n'\n         f'     PYTHONPATH is currently: \"{os.environ[\"PYTHONPATH\"]}\"\\n'\n         f'     You should `unset PYTHONPATH` to fix this.')\n# Only do this for a brewed python:\nif os.path.realpath(sys.executable).startswith('/opt/homebrew/Cellar/python@3.14'):\n    # Shuffle /Library site-packages to the end of sys.path\n    library_site = '/Library/Python/3.14/site-packages'\n    library_packages = [p for p in sys.path if p.startswith(library_site)]\n    sys.path = [p for p in sys.path if not p.startswith(library_site)]\n    # .pth files have already been processed so don't use addsitedir\n    sys.path.extend(library_packages)\n    # the Cellar site-packages is a symlink to the HOMEBREW_PREFIX\n    # site_packages; prefer the shorter paths\n    long_prefix = re.compile(r'/opt/homebrew/Cellar/python@3.14/[0-9\\._abrc]+/(?:Frameworks/Python\\.framework/Versions/3.14/)?lib/python3.14/site-packages')\n    sys.path = [long_prefix.sub('/opt/homebrew/lib/python3.14/site-packages', p) for p in sys.path]\n    # Set the sys.executable to use the opt_prefix. Only do this if PYTHONEXECUTABLE is not\n    # explicitly set and we are not in a virtualenv:\n    if 'PYTHONEXECUTABLE' not in os.environ and sys.prefix == sys.base_prefix:\n        sys.executable = sys._base_executable = '/opt/homebrew/opt/python@3.14/bin/python3.14'\nif 'PYTHONHOME' not in os.environ:\n    cellar_prefix = re.compile(r'/opt/homebrew/Cellar/python@3.14/[0-9\\._abrc]+(?=/|$)')\n    if os.path.realpath(sys.base_prefix).startswith('/opt/homebrew/Cellar/python@3.14'):\n        new_prefix = cellar_prefix.sub('/opt/homebrew/opt/python@3.14', sys.base_prefix)\n        site.PREFIXES[:] = [new_prefix if x == sys.base_prefix else x for x in site.PREFIXES]\n        if sys.prefix == sys.base_prefix:\n            sys.prefix = new_prefix\n        sys.base_prefix = new_prefix\n    if os.path.realpath(sys.base_exec_prefix).startswith('/opt/homebrew/Cellar/python@3.14'):\n        new_exec_prefix = cellar_prefix.sub('/opt/homebrew/opt/python@3.14', sys.base_exec_prefix)\n        site.PREFIXES[:] = [new_exec_prefix if x == sys.base_exec_prefix else x for x in site.PREFIXES]\n        if sys.exec_prefix == sys.base_exec_prefix:\n            sys.exec_prefix = new_exec_prefix\n        sys.base_exec_prefix = new_exec_prefix\n# Make site.getsitepackages() return the HOMEBREW_PREFIX site-packages,\n# but only if we are outside a venv or in one with include-system-site-packages.\nif sys.base_prefix in site.PREFIXES:\n    site.PREFIXES.insert(site.PREFIXES.index(sys.base_prefix), '/opt/homebrew')\n    site.addsitedir('/opt/homebrew/lib/python3.14/site-packages')\n# Check for and add the prefix of split Python formulae.\nfor split_module in [\"tk\", \"gdbm\"]:\n    split_prefix = f\"/opt/homebrew/opt/python-{split_module}@3.14/libexec\"\n    if os.path.isdir(split_prefix):\n        sys.path.append(split_prefix)\n",
+            "resolved_target": "/opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/sitecustomize.py"
+          }
+        ],
+        "packages": [
+          {
+            "name": "babel",
+            "version": "2.18.0",
+            "files_count": 1118,
+            "files_sha256": "e3c2db438e6f623271d7bcb5dafb5ed8584890c306bbe1405ce0437926471dff"
+          },
+          {
+            "name": "backrefs",
+            "version": "8.0",
+            "files_count": 39,
+            "files_sha256": "e850084d69930a44bf4832d24ecab5d1b1611d1c69efa8363ef7878479d0f7c2"
+          },
+          {
+            "name": "certifi",
+            "version": "2026.7.22",
+            "files_count": 11,
+            "files_sha256": "c9c0397564526a56ad87e539aaedf46b50c105feae6438aa02758db6d3e7168c"
+          },
+          {
+            "name": "charset-normalizer",
+            "version": "3.5.2",
+            "files_count": 20,
+            "files_sha256": "adebcc55490a28b540a89bce5e389a584e657f6120da9ee36492daeeaf7d961a"
+          },
+          {
+            "name": "click",
+            "version": "8.5.0",
+            "files_count": 21,
+            "files_sha256": "4b8f893fb60a09f003b97804b07a6602039f05e49047fcc92825fce0160b6259"
+          },
+          {
+            "name": "colorama",
+            "version": "0.4.6",
+            "files_count": 16,
+            "files_sha256": "610650200ca972753c59250d424e6a5fca2fc39cf589cf49fc4bf86e8afa5142"
+          },
+          {
+            "name": "ghp-import",
+            "version": "2.1.0",
+            "files_count": 6,
+            "files_sha256": "9d8cf327f251c1e5bb1ccb1905f5defc96fafab200a0fc323e89be6aeb76d227"
+          },
+          {
+            "name": "idna",
+            "version": "3.20",
+            "files_count": 15,
+            "files_sha256": "c66981c6ce6c3b6083a9e8709199d4b3680fa0ce217484c50cafc4d154ba35ba"
+          },
+          {
+            "name": "Jinja2",
+            "version": "3.1.6",
+            "files_count": 30,
+            "files_sha256": "3680a122ae9e3b1e4231dc2f4a9b9435bcdea9d2ed37eb56e4371c564c8c9721"
+          },
+          {
+            "name": "Markdown",
+            "version": "3.11",
+            "files_count": 38,
+            "files_sha256": "3519056f65d07b0bb2f6b313da3457abb90d22e9238fdd9d34da7a274d42fbb3"
+          },
+          {
+            "name": "MarkupSafe",
+            "version": "3.0.4",
+            "files_count": 10,
+            "files_sha256": "f6868b23b462444be61acb1a60a9240cb9f7399c76fa5e340fc406063c34e0bb"
+          },
+          {
+            "name": "mergedeep",
+            "version": "1.3.4",
+            "files_count": 7,
+            "files_sha256": "6ddf3f4122f5f57bb35c308d31202ba1d70e0fc103aa1f781bb54add278d5496"
+          },
+          {
+            "name": "mkdocs",
+            "version": "1.6.1",
+            "files_count": 173,
+            "files_sha256": "705361b88cd1ff814dd87969c3c956b4762d53130a4d73f91acfdf426521d685"
+          },
+          {
+            "name": "mkdocs-autorefs",
+            "version": "1.4.4",
+            "files_count": 13,
+            "files_sha256": "2ef4a53720dc6556e8c1af2f8d2deea986131e645faab97a149090e71430f94e"
+          },
+          {
+            "name": "mkdocs-get-deps",
+            "version": "0.2.2",
+            "files_count": 9,
+            "files_sha256": "54f081eb52f45ca87db9d521fbcf449df4fabafd12a256f1ddd0f7b86a2a1825"
+          },
+          {
+            "name": "mkdocs-material",
+            "version": "9.7.7",
+            "files_count": 14590,
+            "files_sha256": "5f99d37f599e8534bfe184db406cd19c874ef055b954e924a0c950de1be7ec62"
+          },
+          {
+            "name": "mkdocs-material-extensions",
+            "version": "1.3.1",
+            "files_count": 6,
+            "files_sha256": "42cf5f10e90327bb809217f1d3c19eff3b1bc5c0e03acb7228f82e659826543c"
+          },
+          {
+            "name": "mkdocs-redirects",
+            "version": "1.2.3",
+            "files_count": 6,
+            "files_sha256": "0a1609baaa0b701bf8cd67065086eed777ae2e0d15a73438829e2b4373d542bc"
+          },
+          {
+            "name": "packaging",
+            "version": "26.3",
+            "files_count": 28,
+            "files_sha256": "425e394d8fce70bc0bb2692bb38caacb7d9207aff8a98e80c77b16fde3d7558e"
+          },
+          {
+            "name": "paginate",
+            "version": "0.5.7",
+            "files_count": 6,
+            "files_sha256": "17536d1100eddbd8bd636fcfb12984b8926a44da525b6a617cc531fa0f33a11f"
+          },
+          {
+            "name": "pathspec",
+            "version": "1.1.1",
+            "files_count": 35,
+            "files_sha256": "d7e37977f8d97c614e2787570a2082a5640051f799f6d2e9c4de7fb790f19bb0"
+          },
+          {
+            "name": "pip",
+            "version": "26.1",
+            "files_count": 464,
+            "files_sha256": "573a66590849d78a375e3693fdb4f3e67edde87ae437967497fe12b37e916096"
+          },
+          {
+            "name": "platformdirs",
+            "version": "4.12.3",
+            "files_count": 17,
+            "files_sha256": "f2bc5e977bbdbe48c3fb38045df055aa881d4119d0a6872a65051b8060bc59ff"
+          },
+          {
+            "name": "properdocs",
+            "version": "1.6.7",
+            "files_count": 77,
+            "files_sha256": "c70bd176cf50c3eeb6ef449625ae9812505cd7c2cf45fe109d386806650a3d91"
+          },
+          {
+            "name": "Pygments",
+            "version": "2.21.0",
+            "files_count": 348,
+            "files_sha256": "37f1628303cb6d91e4a0f85fe6bd2aa9a51f6a2095ddd629378b4346e3102199"
+          },
+          {
+            "name": "pymdown-extensions",
+            "version": "11.0.1",
+            "files_count": 46,
+            "files_sha256": "4cd4d487e6d450f8d81350c74d54ccc812b30e2e16e817ae48d9ac64765668e0"
+          },
+          {
+            "name": "python-dateutil",
+            "version": "2.9.0.post0",
+            "files_count": 24,
+            "files_sha256": "38d168b6410a4d55acf83d9adaa3c496e6cdbe164efbab992df0a0c49a85da41"
+          },
+          {
+            "name": "PyYAML",
+            "version": "6.0.3",
+            "files_count": 23,
+            "files_sha256": "3c3f19b58a3e778ffb65e3061a1d2b2e7bb0ac8398a358cd961d22557973b2a0"
+          },
+          {
+            "name": "pyyaml_env_tag",
+            "version": "1.1",
+            "files_count": 5,
+            "files_sha256": "8b332143dff13e0fc67d98d7b475d2f53cd96bbeda6d0431269843b0d5c5193a"
+          },
+          {
+            "name": "requests",
+            "version": "2.34.2",
+            "files_count": 25,
+            "files_sha256": "9a9ca53953ec7394e8b5f9dd5631600f0e37a1335ef92461ea882b8b497f560f"
+          },
+          {
+            "name": "six",
+            "version": "1.17.0",
+            "files_count": 5,
+            "files_sha256": "a7be5df061c1a06f7387874bb476434e38134698490f7330bae780a23f7d334d"
+          },
+          {
+            "name": "urllib3",
+            "version": "2.8.0",
+            "files_count": 41,
+            "files_sha256": "cc892498503d9305f9c35ec09c1b6b12a688a8730714cd2a26b0ba95dfe84b36"
+          },
+          {
+            "name": "watchdog",
+            "version": "6.0.0",
+            "files_count": 34,
+            "files_sha256": "63ebd9cf371bbbe9b32ad3c02b978d542ec83057bb1353f98b8ac91360d42c90"
+          }
+        ]
+      }
+    }
+  ],
+  "pending_publication_profiles": [
+    "actual owned Linux workflow observation and reviewed imported/source/native callback closure required"
+  ],
+  "authority": "Source-owned proposal table; observations never create publication approval"
+}

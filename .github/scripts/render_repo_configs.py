@@ -28,6 +28,25 @@ DEPENDABOT_PR_SKIP_CONDITION = (
 )
 
 
+def shared_github_source_root(repository_root: Path) -> Path:
+    """Resolve managed GitHub sources in the standard or a synchronized consumer."""
+    candidates = (
+        repository_root / "shared/bijux-gh",
+        repository_root / ".bijux/shared/bijux-gh",
+    )
+    for candidate in candidates:
+        if candidate.is_dir():
+            return candidate
+    raise FileNotFoundError(
+        "managed bijux-gh sources are missing from shared/ and .bijux/shared/"
+    )
+
+
+SHARED_GITHUB_ROOT = shared_github_source_root(SCRIPT_REPO_ROOT)
+REQUIRED_STATUS_RULESET = SHARED_GITHUB_ROOT / "rulesets/main-branch-protection.json"
+REQUIRED_STATUS_REFERENCE = SHARED_GITHUB_ROOT / "required-status-checks.md"
+
+
 def repository_checkout_variable(repo_name: str) -> str:
     suffix = "".join(character.upper() if character.isalnum() else "_" for character in repo_name)
     return f"BIJUX_REPOSITORY_PATH_{suffix}"
@@ -159,6 +178,59 @@ def render_dependabot_document(data: Any) -> str:
     return "\n".join(rendered) + "\n"
 
 
+def additional_required_status_checks(repo: dict[str, Any]) -> list[dict[str, str]]:
+    """Return validated repository-specific status check definitions."""
+    checks = repo.get("additional_required_status_checks", [])
+    if not isinstance(checks, list):
+        raise ValueError("additional_required_status_checks must be a list")
+    validated: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for check in checks:
+        if not isinstance(check, dict):
+            raise ValueError("additional required status checks must be objects")
+        context = check.get("context")
+        workflow = check.get("workflow")
+        if not isinstance(context, str) or not context.strip():
+            raise ValueError("additional required status check context is required")
+        if not isinstance(workflow, str) or not workflow.strip():
+            raise ValueError("additional required status check workflow is required")
+        if context in seen:
+            raise ValueError(f"duplicate required status check context: {context}")
+        seen.add(context)
+        validated.append({"context": context, "workflow": workflow})
+    return validated
+
+
+def render_required_status_ruleset(repo: dict[str, Any]) -> str:
+    """Render branch protection with repository-specific product gates."""
+    ruleset = json.loads(REQUIRED_STATUS_RULESET.read_text(encoding="utf-8"))
+    required_rule = next(
+        rule for rule in ruleset["rules"] if rule["type"] == "required_status_checks"
+    )
+    configured = required_rule["parameters"]["required_status_checks"]
+    existing = {check["context"] for check in configured}
+    for check in additional_required_status_checks(repo):
+        if check["context"] not in existing:
+            configured.append({"context": check["context"]})
+            existing.add(check["context"])
+    return json.dumps(ruleset, indent=2) + "\n"
+
+
+def render_required_status_reference(repo: dict[str, Any]) -> str:
+    """Render human-readable status check ownership for one repository."""
+    reference = REQUIRED_STATUS_REFERENCE.read_text(encoding="utf-8")
+    checks = additional_required_status_checks(repo)
+    if not checks:
+        return reference
+    details = ["Repository-specific required checks:", ""]
+    details.extend(
+        f"- `{check['context']}` (from workflow `{check['workflow']}`)"
+        for check in checks
+    )
+    details.append("")
+    return reference.replace("\nNotes:\n", "\n" + "\n".join(details) + "\nNotes:\n")
+
+
 def normalize_labeler_rules(data: Any) -> Any:
     if not isinstance(data, dict):
         return data
@@ -253,65 +325,12 @@ def normalize_verify_trigger_paths(
     return wrapper_definition
 
 
-def inject_policy_gate(
+def normalize_workflow_wrapper(
     wrapper_name: str,
     wrapper_definition: dict[str, Any],
 ) -> dict[str, Any]:
     if wrapper_name == "verify":
-        wrapper_definition = normalize_verify_trigger_paths(wrapper_definition)
-
-    if wrapper_name != "verify":
-        return wrapper_definition
-
-    jobs = wrapper_definition.get("jobs")
-    if not isinstance(jobs, dict) or "policy_gate" in jobs:
-        return wrapper_definition
-
-    permissions = wrapper_definition.setdefault("permissions", {})
-    if isinstance(permissions, dict):
-        permissions.setdefault("actions", "read")
-        permissions.setdefault("pull-requests", "read")
-
-    policy_gate_job = {
-        "name": "policy-prerequisites",
-        "runs-on": "ubuntu-latest",
-        "steps": [
-            {
-                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
-            },
-            {
-                "name": "Wait for policy and standards prerequisites",
-                "shell": "bash",
-                "env": {
-                    "GITHUB_TOKEN": "${{ github.token }}",
-                },
-                "run": (
-                    "set -euo pipefail\n"
-                    "python3 .github/scripts/check_workflow_prerequisites.py"
-                ),
-            },
-        ],
-    }
-
-    updated_jobs: dict[str, Any] = {"policy_gate": policy_gate_job}
-    for job_name, job_definition in jobs.items():
-        if not isinstance(job_definition, dict):
-            updated_jobs[job_name] = job_definition
-            continue
-
-        existing_needs = job_definition.get("needs")
-        if existing_needs is None:
-            job_definition["needs"] = "policy_gate"
-        elif isinstance(existing_needs, str):
-            if existing_needs != "policy_gate":
-                job_definition["needs"] = ["policy_gate", existing_needs]
-        elif isinstance(existing_needs, list):
-            if "policy_gate" not in existing_needs:
-                job_definition["needs"] = ["policy_gate", *existing_needs]
-
-        updated_jobs[job_name] = job_definition
-
-    wrapper_definition["jobs"] = updated_jobs
+        return normalize_verify_trigger_paths(wrapper_definition)
     return wrapper_definition
 
 
@@ -331,7 +350,7 @@ def inject_dependabot_pull_request_skip(
     wrapper_name: str,
     wrapper_definition: dict[str, Any],
 ) -> dict[str, Any]:
-    if wrapper_name != "ci":
+    if wrapper_name not in {"ci", "verify"}:
         return wrapper_definition
 
     jobs = wrapper_definition.get("jobs")
@@ -356,6 +375,15 @@ def render_repo(repo_name: str, manifest: dict) -> None:
     release_path = repo_root / ".github/release.env"
     release_content = render_release_env(repo.get("release_env", []))
     write_if_needed(release_path, release_content)
+
+    write_if_needed(
+        repo_root / ".github/rulesets/main-branch-protection.json",
+        render_required_status_ruleset(repo),
+    )
+    write_if_needed(
+        repo_root / ".github/required-status-checks.md",
+        render_required_status_reference(repo),
+    )
 
     dependabot_data = repo.get("dependabot")
     if dependabot_data is not None:
@@ -391,7 +419,10 @@ def render_repo(repo_name: str, manifest: dict) -> None:
             wrapper_name,
             wrapper_definition,
         )
-        wrapper_definition = inject_policy_gate(wrapper_name, wrapper_definition)
+        wrapper_definition = normalize_workflow_wrapper(
+            wrapper_name,
+            wrapper_definition,
+        )
         write_if_needed(wrapper_path, render_yaml_document(wrapper_definition))
 
 

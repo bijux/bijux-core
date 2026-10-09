@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "maximum_bytes": 943718400,
+  "maximum_files": 100000,
+  "maximum_svg_bytes": 16777216,
+  "allowed_extensions": [
+    ".html",
+    ".css",
+    ".js",
+    ".json",
+    ".xml",
+    ".gz",
+    ".txt",
+    ".md",
+    ".svg",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".webp",
+    ".avif",
+    ".gif",
+    ".ico",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".otf",
+    ".pdf",
+    ".csv",
+    ".tsv",
+    ".zip",
+    ".tar",
+    ".mp4",
+    ".webm",
+    ".mp3",
+    ".ogg",
+    ".wav",
+    ".vtt",
+    ".bib"
+  ],
+  "forbidden_names": [
+    ".git",
+    ".github",
+    ".env",
+    "mkdocs.yml",
+    "mkdocs.yaml",
+    "pyproject.toml",
+    "uv.lock",
+    "package-lock.json",
+    "Cargo.lock",
+    "credentials",
+    "secrets.json"
+  ],
+  "public_exceptions": [
+    {
+      "pattern": "assets/stylesheets/*.css.map",
+      "purpose": "Public source maps of the pinned MkDocs Material stylesheet dependency."
+    },
+    {
+      "pattern": "assets/javascripts/*.js.map",
+      "purpose": "Public source maps of the pinned MkDocs Material runtime and search worker."
+    }
+  ]
+}

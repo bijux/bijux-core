@@ -41,7 +41,7 @@
 
     for (const strip of strips) {
       const authoredActiveLink = strip.querySelector(
-        "a[data-bijux-detail-path][aria-current='page'], .bijux-tabs__item--active a[data-bijux-detail-path]"
+        "a[data-bijux-detail-path][aria-current], .bijux-tabs__item--active a[data-bijux-detail-path]"
       );
 
       for (const item of strip.querySelectorAll(".bijux-tabs__item")) {
@@ -101,7 +101,7 @@
         activeLink.node
           .closest(".bijux-tabs__item")
           ?.classList.add("bijux-tabs__item--active");
-        activeLink.node.setAttribute("aria-current", "page");
+        activeLink.node.setAttribute("aria-current", activeLink.path === currentPath ? "page" : "location");
       }
     }
   }
@@ -128,7 +128,7 @@
     }
 
     const authoredActiveLink = activeStrip.querySelector(
-      "a[data-bijux-detail-path][aria-current='page'], .bijux-tabs__item--active a[data-bijux-detail-path]"
+      "a[data-bijux-detail-path][aria-current], .bijux-tabs__item--active a[data-bijux-detail-path]"
     );
     if (authoredActiveLink) {
       return navState.normalizePath(
@@ -172,7 +172,7 @@
 
     for (const strip of strips) {
       const authoredActiveLink = strip.querySelector(
-        "a[data-bijux-course-path][aria-current='page'], .bijux-tabs__item--active a[data-bijux-course-path]"
+        "a[data-bijux-course-path][aria-current], .bijux-tabs__item--active a[data-bijux-course-path]"
       );
 
       for (const item of strip.querySelectorAll(".bijux-tabs__item")) {
@@ -203,7 +203,7 @@
         activeLink.node
           .closest(".bijux-tabs__item")
           ?.classList.add("bijux-tabs__item--active");
-        activeLink.node.setAttribute("aria-current", "page");
+        activeLink.node.setAttribute("aria-current", activeLink.path === currentPath ? "page" : "location");
       }
     }
   }
@@ -236,7 +236,7 @@
 
     for (const strip of strips) {
       const activeLink = strip.querySelector(
-        "a[data-bijux-detail-path][aria-current='page'], a[data-bijux-course-path][aria-current='page']"
+        "a[data-bijux-detail-path][aria-current], a[data-bijux-course-path][aria-current]"
       );
 
       if (!activeLink) {

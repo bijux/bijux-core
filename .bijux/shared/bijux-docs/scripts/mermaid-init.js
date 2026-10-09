@@ -1,101 +1,154 @@
-window.mermaidConfig = {
-  startOnLoad: false,
-  securityLevel: "loose",
-};
+(function () {
+  "use strict";
+  const vendor = new URL("./vendor/mermaid-11.17.2.min.js", document.currentScript.src);
+  const integrity = "sha384-Y1B9CVhnQzsm0/34uQIbETs2AXzXz2C1uZLiDm51sNcO4xKIMS/Fi8BCpNlIrQy5";
+  const sources = new WeakMap();
+  let library;
+  let generation = 0;
+  let sequence = 0;
+  let rendering = Promise.resolve();
+  // The self-hosted library must never start its own document scan on load.
+  window.mermaidConfig = { startOnLoad: false, securityLevel: "strict" };
 
-function activeMermaidTheme() {
-  const scheme = document.body?.getAttribute("data-md-color-scheme") || "default";
-  return scheme === "slate" ? "dark" : "default";
-}
-
-function normalizeMermaidBlocks() {
-  // Normalize superfences output (<pre class="mermaid"><code>...</code></pre>)
-  // into <div class="mermaid">...</div> so Mermaid receives raw diagram text.
-  const preNodes = document.querySelectorAll("pre.mermaid");
-  preNodes.forEach((pre) => {
-    const code = pre.querySelector("code");
-    if (!code) {
-      return;
+  function admitSource(source) {
+    if (source.length > 50000 || /%%\s*\{|^\s*---/m.test(source)) throw new Error("Diagram source configuration is not admitted");
+    // Authored diagrams describe graphs, not network resources or renderer policy.
+    if (/<\s*(?:img|image|iframe|object|embed|audio|video|source|link|style)\b|@\{[^}]*\b(?:img|icon)\s*:/i.test(source)) throw new Error("Diagram resource content is not admitted");
+    for (const line of source.split(/\r?\n/)) {
+      const declaration = line.match(/^\s*(style|classDef|linkStyle)\s+[^\s]+\s+(.+?)\s*;?\s*$/);
+      if (!declaration) continue;
+      for (const entry of declaration[2].replace(/;$/, "").split(",")) {
+        const match = entry.trim().match(/^([a-z-]+)\s*:\s*(.+)$/i);
+        if (!match) throw new Error("Diagram style is not admitted");
+        const [, property, value] = match;
+        const color = /^(?:#[0-9a-f]{3,8}|[a-z]+)$/i;
+        const number = /^(?:\d+(?:\.\d+)?(?:px|em|%)?)(?:\s+\d+(?:\.\d+)?)?$/;
+        const safe = ["fill", "stroke", "color"].includes(property) ? color.test(value)
+          : ["stroke-width", "stroke-dasharray", "opacity", "fill-opacity", "stroke-opacity", "font-size", "font-weight"].includes(property) && number.test(value);
+        if (!safe) throw new Error("Diagram style is not admitted");
+      }
     }
+  }
 
-    const div = document.createElement("div");
-    div.className = "mermaid";
-    div.textContent = code.textContent || "";
-    pre.replaceWith(div);
-  });
-}
+  function load() {
+    if (library) return library;
+    library = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = vendor.href;
+      script.integrity = integrity;
+      script.crossOrigin = "anonymous";
+      script.async = true;
+      let timer;
+      function finish(error) {
+        clearTimeout(timer);
+        script.onload = script.onerror = null;
+        if (error) { script.remove(); library = null; reject(error); }
+        else resolve(window.mermaid);
+      }
+      script.onload = () => finish(window.mermaid ? null : new Error("Diagram renderer unavailable"));
+      script.onerror = () => finish(new Error("Diagram renderer unavailable"));
+      timer = setTimeout(() => finish(new Error("Diagram renderer timed out")), 8000);
+      document.head.appendChild(script);
+    });
+    return library;
+  }
 
-function prepareMermaidNodesForRerender() {
-  const nodes = document.querySelectorAll("div.mermaid");
-  nodes.forEach((node) => {
-    const source = node.dataset.bijuxMermaidSource;
-    if (!source) {
-      return;
+  function prepare(node) {
+    if (sources.has(node)) return node;
+    const source = (node.querySelector("code") || node).textContent || "";
+    const figure = document.createElement("div");
+    figure.className = "mermaid bijux-diagram";
+    figure.tabIndex = 0;
+    figure.setAttribute("role", "region");
+    figure.setAttribute("aria-label", "Diagram and source");
+    const preview = document.createElement("div");
+    preview.className = "bijux-diagram-preview";
+    const details = document.createElement("details");
+    details.className = "bijux-diagram-source";
+    const summary = document.createElement("summary");
+    summary.textContent = "Diagram source";
+    const pre = document.createElement("pre");
+    const code = document.createElement("code");
+    code.textContent = source;
+    pre.appendChild(code);
+    details.append(summary, pre);
+    const status = document.createElement("p");
+    status.className = "bijux-diagram-status";
+    status.setAttribute("role", "status");
+    const retry = document.createElement("button");
+    retry.type = "button";
+    retry.className = "md-button";
+    retry.textContent = "Retry diagram";
+    retry.hidden = true;
+    retry.addEventListener("click", request);
+    details.open = true;
+    figure.append(preview, status, retry, details);
+    sources.set(figure, { source, preview, details, status, retry, theme: null });
+    node.replaceWith(figure);
+    return figure;
+  }
+
+  async function render(current, nodes, theme) {
+    let api;
+    try { api = await load(); } catch (_) {}
+    if (current !== generation) return;
+    for (const node of nodes) {
+      if (current !== generation || !node.isConnected) return;
+      const state = sources.get(node);
+      if (!state || state.theme === theme) continue;
+      state.retry.hidden = true;
+      state.status.textContent = "";
+      try {
+        admitSource(state.source);
+        if (!api) throw new Error("Diagram renderer unavailable");
+        api.initialize({
+          startOnLoad: false, securityLevel: "strict", suppressErrorRendering: true,
+          secure: ["secure", "securityLevel", "startOnLoad", "maxTextSize", "maxEdges", "suppressErrorRendering", "dompurifyConfig", "themeCSS", "themeVariables"],
+          maxTextSize: 50000, maxEdges: 500, theme, fontFamily: "Arial, sans-serif",
+          // Label HTML is inserted into Mermaid's measurement DOM before final SVG
+          // sanitization. Keep math and harmless markup, but exclude resource tags there.
+          dompurifyConfig: { FORBID_TAGS: ["img", "image", "iframe", "object", "embed", "audio", "video", "source", "link", "style"] },
+          flowchart: { htmlLabels: false },
+        });
+        const result = await api.render("bijux-diagram-" + (++sequence), state.source);
+        if (current !== generation || !node.isConnected) return;
+        // Sanitized Mermaid labels contain HTML void elements inside foreignObject.
+        // Parse in an inert HTML document so those labels retain their namespaces.
+        const parsed = new DOMParser().parseFromString(result.svg, "text/html");
+        const svg = parsed.body.firstElementChild;
+        if (!svg || parsed.body.children.length !== 1 || svg.localName !== "svg" || svg.namespaceURI !== "http://www.w3.org/2000/svg" ||
+            svg.querySelector("script,img,image,iframe,object,embed,audio,video,source,link")) throw new Error("Invalid diagram output");
+        for (const element of [svg, ...svg.querySelectorAll("*")]) {
+          for (const attribute of element.attributes) {
+            if (/^on/i.test(attribute.name) || /^(?:href|xlink:href|src)$/i.test(attribute.name) && /^\s*(?:javascript|vbscript):/i.test(attribute.value)) throw new Error("Active diagram output is not admitted");
+          }
+        }
+        state.preview.replaceChildren(document.importNode(svg, true));
+        state.details.open = false;
+        state.theme = theme;
+      } catch (_) {
+        if (current !== generation || !node.isConnected) return;
+        state.preview.replaceChildren();
+        state.details.open = true;
+        state.status.textContent = "Diagram preview unavailable. The source remains available below.";
+        state.retry.hidden = false;
+      }
     }
-    node.removeAttribute("data-processed");
-    node.textContent = source;
-  });
-}
-
-function renderMermaidDiagrams() {
-  if (typeof mermaid === "undefined") {
-    return;
   }
 
-  mermaid.initialize({
-    ...window.mermaidConfig,
-    theme: activeMermaidTheme(),
-  });
-
-  normalizeMermaidBlocks();
-  const nodes = document.querySelectorAll("div.mermaid");
-  if (!nodes.length) {
-    return;
+  function request() {
+    const current = ++generation;
+    const nodes = [...document.querySelectorAll(".md-typeset .bijux-diagram")].map(prepare);
+    if (!nodes.length) return;
+    const theme = document.body.getAttribute("data-md-color-scheme") === "slate" ? "dark" : "default";
+    // Mermaid owns shared parser/config state; serialize renders and reject stale completions.
+    rendering = rendering.catch(() => {}).then(() => render(current, nodes, theme)).catch(() => {});
   }
 
-  // Persist original Mermaid definitions once, before Mermaid mutates the node.
-  // Never infer source back from rendered SVG text.
-  for (const node of nodes) {
-    if (node.dataset.bijuxMermaidSource) {
-      continue;
-    }
-    if (node.querySelector("svg")) {
-      continue;
-    }
-    node.dataset.bijuxMermaidSource = node.textContent || "";
-  }
-
-  mermaid.run({ nodes });
-}
-
-function captureScrollPosition() {
-  return {
-    x: window.scrollX || window.pageXOffset || 0,
-    y: window.scrollY || window.pageYOffset || 0,
-  };
-}
-
-function restoreScrollPosition(position) {
-  if (!position) {
-    return;
-  }
-  window.scrollTo(position.x, position.y);
-}
-
-document$.subscribe(() => {
-  renderMermaidDiagrams();
-
-  if (window.__bijuxMermaidThemeBound === true) {
-    return;
-  }
-
-  window.__bijuxMermaidThemeBound = true;
-  window.addEventListener("bijux:theme-change", (event) => {
-    const targetScroll = event?.detail?.scroll || captureScrollPosition();
-    prepareMermaidNodesForRerender();
-    renderMermaidDiagrams();
-    restoreScrollPosition(targetScroll);
-    requestAnimationFrame(() => restoreScrollPosition(targetScroll));
-    setTimeout(() => restoreScrollPosition(targetScroll), 80);
-  });
-});
+  if (window.document$ && typeof window.document$.subscribe === "function") window.document$.subscribe(request);
+  else if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", request, { once: true });
+  else request();
+  window.addEventListener("bijux:theme-change", request);
+  window.addEventListener("pagehide", () => { generation += 1; });
+  window.addEventListener("pageshow", event => { if (event.persisted) request(); });
+})();

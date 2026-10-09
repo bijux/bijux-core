@@ -1,0 +1,22 @@
+{
+  "name": "bijux-documentation-diagrams",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Reproducible self-hosted documentation diagram renderer",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "mermaid": "11.17.2",
+    "dompurify": "3.4.16",
+    "katex": "0.18.2"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  },
+  "overrides": {
+    "dompurify": "3.4.16",
+    "katex": "0.18.2"
+  }
+}

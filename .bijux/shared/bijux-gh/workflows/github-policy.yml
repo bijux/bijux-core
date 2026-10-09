@@ -22,6 +22,7 @@ jobs:
   policy:
     name: policy / github
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -30,6 +31,9 @@ jobs:
 
       - name: Gather changed files
         shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           write_single_commit_diff() {
@@ -57,9 +61,25 @@ jobs:
             fi
           }
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            base_ref="${{ github.base_ref }}"
-            git fetch --no-tags --prune --depth=1 origin "${base_ref}"
-            git diff --name-only "origin/${base_ref}...HEAD" > /tmp/changed-files.txt
+            for commit_sha in "${PR_BASE_SHA}" "${PR_HEAD_SHA}"; do
+              if [[ ! "${commit_sha}" =~ ^[0-9a-f]{40}$ ]]; then
+                echo "ERROR: pull request event requires full base and head commit SHAs" >&2
+                exit 1
+              fi
+              if [[ "$(git cat-file -t "${commit_sha}" 2>/dev/null)" != commit ]]; then
+                echo "ERROR: pull request event commit is absent from checkout: ${commit_sha}" >&2
+                exit 1
+              fi
+            done
+            if [[ "$(git rev-parse --is-shallow-repository)" != false ]]; then
+              echo "ERROR: pull request policy requires complete checkout history" >&2
+              exit 1
+            fi
+            if ! git merge-base "${PR_BASE_SHA}" "${PR_HEAD_SHA}" >/dev/null; then
+              echo "ERROR: pull request event commits have no common ancestor" >&2
+              exit 1
+            fi
+            git diff --name-only "${PR_BASE_SHA}...${PR_HEAD_SHA}" > /tmp/changed-files.txt
           elif [[ "${{ github.event_name }}" == "merge_group" ]]; then
             base_sha="${{ github.event.merge_group.base_sha }}"
             head_sha="${{ github.event.merge_group.head_sha }}"

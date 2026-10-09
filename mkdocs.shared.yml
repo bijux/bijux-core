@@ -9,7 +9,7 @@ theme:
   name: material
   language: en
   custom_dir: docs/overrides
-  logo: assets/bijux_logo_hq.png
+  logo: assets/bijux_logo.png
   favicon: assets/site-icons/favicon.ico
   font: false
   icon:
@@ -75,7 +75,7 @@ markdown_extensions:
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
-          class: mermaid
+          class: bijux-diagram
           format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.highlight:
       anchor_linenums: true
@@ -131,15 +131,21 @@ extra_css:
   - assets/styles/extra.css
 
 extra_javascript:
-  - assets/javascripts/vendor/mermaid-11.6.0.min.js
   - assets/javascripts/mermaid-init.js
   - assets/javascripts/shell/theme-persistence.js
   - assets/javascripts/shell/viewport-profile.js
   - assets/javascripts/shell/nav-state.js
   - assets/javascripts/shell/detail-tabs.js
   - assets/javascripts/shell/nav-reveal.js
+  - assets/javascripts/shell/search-recovery.js
+  - assets/javascripts/shell/content-reflow.js
+  - assets/javascripts/external-links.js
   - assets/javascripts/shell/bootstrap.js
   - assets/javascripts/navigation-sync.js
-  - assets/javascripts/external-links.js
 
 copyright: "© 2026 Bijan Mousavi <bijan@bijux.io>"
+exclude_docs: |
+  /overrides/
+  /hooks/
+  /assets/styles/README.md
+  /assets/javascripts/shell/README.md

@@ -109,6 +109,7 @@ jobs:
   resolve:
     name: resolve-release-github-config
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     outputs:
       release_tag: ${{ steps.config.outputs.release_tag }}
       enabled: ${{ steps.config.outputs.enabled }}
@@ -342,6 +343,7 @@ jobs:
     uses: ./.github/workflows/release-artifacts.yml
     with:
       package_slug: ${{ matrix.package_slug }}
+      release_tag: ${{ needs.resolve.outputs.release_tag }}
       package_dir: ${{ matrix.package_dir }}
       artifacts_dir: ${{ matrix.artifacts_dir }}
       makefile_path: ${{ matrix.makefile_path || '' }}
@@ -355,7 +357,7 @@ jobs:
       - build
     if: ${{ needs.resolve.outputs.enabled == 'true' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 10
 
     steps:
       - name: Checkout repository
@@ -372,15 +374,15 @@ jobs:
 
       - name: Install Rust toolchain
         if: ${{ needs.resolve.outputs.setup_rust == 'true' }}
-        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
         with:
           toolchain: ${{ needs.resolve.outputs.rust_toolchain }}
 
       - name: Restore Rust cache
         if: ${{ needs.resolve.outputs.setup_rust == 'true' }}
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
 
-      - name: Wait for CI gate
+      - name: Observe CI gate once
         if: ${{ github.event_name == 'push' && needs.resolve.outputs.wait_for_ci_command != '' }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -390,8 +392,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          CI_WAIT_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          export CI_WAIT_STARTED_AT
           eval "${WAIT_FOR_CI_COMMAND}"
 
       - name: Decide whether to publish a GitHub Release
@@ -489,7 +489,7 @@ jobs:
 
       - name: Publish GitHub release with files and body
         if: ${{ steps.release.outputs.publish == 'true' && steps.release.outputs.release_files_glob != '' && steps.release.outputs.release_notes_path != '' }}
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ steps.release.outputs.release_tag }}
           name: ${{ steps.release.outputs.release_name }}
@@ -502,7 +502,7 @@ jobs:
 
       - name: Publish GitHub release with files
         if: ${{ steps.release.outputs.publish == 'true' && steps.release.outputs.release_files_glob != '' && steps.release.outputs.release_notes_path == '' }}
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ steps.release.outputs.release_tag }}
           name: ${{ steps.release.outputs.release_name }}
@@ -514,7 +514,7 @@ jobs:
 
       - name: Publish GitHub release with body
         if: ${{ steps.release.outputs.publish == 'true' && steps.release.outputs.release_files_glob == '' && steps.release.outputs.release_notes_path != '' }}
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ steps.release.outputs.release_tag }}
           name: ${{ steps.release.outputs.release_name }}
@@ -523,7 +523,7 @@ jobs:
 
       - name: Publish GitHub release without assets
         if: ${{ steps.release.outputs.publish == 'true' && steps.release.outputs.release_files_glob == '' && steps.release.outputs.release_notes_path == '' }}
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ steps.release.outputs.release_tag }}
           name: ${{ steps.release.outputs.release_name }}

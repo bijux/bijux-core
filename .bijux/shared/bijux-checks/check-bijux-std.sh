@@ -186,43 +186,104 @@ verify_canonical_mermaid_init() {
   echo "✔ Mermaid initializer canonical source is present (docs mirror not required)"
 }
 
-verify_homepage_sidebar_collapse_contract() {
-  local responsive_css_rel
-  local responsive_css_path
-  responsive_css_rel="$(resolve_local_rel "shared/bijux-docs/styles/08-responsive.css")"
-  responsive_css_path="${repo_root}/${responsive_css_rel}"
+verify_complete_navigation_source_contract() {
+  local shared_docs_rel
+  shared_docs_rel="$(resolve_local_rel "shared/bijux-docs")"
+  # This admits owned source and optional generated mirrors. Rendered keyboard,
+  # layout and accessibility behavior belongs to the generated browser gate.
+  python3 - "${repo_root}/${shared_docs_rel}" "${repo_root}" <<'PYTHON'
+import json
+from pathlib import Path
+import re
+import sys
 
-  if [[ ! -f "${responsive_css_path}" ]]; then
-    echo "ERROR: missing responsive stylesheet ${responsive_css_path}" >&2
-    exit 1
-  fi
+shared, repo = map(Path, sys.argv[1:])
 
-  if ! grep -qF '[data-bijux-viewport="normal"] .md-main__inner:has(.md-sidebar--primary .bijux-nav--scoped[data-bijux-nav-empty="true"])' "${responsive_css_path}"; then
-    echo "ERROR: missing homepage/sidebar collapse selector for normal viewport" >&2
-    exit 1
-  fi
+def fail(message):
+    raise SystemExit("ERROR: complete navigation source: " + message)
 
-  if ! grep -qF '[data-bijux-viewport="desktop"] .md-main__inner:has(.md-sidebar--primary .bijux-nav--scoped[data-bijux-nav-empty="true"])' "${responsive_css_path}"; then
-    echo "ERROR: missing homepage/sidebar collapse selector for desktop viewport" >&2
-    exit 1
-  fi
+def read(relative):
+    path = shared / relative
+    if not path.is_file():
+        fail("missing owned dependency " + str(path))
+    return path.read_text(encoding="utf-8")
 
-  if ! grep -qF '[data-bijux-viewport="wide"] .md-main__inner:has(.md-sidebar--primary .bijux-nav--scoped[data-bijux-nav-empty="true"])' "${responsive_css_path}"; then
-    echo "ERROR: missing homepage/sidebar collapse selector for wide viewport" >&2
-    exit 1
-  fi
-
-  if ! grep -qF 'grid-template-columns: minmax(0, 1fr);' "${responsive_css_path}"; then
-    echo "ERROR: homepage/sidebar collapse contract missing single-column layout rule" >&2
-    exit 1
-  fi
-
-  if ! grep -qF 'max-width: 100%;' "${responsive_css_path}"; then
-    echo "ERROR: homepage/sidebar collapse contract missing full-width content rule" >&2
-    exit 1
-  fi
-
-  echo "✔ Homepage scoped-nav-empty sidebar collapse contract is enforced"
+partials = ["header.html", "nav.html", "nav-item.html", "bijux-nav.html"]
+scripts = ["bootstrap.js", "detail-tabs.js", "nav-reveal.js", "nav-state.js", "viewport-profile.js", "nav-sync.js"]
+for name in partials:
+    read("partials/" + name)
+for name in scripts:
+    read("scripts/" + name)
+nav = re.sub(r"\{#.*?#\}", "", read("partials/nav.html"), flags=re.S)
+item = re.sub(r"\{#.*?#\}", "", read("partials/nav-item.html"), flags=re.S)
+if len(re.findall(r'<nav\b[^>]*\bid=[\"\']bijux-navigation[\"\']', nav)) != 1:
+    fail("expected one complete navigation root with the bootstrap-owned id")
+if not re.search(r'\bimport\s+[\"\']partials/nav-item\.html[\"\']', nav):
+    fail("complete tree does not import its owned recursive item template")
+if not re.search(r'for\s+nav_item\s+in\s+nav\s*%', nav) or not re.search(r'\bitem\.render\s*\(\s*nav_item\s*,', nav):
+    fail("complete tree must render every top-level document item")
+if not all(re.search(pattern, item) for pattern in [r'<details\b', r'<summary\b', r'\brender\s*\(\s*child\s*,', r'<a\b[^>]*\bhref=']):
+    fail("recursive tree requires native disclosures and ordinary destination anchors")
+if not re.search(r'for\s+entry\s+in\s+hub_links\s*%', nav) or not re.search(r'href=[\"\']\{\{\s*entry\.url', nav):
+    fail("ecosystem registry must remain ordinary links in the complete tree")
+if re.search(r"\{%\s*if\s+(?:not\s+)?nav(?:\s|[|%.])", nav):
+    fail("complete navigation and its registry must not depend on a nonempty document tree")
+for retired in ("bijux-nav--scoped", "bijux-nav--dynamic", "data-bijux-nav-empty"):
+    if retired in nav or retired in item:
+        fail("retired conditional navigation model is present: " + retired)
+try:
+    baseline = json.loads(read("config/mkdocs-baseline.json"))
+    registry = json.loads(read("config/hub-links.json"))
+except (ValueError, TypeError) as error:
+    fail("invalid navigation configuration: " + str(error))
+if not isinstance(baseline, dict):
+    fail("navigation baseline must be a configuration object")
+if not isinstance(registry, list) or not registry or any(not isinstance(entry, dict) or not all(isinstance(entry.get(key), str) and entry[key] for key in ("key", "label", "url")) for entry in registry):
+    fail("ecosystem registry requires nonempty key, label and destination entries")
+if len({entry["key"] for entry in registry}) != len(registry):
+    fail("ecosystem registry contains duplicate identities")
+for name in scripts:
+    destination = "assets/javascripts/navigation-sync.js" if name == "nav-sync.js" else "assets/javascripts/shell/" + name
+    if destination not in baseline.get("extra_javascript", []):
+        fail("baseline does not load owned navigation dependency " + destination)
+if "assets/styles/extra.css" not in baseline.get("extra_css", []):
+    fail("baseline does not load the owned stylesheet manifest")
+styles = set()
+def admit_style(relative):
+    path = (shared / "styles" / relative).resolve()
+    if not path.is_relative_to((shared / "styles").resolve()):
+        fail("stylesheet import escapes its owned directory: " + relative)
+    name = str(path.relative_to(shared.resolve()))
+    if name in styles:
+        return
+    styles.add(name)
+    content = read(name)
+    content = re.sub(r"/\*.*?\*/", "", content, flags=re.S)
+    for imported in re.findall(r'@import\s+url\(\s*[\"\']([^\"\']+)[\"\']\s*\)', content):
+        target = (path.parent / imported).resolve()
+        if not target.is_relative_to((shared / "styles").resolve()):
+            fail("stylesheet import escapes its owned directory: " + imported)
+        admit_style(str(target.relative_to((shared / "styles").resolve())))
+admit_style("extra.css")
+for name in ("04-nav.css", "07-utilities.css", "08-responsive.css"):
+    if "styles/" + name not in styles:
+        fail("stylesheet manifest omits navigation dependency " + name)
+# Source-only repositories need no docs mirror. If an owned projection exists,
+# accept it only as a complete byte-identical set, never a surviving legacy tree.
+projection = {"partials/" + name: "docs/overrides/partials/" + name for name in partials}
+projection.update({relative: "docs/assets/" + relative for relative in styles})
+for name in scripts:
+    destination = "docs/assets/javascripts/navigation-sync.js" if name == "nav-sync.js" else "docs/assets/javascripts/shell/" + name
+    projection["scripts/" + name] = destination
+if any((repo / destination).exists() for destination in projection.values()):
+    for relative, destination in projection.items():
+        target = repo / destination
+        if not target.is_file():
+            fail("incomplete consumer projection: missing " + destination + "; run make bijux-docs-sync")
+        if (shared / relative).read_bytes() != target.read_bytes():
+            fail("consumer projection differs from owned source: " + destination + "; run make bijux-docs-sync")
+print("✔ Complete navigation source and applicable consumer projection are admitted")
+PYTHON
 }
 
 verify_workflow_run_shell_preambles() {
@@ -372,7 +433,7 @@ done <<<"${selected_directories}"
 verify_no_legacy_root_shared_dirs
 if grep -Fxq "shared/bijux-docs" <<<"${selected_directories}"; then
   verify_canonical_mermaid_init
-  verify_homepage_sidebar_collapse_contract
+  verify_complete_navigation_source_contract
 fi
 verify_workflow_run_shell_preambles
 verify_release_pypi_toolchain_inheritance

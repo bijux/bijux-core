@@ -12,7 +12,7 @@ PIPA_TXT                      := $(SECURITY_REPORT_DIR)/pip-audit.txt
 SECURITY_REQS                 ?= $(SECURITY_REPORT_DIR)/requirements.txt
 SECURITY_PYCACHE_PREFIX       ?= $(SECURITY_REPORT_DIR)/pycache
 
-SECURITY_IGNORE_IDS           ?= PYSEC-2022-42969
+SECURITY_IGNORE_IDS           ?=
 SECURITY_IGNORE_FLAGS          = $(foreach V,$(SECURITY_IGNORE_IDS),--ignore-vuln $(V))
 PIP_AUDIT_CONSOLE_FLAGS       ?= --skip-editable --progress-spinner off
 PIP_AUDIT_INPUTS              ?=
@@ -21,7 +21,7 @@ SECURITY_STRICT               ?= 1
 BANDIT_EXCLUDES               ?= artifacts,build,dist,.tox,.mypy_cache,.pytest_cache
 BANDIT_THREADS                ?= 0
 SECURITY_BANDIT_SKIP_IDS      ?=
-BANDIT_FLAGS                  ?=
+BANDIT_FLAGS                  ?= --severity-level high --confidence-level high
 SECURITY_AUDIT_PREPARE_MODE   ?= none
 SECURITY_PIP_AUDIT_TEXT_COMMAND ?=
 SECURITY_EXTRA_TARGETS        ?=
@@ -39,20 +39,32 @@ security: security-bandit security-audit security-deps
 security-bandit:
 	@mkdir -p "$(SECURITY_REPORT_DIR)"
 	@echo "→ Bandit (Python static analysis)"
-	@if [ "$(SKIP_BANDIT)" = "1" ]; then \
-	  echo "→ Skipping bandit" >"$(BANDIT_TXT)"; \
-	else \
-	  set -e; JSON_RC=0; TEXT_RC=0; RC_FILE="$(SECURITY_REPORT_DIR)/.bandit.rc"; \
-	  $(SECURITY_PYTHON_ENV) $(BANDIT) -r "$(SECURITY_PATHS)" -x "$(BANDIT_EXCLUDES)" $(SECURITY_BANDIT_SKIP_FLAG) $(BANDIT_FLAGS) -f json -o "$(BANDIT_JSON)" -n $(BANDIT_THREADS) || JSON_RC=$$?; \
-	  { set +e; $(SECURITY_PYTHON_ENV) $(BANDIT) -r "$(SECURITY_PATHS)" -x "$(BANDIT_EXCLUDES)" $(SECURITY_BANDIT_SKIP_FLAG) $(BANDIT_FLAGS) -n $(BANDIT_THREADS); RC=$$?; echo $$RC > "$$RC_FILE"; exit 0; } 2>&1 | tee "$(BANDIT_TXT)"; \
-	  TEXT_RC=$$(cat "$$RC_FILE"); rm -f "$$RC_FILE"; \
-	  RC=$$TEXT_RC; if [ $$RC -eq 0 ]; then RC=$$JSON_RC; fi; \
-	  if [ $$RC -ne 0 ] && [ "$(SECURITY_STRICT)" = "1" ]; then exit $$RC; fi; \
+	@if [ "$(SKIP_BANDIT)" != "0" ]; then \
+	  echo "✘ Bandit is mandatory; SKIP_BANDIT must remain 0"; \
+	  exit 2; \
 	fi
+	@if [ -n "$(strip $(SECURITY_BANDIT_SKIP_IDS))" ]; then \
+	  echo "✘ Ungoverned Bandit suppressions are forbidden: $(SECURITY_BANDIT_SKIP_IDS)"; \
+	  exit 2; \
+	fi
+	@set -e; JSON_RC=0; TEXT_RC=0; RC_FILE="$(SECURITY_REPORT_DIR)/.bandit.rc"; \
+	$(SECURITY_PYTHON_ENV) $(BANDIT) -r "$(SECURITY_PATHS)" -x "$(BANDIT_EXCLUDES)" $(SECURITY_BANDIT_SKIP_FLAG) $(BANDIT_FLAGS) -f json -o "$(BANDIT_JSON)" -n $(BANDIT_THREADS) || JSON_RC=$$?; \
+	{ set +e; $(SECURITY_PYTHON_ENV) $(BANDIT) -r "$(SECURITY_PATHS)" -x "$(BANDIT_EXCLUDES)" $(SECURITY_BANDIT_SKIP_FLAG) $(BANDIT_FLAGS) -n $(BANDIT_THREADS); RC=$$?; echo $$RC > "$$RC_FILE"; exit 0; } 2>&1 | tee "$(BANDIT_TXT)"; \
+	TEXT_RC=$$(cat "$$RC_FILE"); rm -f "$$RC_FILE"; \
+	RC=$$TEXT_RC; if [ $$RC -eq 0 ]; then RC=$$JSON_RC; fi; \
+	if [ $$RC -ne 0 ]; then exit $$RC; fi
 
 security-audit:
 	@mkdir -p "$(SECURITY_REPORT_DIR)"
 	@echo "→ Pip-audit (dependency vulnerability scan)"
+	@if [ "$(SECURITY_STRICT)" != "1" ]; then \
+	  echo "✘ Dependency vulnerability auditing is mandatory and strict"; \
+	  exit 2; \
+	fi
+	@if [ -n "$(strip $(SECURITY_IGNORE_IDS))" ]; then \
+	  echo "✘ Ungoverned dependency vulnerability suppressions are forbidden: $(SECURITY_IGNORE_IDS)"; \
+	  exit 2; \
+	fi
 	@if [ "$(SECURITY_AUDIT_PREPARE_MODE)" = "pyproject" ]; then \
 	  $(SECURITY_PYTHON_ENV) $(VENV_PYTHON) -c "import tomllib; from pathlib import Path; data=tomllib.loads(Path('pyproject.toml').read_text()); reqs=data.get('project', {}).get('dependencies', []); Path('$(SECURITY_REQS)').write_text('\\n'.join(reqs) + '\\n')"; \
 	fi
