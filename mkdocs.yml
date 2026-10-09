@@ -1,5 +1,25 @@
 INHERIT: mkdocs.shared.yml
 
+theme:
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.indexes
+    - navigation.path
+    - navigation.instant
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.annotate
+    - content.code.copy
+    - content.code.select
+    - content.action.edit
+    - content.action.view
+
 site_name: Bijux Core
 site_description: Unified Bijux CLI and DAG runtime workspace.
 site_url: !ENV [SITE_URL, https://bijux.io/bijux-core/]
