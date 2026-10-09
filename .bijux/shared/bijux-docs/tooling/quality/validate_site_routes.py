@@ -49,19 +49,35 @@ def link_exceptions(path: Path | None) -> tuple[list[dict], str | None]:
 def independently_verified_readers(site: Path, site_url: str, evidence: dict | None) -> dict:
     if evidence is None:
         return {}
-    if not isinstance(evidence, dict) or set(evidence) not in ({'csp', 'completed_build', 'source_sha'}, {'csp', 'completed_build', 'source_sha', 'source_checkpoint', 'repository'}):
+    fields = {'csp', 'completed_build', 'source_sha'}
+    admitted_fields = (fields, fields | {'source_checkpoint', 'repository'},
+                       fields | {'interactive_report_owner', 'repository'},
+                       fields | {'interactive_report_owner', 'repository', 'source_checkpoint'})
+    if not isinstance(evidence, dict) or set(evidence) not in admitted_fields:
         raise ValueError('Standalone readers require complete source/CSP/build evidence')
     policy_path = Path(__file__).resolve().parents[2]/'security/publication.py'
     spec = importlib.util.spec_from_file_location('bijux_reader_composition_policy', policy_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    if 'source_checkpoint' in evidence:
+    if 'interactive_report_owner' in evidence:
+        adapter = importlib.import_module(module.embedded_module().__package__ + '.interactive_rendering')
+        build = evidence['completed_build']
+        source = adapter.InteractiveReportSource(evidence['repository'], evidence['interactive_report_owner'],
+                build['config']['path'], build['config']['sha256'], build['resolved_config_sha256'], site_url)
+        if source.source_sha != evidence['source_sha']:
+            raise ValueError('Interactive route verifier selects another committed source')
+        result = source._verify(site, evidence['csp'], build, publication='source_checkpoint' in evidence,
+                                identity=module.identity_module() if 'source_checkpoint' in evidence else None,
+                                checkpoint=evidence.get('source_checkpoint'))
+    elif 'source_checkpoint' in evidence:
         identity = module.identity_module()
         adapter = importlib.import_module(module.embedded_module().__package__ + '.publication')
         result = adapter.verify_readers(site, evidence['csp'], evidence['completed_build'],
                                         repository=evidence['repository'], identity=identity, checkpoint=evidence['source_checkpoint'])
     else:
         result = module.embedded_module().verify_composition(site, evidence['csp'], evidence['completed_build'])
+        if any(result['capabilities'][name].get('script_sources') != ["'none'"] for name in result['report_routes']):
+            raise ValueError('Interactive route qualification requires explicit config-owned selection')
     receipt = result['receipt']
     if receipt['source_sha'] != evidence['source_sha'] or result['site_url'] != site_url:
         raise ValueError('Standalone reader source/site identity differs')
@@ -111,6 +127,7 @@ def main() -> int:
     parser.add_argument('--source-sha')
     parser.add_argument('--source-identity', type=Path)
     parser.add_argument('--reader-owner')
+    parser.add_argument('--interactive-report-owner')
     args = parser.parse_args()
     root = args.repo_root.resolve()
     site = (root/args.site_dir).resolve()
@@ -136,6 +153,10 @@ def main() -> int:
         if args.reader_owner:
             if evidence is None or Path(evidence['csp'].get('embedded', {}).get('descriptor_path', '')).resolve() != (root/args.reader_owner).resolve():
                 raise ValueError('Standalone verifier owner differs from explicit source selection')
+        if args.interactive_report_owner:
+            if args.reader_owner or evidence is None:
+                raise ValueError('Interactive qualification requires a separate explicit owner selection')
+            evidence.update(interactive_report_owner=args.interactive_report_owner, repository=root)
         if args.source_identity:
             spec = importlib.util.spec_from_file_location('bijux_reader_route_identity', Path(__file__).resolve().parents[2]/'security/build_identity.py')
             identity = importlib.util.module_from_spec(spec); spec.loader.exec_module(identity)

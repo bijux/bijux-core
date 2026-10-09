@@ -49,6 +49,61 @@ def _report_capability(report, bodies):
     }
 
 
+def reviewed_providers(report, bodies):
+    """Recheck finite provider calls from the same reviewed source body."""
+    if len(bodies) != 1:
+        raise AdmissionError("reviewed report class requires exactly one executable body")
+    providers = report["providers"]
+    if set(providers) != set(report["reviewed_provider_origins"]):
+        raise AdmissionError("provider origin is not owner-reviewed")
+    observed_providers = set()
+    for call in report["provider_calls"]:
+        callee = call["callee"]
+        if not re.fullmatch(r"[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*", callee):
+            raise AdmissionError("invalid reviewed provider call")
+        matches = list(re.finditer(re.escape(callee) + r"\s*\(", bodies[0]["body"]))
+        for match in matches:
+            literal = re.match(
+                r"\s*(['\"])(https://[^'\"]+)\1", bodies[0]["body"][match.end() :]
+            )
+            if literal is None:
+                raise AdmissionError(
+                    "provider URL is not a reviewed static literal"
+                )
+            target = urlsplit(literal.group(2))
+            observed_providers.add(target.scheme + "://" + target.netloc)
+    if observed_providers != set(providers):
+        raise AdmissionError(
+            "declared providers differ from actual reviewed executable calls"
+        )
+    for origin, policy in providers.items():
+        url = urlsplit(origin)
+        if (
+            url.scheme != "https"
+            or not url.hostname
+            or url.path
+            or url.query
+            or url.fragment
+            or url.username
+            or url.password
+        ):
+            raise AdmissionError("provider must be an exact HTTPS origin")
+        if (
+            not policy.get("purpose")
+            or not policy.get("activation")
+            or not policy.get("attribution")
+            or not policy.get("terms")
+        ):
+            raise AdmissionError(
+                "provider privacy/attribution contract is incomplete"
+            )
+        if origin not in bodies[0]["body"]:
+            raise AdmissionError(
+                "declared provider is not in reviewed executable source"
+            )
+    return providers
+
+
 def _descriptor_inputs(descriptor):
     inputs = [descriptor["config"], *descriptor["producer_inputs"]]
     if descriptor.get("reader_purpose") is not None:
@@ -183,54 +238,7 @@ def plan_embedded_reports(
                     "renderer recipe lacks tracked producer fingerprint closure"
                 )
             recipe = report_recipe(repo_root, document, report, product_base, output)
-            providers = report["providers"]
-            if set(providers) != set(report["reviewed_provider_origins"]):
-                raise AdmissionError("provider origin is not owner-reviewed")
-            observed_providers = set()
-            for call in report["provider_calls"]:
-                callee = call["callee"]
-                if not re.fullmatch(r"[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*", callee):
-                    raise AdmissionError("invalid reviewed provider call")
-                matches = list(re.finditer(re.escape(callee) + r"\s*\(", bodies[0]["body"]))
-                for match in matches:
-                    literal = re.match(
-                        r"\s*(['\"])(https://[^'\"]+)\1", bodies[0]["body"][match.end() :]
-                    )
-                    if literal is None:
-                        raise AdmissionError(
-                            "provider URL is not a reviewed static literal"
-                        )
-                    target = urlsplit(literal.group(2))
-                    observed_providers.add(target.scheme + "://" + target.netloc)
-            if observed_providers != set(providers):
-                raise AdmissionError(
-                    "declared providers differ from actual reviewed executable calls"
-                )
-            for origin, policy in providers.items():
-                url = urlsplit(origin)
-                if (
-                    url.scheme != "https"
-                    or not url.hostname
-                    or url.path
-                    or url.query
-                    or url.fragment
-                    or url.username
-                    or url.password
-                ):
-                    raise AdmissionError("provider must be an exact HTTPS origin")
-                if (
-                    not policy.get("purpose")
-                    or not policy.get("activation")
-                    or not policy.get("attribution")
-                    or not policy.get("terms")
-                ):
-                    raise AdmissionError(
-                        "provider privacy/attribution contract is incomplete"
-                    )
-                if origin not in bodies[0]["body"]:
-                    raise AdmissionError(
-                        "declared provider is not in reviewed executable source"
-                    )
+            providers = reviewed_providers(report, bodies)
         resource_records = []
         chunks = 0
         for resource_output, resource in sorted(report["resources"].items()):

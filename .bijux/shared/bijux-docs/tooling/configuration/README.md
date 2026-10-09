@@ -88,3 +88,15 @@ Retirement changes the configuration reference only. The historical HQ PNG
 remains a physical compatibility asset; the compact common PNG is supplied by
 the separately governed shared asset projection. Supported root configuration
 identity and inherited publication exclusion rules remain unchanged.
+
+## Interactive report ownership
+
+An authored product may declare `extra.bijux.interactive_report_owner` as a
+canonical relative JSON source path, bounded to 1024 characters. It selects no
+behavior by itself: the canonical renderer requires the same explicit
+`--interactive-report-owner`. Shared configuration cannot supply this product
+authority. Passive and interactive renderer modes remain separate. The field is
+preserved by configuration projection and validated by `shell_contract.py`;
+MkDocs resolves the actual configuration before the independent producer derives
+the source-owned selection. See the [security contract](../../security/SECURITY.md)
+for the finite descriptor, provider decisions and publication profile boundary.

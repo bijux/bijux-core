@@ -22,7 +22,7 @@ def load(name,path):
     return module
 
 
-def build_artifact(root: Path, config_name: str, site_name: str, *, site_url='', source_identity=None, strict=True, source_recipe=None, reader_owner=None):
+def build_artifact(root: Path, config_name: str, site_name: str, *, site_url='', source_identity=None, strict=True, source_recipe=None, reader_owner=None, interactive_report_owner=None):
     shared=Path(__file__).resolve().parents[1]
     identity=load('bijux_renderer_identity',shared/'security/build_identity.py')
     publication=load('bijux_renderer_publication',shared/'security/publication.py')
@@ -52,8 +52,8 @@ def build_artifact(root: Path, config_name: str, site_name: str, *, site_url='',
     catalogue=None
     if source_recipe:
         producer.dependencies(shared,root,publication=checkpoint is not None)
-        if reader_owner is not None:
-            raise ValueError("Publication build: passive readers require a tracked MkDocs config; catalogue recipe composition remains separate")
+        if reader_owner is not None or interactive_report_owner is not None:
+            raise ValueError("Publication build: report readers require a tracked MkDocs config; catalogue recipe composition remains separate")
         catalogue=identity.catalogue_derivation(root,source_recipe,checkpoint.get('derivation') if checkpoint else None)
         if config_name!=catalogue.record['configuration']['path']:
             raise ValueError('Publication build: exact reconstructed configuration required')
@@ -73,7 +73,8 @@ def build_artifact(root: Path, config_name: str, site_name: str, *, site_url='',
     templates=Path(material.__file__).parent/'templates'
     with tempfile.TemporaryDirectory(prefix='renderer-reference-',dir=evidence) as scratch:
         prepared=producer.prepare(root,config_name,shared,templates,Path(scratch)/'site',site,
-                                  publication_scope=checkpoint is not None,source_recipe=source_recipe,reader_owner=reader_owner)
+                                  publication_scope=checkpoint is not None,source_recipe=source_recipe,reader_owner=reader_owner,
+                                  interactive_report_owner=interactive_report_owner)
         receipt=identity.begin(root,config_name,site_name,actual_url,source_identity,source_recipe)
         previous_strict=configuration.strict
         configuration.strict=strict
@@ -103,10 +104,12 @@ def build_artifact(root: Path, config_name: str, site_name: str, *, site_url='',
     arguments=[sys.executable,str(shared/'tooling/quality/validate_site_routes.py'),
                '--repo-root',str(root),'--site-dir',site_name,'--site-url',actual_url,
                '--output','artifacts/website-security/site-verification.json']
-    if reader_owner is not None:
+    if reader_owner is not None or interactive_report_owner is not None:
         arguments.extend(['--embedded-csp-report', 'artifacts/website-security/csp.json',
                           '--completed-build-receipt', 'artifacts/website-security/build-identity.json',
-                          '--source-sha', prepared.reader_source.source_sha, '--reader-owner', reader_owner])
+                          '--source-sha', prepared.reader_source.source_sha])
+        arguments.extend(['--reader-owner', reader_owner] if reader_owner is not None else
+                         ['--interactive-report-owner', interactive_report_owner])
         if source_identity: arguments.extend(['--source-identity', source_identity])
     exception=os.environ.get('BIJUX_DOCS_DEVELOPMENT_LINK_POLICY')
     if exception:arguments.extend(['--development-link-policy',exception])
@@ -125,11 +128,13 @@ def main():
     parser.add_argument('--source-recipe',choices=['masterclass-catalogue'])
     parser.add_argument('--source-identity',default=os.environ.get('DOCS_SOURCE_IDENTITY'))
     parser.add_argument('--reader-owner', default=os.environ.get('BIJUX_DOCS_READER_OWNER'), help='Explicit committed finite static-reader ownership descriptor')
+    parser.add_argument('--interactive-report-owner', help='Explicit committed config-selected interactive report ownership descriptor')
     parser.add_argument('--no-strict',action='store_true')
     args=parser.parse_args()
     try:
         result=build_artifact(Path.cwd().resolve(),args.config,args.site_dir,site_url=args.site_url,
-                              source_identity=args.source_identity,strict=not args.no_strict,source_recipe=args.source_recipe,reader_owner=args.reader_owner)
+                              source_identity=args.source_identity,strict=not args.no_strict,source_recipe=args.source_recipe,reader_owner=args.reader_owner,
+                              interactive_report_owner=args.interactive_report_owner)
         print(json.dumps({key:value for key,value in result.items() if key!='producer'}))
         return 0
     except (OSError,ValueError,KeyError,subprocess.CalledProcessError) as error:

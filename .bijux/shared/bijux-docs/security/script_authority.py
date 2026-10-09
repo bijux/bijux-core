@@ -113,10 +113,14 @@ def verify_ordinary(site: Path, shared: Path, renderer: dict, csp_report: dict, 
     redirect_hashes = redirect_hashes or {}
     source, policy, allowed, normalized = reconstruction(shared, renderer, csp_report)
     capabilities, reports = {}, set()
+    interactive_reports = None
     if verified_readers is not None:
         import importlib
         adapter = importlib.import_module(policy.embedded_module().__package__ + '.rendering')
-        require(type(verified_readers) is adapter.VerifiedReaders, 'Script authority: static readers require an independently rederived in-process scope')
+        interactive = importlib.import_module(policy.embedded_module().__package__ + '.interactive_rendering')
+        require(type(verified_readers) in {adapter.VerifiedReaders, interactive.VerifiedInteractiveReports}, 'Script authority: reports require an independently rederived in-process scope')
+        if type(verified_readers) is interactive.VerifiedInteractiveReports:
+            interactive_reports = verified_readers
         verified_readers.unchanged(site, csp_report)
         capabilities, reports = verified_readers.capabilities, verified_readers.reports
     originals = {page.relative_to(site).as_posix(): page.read_bytes() for page in sorted(site.rglob("*.html"))}
@@ -125,7 +129,7 @@ def verify_ordinary(site: Path, shared: Path, renderer: dict, csp_report: dict, 
     report = []
     used = set(redirect_hashes.values())
     for name, data in originals.items():
-        if name in reports:
+        if name in reports and (interactive_reports is None or interactive_reports.classes[name] == 'static-reader'):
             report.append({"path": name, "class": "source-owned-static-reader", "inline_hashes": []})
             continue
         if name in redirect_hashes:
@@ -147,10 +151,15 @@ def verify_ordinary(site: Path, shared: Path, renderer: dict, csp_report: dict, 
         scripts = policy.Scripts()
         scripts.feed(raw)
         require(scripts.current is None, "Script authority: unterminated script")
-        rebuilt, hashes = policy.qualify_html(raw, allowed, normalized, capabilities.get(name))
+        owned_interactive = interactive_reports is not None and name in reports
+        page_allowed = set(interactive_reports.bodies[name]) if owned_interactive else allowed
+        rebuilt, hashes = policy.qualify_html(raw, page_allowed, normalized, capabilities.get(name), owned_report=owned_interactive)
         require(rebuilt == content, "Script authority: final policy differs from independently admitted script bodies")
         used.update(hashes)
-        report.append({"path": name, "inline_hashes": hashes})
+        page = {"path": name, "inline_hashes": hashes}
+        if owned_interactive:
+            page['class'] = 'source-owned-interactive-report'
+        report.append(page)
     require(sorted(used) == csp_report.get("script_hashes"),
             "Script authority: receipt hashes differ from independently reconstructed bodies")
     require(source == source_bytes(shared), "Script authority: policy/source fingerprint changed during reconstruction")

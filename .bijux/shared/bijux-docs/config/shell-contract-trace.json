@@ -153,6 +153,22 @@
       "test": "tests/test_docs_external_link_projection.py",
       "test_reference": "test_authored_consumer_file_cannot_be_claimed_as_legacy_generated",
       "applicability": "Exact missing-producer/protected-authored-file tests. Explicit reviewed authored boundary migration and actual accepted-source consumer projection remain required."
+    },
+    {
+      "id": "site-search-presentation",
+      "surface": "Configured site_name in shared native search label and scope description",
+      "source": "shared/bijux-docs/partials/search.html",
+      "test": "tests/bijux-docs/generated/test_search_scope.py",
+      "test_reference": "test_named_scope_and_accessible_description_for_product_sites",
+      "applicability": "Pinned native provider interface, product-name escaping and representative site scopes. Consumer corpus relevance, actual assistive review and accepted adoption remain separate obligations."
+    },
+    {
+      "id": "interactive-report-selection",
+      "surface": "extra.bijux.interactive_report_owner / --interactive-report-owner",
+      "source": "shared/bijux-docs/security/embedded_reports/interactive_rendering.py",
+      "test": "tests/bijux-docs/generated/test_interactive_report_renderer.py",
+      "test_reference": "test_selected_and_independent_reference_render_exact_interactive_bytes",
+      "applicability": "Committed finite source fixture under an observed verification-only renderer, exact selected/reference composition and adversarial source/selection guards. Provider owner approval, actual consumer migration, browser/manual/live interaction and a production-approved profile remain separate."
     }
   ],
   "compatibility_retirement": {

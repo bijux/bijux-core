@@ -303,6 +303,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: docs-renderer-controls-${{ matrix.group }}-${{ github.sha }}-${{ github.run_attempt }}
+          include-hidden-files: true
           path: artifacts/bijux-docs/renderer-controls
           if-no-files-found: error
           compression-level: 0
@@ -360,7 +361,7 @@ jobs:
       max-parallel: 12
       fail-fast: false
       matrix:
-        group: [navigation-phone, navigation-compact, navigation-desktop, navigation-controls, search, search-invoker, reader, diagrams, contrast-phone, contrast-compact, contrast-desktop, links, history, semantics, search-scope-phone, search-scope-compact, search-scope-desktop, reader-accessibility, diagram-trust, accessibility-state, search-shortcut-modality, search-reflow-phone, search-reflow-tablet, search-reflow-desktop, registry-overflow, native-reader-history]
+        group: [navigation-destinations, navigation-phone, navigation-compact, navigation-desktop, navigation-controls, search, search-invoker, reader, diagrams, contrast-phone, contrast-compact, contrast-desktop, links, history, semantics, search-scope-phone, search-scope-compact, search-scope-desktop, reader-accessibility, diagram-trust, accessibility-state, search-shortcut-modality, search-reflow-phone, search-reflow-tablet, search-reflow-desktop, registry-overflow, native-reader-history]
         engine: [chromium, firefox, webkit]
     container:
       # Immutable Playwright 1.58.2 Noble browsers and operating-system dependencies.
@@ -532,6 +533,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: docs-navigation-complete-${{ github.sha }}-${{ github.run_attempt }}
+          include-hidden-files: true
           path: |
             artifacts/bijux-docs/navigation-qualification.json
             artifacts/bijux-docs/frontend-faults/qualification.json

@@ -11,6 +11,7 @@ import importlib.metadata
 import importlib.util
 import json
 from pathlib import Path
+from types import ModuleType
 import re
 import subprocess
 import sys
@@ -89,14 +90,15 @@ def policy_inputs(shared: Path, material_templates: Path) -> dict:
 
 
 def embedded_module():
-    name = "bijux_owned_embedded"
-    path = Path(__file__).with_name("embedded_reports")
-    spec = importlib.util.spec_from_file_location(name, path / "__init__.py", submodule_search_locations=[str(path)])
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[name] = module
-    spec.loader.exec_module(module)
-    integration = importlib.import_module(name + ".integration")
-    return integration
+    path = Path(__file__).with_name("embedded_reports").resolve()
+    captured = {p.stem: (p, p.read_bytes()) for p in sorted(path.glob("*.py"))}
+    if "processor_loading" not in captured:
+        raise ValueError("Owned processors require captured loader source")
+    source, content = captured["processor_loading"]
+    loader = ModuleType("bijux_captured_processor_loading")
+    loader.__file__ = str(source)
+    exec(compile(content, str(source), "exec"), loader.__dict__)
+    return loader.load_processors(path, captured, "bijux_owned_embedded_")
 
 
 def qualify_html(html: str, allowed: set[str], normalized_base: str, capability: dict | None = None,

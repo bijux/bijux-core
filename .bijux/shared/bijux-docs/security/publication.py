@@ -11,6 +11,7 @@ from html import escape
 import json
 import importlib.util
 from pathlib import Path
+from types import ModuleType
 import re
 import sys
 from urllib.parse import quote, unquote, urlsplit
@@ -368,14 +369,15 @@ def applied_csp(policy: str, admitted_hashes: set[str], capability: dict | None 
 
 
 def embedded_module():
-    import sys
-    name = "bijux_publication_embedded"
-    path = Path(__file__).with_name("embedded_reports")
-    spec = importlib.util.spec_from_file_location(name, path / "__init__.py", submodule_search_locations=[str(path)])
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[name] = module
-    spec.loader.exec_module(module)
-    return importlib.import_module(name + ".integration")
+    path = Path(__file__).with_name("embedded_reports").resolve()
+    captured = {p.stem: (p, p.read_bytes()) for p in sorted(path.glob("*.py"))}
+    if "processor_loading" not in captured:
+        raise ValueError("Owned processors require captured loader source")
+    source, content = captured["processor_loading"]
+    loader = ModuleType("bijux_captured_processor_loading")
+    loader.__file__ = str(source)
+    exec(compile(content, str(source), "exec"), loader.__dict__)
+    return loader.load_processors(path, captured, "bijux_publication_embedded_")
 
 
 def verify_embedded_candidate(repo_root: Path, site_dir: str, site_url: str, source_sha: str,
@@ -573,8 +575,8 @@ def qualified_manifest(repo_root: Path, site_dir: str, site_url: str, source_sha
             "source identity: receipt selects another public artifact")
     embedded = None
     if records["csp"]["receipt"].get("embedded") is not None:
-        embedded_module()
-        readers = importlib.import_module("bijux_publication_embedded.publication")
+        integration = embedded_module()
+        readers = importlib.import_module(integration.__package__ + ".publication")
         try:
             embedded = readers.verify_readers(selected, records["csp"]["receipt"],
                                               records["build"]["receipt"], repository=root,

@@ -64,6 +64,14 @@ def validate_settings(config: object, source: str, role: str) -> dict:
         require(bijux.get("theme_key") == "bijux:theme", source, "extra.bijux.theme_key", "must be 'bijux:theme'")
     if "repository_facts" in bijux:
         require(type(bijux["repository_facts"]) is bool, source, "extra.bijux.repository_facts", "must be a Boolean; omit it for the disabled default")
+    if "interactive_report_owner" in bijux:
+        field = "extra.bijux.interactive_report_owner"
+        owner = text(bijux["interactive_report_owner"], source, field)
+        require(len(owner) <= 1024 and owner.endswith(".json") and not owner.startswith("/")
+                and not any(part in {"", ".", ".."} for part in owner.split("/"))
+                and not any(character.isspace() or ord(character) < 32 or character in "\\%" for character in owner),
+                source, field, "must be a bounded canonical relative JSON source path")
+        require(role != "shared", source, field, "belongs to the authored product configuration")
     if role == "root":
         require("hub_links" not in bijux, source, "extra.bijux.hub_links", "must be inherited from mkdocs.shared.yml")
     else:

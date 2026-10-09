@@ -195,7 +195,7 @@ def render(configuration, *, catalogue=False):
 
 
 def prepare(root: Path, config_name: str, shared: Path, templates: Path, output: Path, site_dir: Path,
-            *, publication_scope=False, source_recipe=None, reader_owner=None):
+            *, publication_scope=False, source_recipe=None, reader_owner=None, interactive_report_owner=None):
     """Run only under the trusted renderer, with owner-selected config and frozen source.
 
     Production callers must independently verify the clean source checkpoint before
@@ -212,7 +212,8 @@ def prepare(root: Path, config_name: str, shared: Path, templates: Path, output:
     if not source_recipe:
         require(config_name in inputs, 'Producer: config absent from owner source')
     deps = dependencies(shared,root,publication=publication_scope)
-    require(not (source_recipe and reader_owner is not None), "Producer: passive readers require a tracked MkDocs config; catalogue recipe composition remains separate")
+    require(not (source_recipe and (reader_owner is not None or interactive_report_owner is not None)), "Producer: passive readers require a tracked MkDocs config; interactive report readers also require tracked config, not a catalogue recipe")
+    require(not (reader_owner is not None and interactive_report_owner is not None), 'Producer: passive and interactive report selections cannot be mixed')
     catalogue = None
     if source_recipe:
         catalogue = module(shared/'security/catalogue_recipe.py').derive(root, shared, source_recipe, inputs=inputs)
@@ -226,6 +227,12 @@ def prepare(root: Path, config_name: str, shared: Path, templates: Path, output:
     from mkdocs.commands.build import build
     configuration = (catalogue.configuration(site_dir) if catalogue else
                      load_config(config_file=str(root/config_name), site_dir=str(site_dir)))
+    csp = module(shared/'security/csp.py')
+    embedded = csp.embedded_module()
+    interactive = importlib.import_module(embedded.__package__ + '.interactive_rendering')
+    configured_report_owner = interactive.configured_owner(configuration, selected=interactive_report_owner, passive=reader_owner)
+    require(configured_report_owner is None or interactive_report_owner is not None,
+            'Producer: committed interactive ownership requires explicit renderer selection')
     identity = module(shared/'security/build_identity.py')
     config_sha = identity.configuration_identity(configuration, root)
     require(Path(configuration.docs_dir).is_relative_to(root), 'Producer: docs source outside owner root')
@@ -234,11 +241,11 @@ def prepare(root: Path, config_name: str, shared: Path, templates: Path, output:
     require_committed_hook_inputs(capability_inputs, inputs, publication=publication_scope or catalogue is not None)
     reader_source = None
     reader_receipt = None
-    if reader_owner is not None:
-        csp = module(shared/'security/csp.py')
-        embedded = csp.embedded_module()
+    if reader_owner is not None or interactive_report_owner is not None:
         adapter = importlib.import_module(embedded.__package__ + '.rendering')
-        reader_source = adapter.ReaderSource(root, reader_owner, config_name, digest(inputs[config_name]), config_sha, configuration.site_url)
+        source_type = adapter.ReaderSource if reader_owner is not None else interactive.InteractiveReportSource
+        owner = reader_owner if reader_owner is not None else interactive_report_owner
+        reader_source = source_type(root, owner, config_name, digest(inputs[config_name]), config_sha, configuration.site_url)
         reader_receipt = {'schema': 1, 'scope': 'source-projection-compatibility', 'state': 'prepared',
                           'verification_only': True, 'site_url': configuration.site_url,
                           'config': {'path': config_name, 'sha256': digest(inputs[config_name])},
@@ -362,7 +369,12 @@ def verify(site: Path, prepared: PreparedProducer, renderer: dict, csp_report: d
             pages.append({'path':name,'class':'declared-redirect','script_hash':hashes[name]})
             continue
         if verified_readers is not None and name in verified_readers.reports:
-            pages.append({'path': name, 'class': 'source-owned-static-reader', 'executables': [], 'search_route': csp_report['embedded']['reader_purposes'][name]['search_route']})
+            interactive_report = getattr(verified_readers, 'classes', {}).get(name) == 'interactive'
+            resources = reader_source.descriptor['reports']
+            owned = next(r for r in resources if r['output'] == name)
+            pages.append({'path': name, 'class': 'source-owned-interactive-report' if interactive_report else 'source-owned-static-reader',
+                          'executables': sorted(path for path, r in owned['resources'].items() if r['kind'] in {'reviewed-script', 'data-registration'}),
+                          'search_route': csp_report['embedded']['reader_purposes'][name]['search_route']})
             continue
         actual_page, source_page = References(), References()
         actual_page.feed(originals[name].decode());source_page.feed(prepared.reference[name].decode())
@@ -404,12 +416,16 @@ def verify_publication(root: Path, site: Path, shared: Path, build_receipt: dict
     catalogue = module(shared/'security/catalogue_recipe.py').derive(root, shared, source_recipe, expected=record) if record else None
     configuration = (catalogue.configuration(site) if catalogue else
                      load_config(config_file=str(root/checkpoint['config']['path']), site_dir=str(site)))
+    policy = module(shared/'security/csp.py')
+    interactive = importlib.import_module(policy.embedded_module().__package__ + '.interactive_rendering')
+    interactive_owner = interactive.configured_owner(configuration)
     require(configuration.site_url == checkpoint['site_url'], 'Producer: actual config site URL differs')
     require(identity.renderer(configuration,catalogue) == build_receipt['renderer'], 'Producer: publication must use actual trusted renderer environment, never receipt executable')
     parent = root/'artifacts/website-security/producer-reconstruction';parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=parent) as scratch:
         prepared = prepare(root, record['configuration']['path'] if record else checkpoint['config']['path'], shared, Path(material.__file__).parent/'templates', Path(scratch)/'site', site, publication_scope=True, source_recipe=source_recipe,
-                           reader_owner=Path(csp_receipt["embedded"]["descriptor_path"]).relative_to(root).as_posix() if csp_receipt.get("embedded") else None)
+                           reader_owner=Path(csp_receipt["embedded"]["descriptor_path"]).relative_to(root).as_posix() if csp_receipt.get("embedded") and interactive_owner is None else None,
+                           interactive_report_owner=interactive_owner)
         require(prepared.config_sha == build_receipt['resolved_config_sha256'], 'Producer: resolved config differs from independent actual renderer')
         report = verify(site, prepared, build_receipt['renderer'], csp_receipt, checkpoint['site_url'], completed_build=build_receipt, checkpoint=checkpoint)
         identity.verify_source(root, checkpoint)

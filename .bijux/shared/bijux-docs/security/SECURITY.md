@@ -123,6 +123,58 @@ Ordinary user-followed anchors remain navigation. This capability preserves the
 existing interactive report contract and does not qualify reader discovery,
 provider behaviour, a hosted renderer or publication by itself.
 
+Interactive source-owned reports use a separate typed adapter. Their authored
+configuration must declare a bounded committed descriptor:
+
+```yaml
+extra:
+  bijux:
+    interactive_report_owner: ops/website/report-owner.json
+```
+
+Select the same path explicitly when invoking the canonical renderer:
+
+```sh
+python .bijux/shared/bijux-docs/security/render_publication.py \
+  --config mkdocs.yml --site-dir artifacts/docs/site \
+  --interactive-report-owner ops/website/report-owner.json
+```
+
+The CLI has no automatic interactive environment selector. Existing passive
+`--reader-owner` selection remains zero-executable; mixed selectors reject.
+A configured interactive owner without its explicit renderer selector also
+rejects. Normal shared Make wrappers do not automatically enable this adapter.
+
+The supported `owned-embedded-reports.v1` descriptor has exact configuration,
+producer, report, parent and reader-purpose source pointers. It requires at least
+one explicitly classified interactive report, and may include independently
+validated static readers. Every inline body must reproduce a reviewed committed
+finite template/expansion/JSON or literal recipe. Resources bind their source,
+exact output path, digest, size and reviewed kind; registration payload decoding
+retains its finite budget. Provider origins and actual finite calls must agree,
+and each provider needs real owner purpose, activation, attribution and terms
+decisions. A descriptor with unresolved decisions is rejected, not approved by
+this adapter. It never executes a product generator, science workflow or provider
+request to manufacture source ownership.
+
+Both selected and independent reference renders apply the same reviewed
+composition. Typed in-process verification rederives current source, useful
+Return/Search routes, CSP capabilities and executable bodies; serialized receipts
+and mutable scope fields cannot grant another class or body. Publication
+reconstruction independently reads the selector from the actual committed
+configuration, rather than selecting authority from a retained CSP descriptor
+path. Clean accepted source, actual producer callbacks and a production-approved
+renderer profile remain required. Local verification-only renderer profiles
+cannot be promoted by this feature. Keyboard, blocked-provider recovery,
+interaction, privacy/terms decisions, physical review and live behavior remain
+separate consumer qualifications.
+
+In-process embedded processors retain identity only for the same resolved owned
+source root and processor bytes. Independently copied roots and changed source
+cannot borrow cached processor authority. Published provenance keeps relative
+processor paths and content digests; runtime module namespaces do not become
+public bundle inputs.
+
 A descriptor may bind `reader_purpose` to an exact tracked JSON input containing
 reviewed report titles, descriptions, documentation routes and native search
 queries. The passive report receives reversible Return and Search links; the
