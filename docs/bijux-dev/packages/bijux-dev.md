@@ -4,7 +4,7 @@ audience: maintainers
 type: package
 status: canonical
 owner: bijux-dev-docs
-last_reviewed: 2026-07-23
+last_reviewed: 2026-10-08
 ---
 
 # bijux-dev
@@ -170,8 +170,8 @@ cargo test --locked -p bijux-dev
 
 ## Maintainer References
 
-- [Package README](../../../crates/bijux-dev/README.md)
-- [Package contracts](../../../crates/bijux-dev/docs/CONTRACTS.md)
+- [Package README](https://github.com/bijux/bijux-core/blob/main/crates/bijux-dev/README.md)
+- [Package contracts](https://github.com/bijux/bijux-core/blob/main/crates/bijux-dev/docs/CONTRACTS.md)
 - [Command Surface](../operations/command-surface.md)
 - [Repository Gates](../operations/repository-gates.md)
 - [Evidence Collection](../operations/evidence-collection.md)
