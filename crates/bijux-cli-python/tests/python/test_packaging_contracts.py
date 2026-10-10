@@ -224,7 +224,7 @@ def test_optional_dependency_groups_match_current_repo_workflows() -> None:
     ]
     assert optional["build"] == [
         "build>=1.4.0,<2.0",
-        "twine>=6.1.0,<7.0",
+        "twine>=6.1.0,<8.0",
         "maturin>=1.9.4,<2.0",
     ]
 
