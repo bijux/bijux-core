@@ -10,6 +10,13 @@ adapters. Product repositories own identity and authored content.
 extensions, ordered assets, and implementation exclusions. The configuration
 validator checks the inherited result; lists in a root configuration replace
 inherited lists. Required entries must therefore survive every root override.
+
+Website build output belongs under repository `artifacts/`. The source-layout
+validator rejects root HTML, search, sitemap, and Material's hashed runtime
+bundles. A product-owned root `assets/` directory may contain scientific
+references, fixtures, or authored frontend sources; its name alone does not
+identify generated website output. Source verification preserves these inputs.
+
 The configuration projector preserves authored additions and their ordering,
 and rejects unsupported shapes before writing either configuration file.
 

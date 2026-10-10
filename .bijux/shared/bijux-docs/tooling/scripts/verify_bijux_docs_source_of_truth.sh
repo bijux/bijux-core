@@ -19,10 +19,7 @@ verify_docs_authority "${repo_root}" "${shared_root}"
 python3 "${shared_root}/tooling/scripts/project_bijux_docs.py" "${repo_root}" "${shared_root}" --check
 python3 "${shared_root}/tooling/scripts/sync_mkdocs_hub.py" "${repo_root}" "${shared_root}" --check
 
-if [[ -d "${repo_root}/overrides" ]]; then
-  echo "ERROR: root overrides/ must not exist; use ${shared_prefix}/bijux-docs as docs source of truth" >&2
-  exit 1
-fi
+python3 "${shared_root}/tooling/quality/validate_source_layout.py" "${repo_root}"
 
 compare_required() {
   local source_rel="$1"
@@ -88,15 +85,6 @@ verify_shared_manifest_entry() {
   fi
 }
 
-assert_absent() {
-  local rel_path="$1"
-  if [[ -e "${repo_root}/${rel_path}" ]]; then
-    echo "ERROR: generated root path must not exist: ${rel_path}" >&2
-    echo "Source-only root policy keeps generated site output out of main branch." >&2
-    exit 1
-  fi
-}
-
 # shared -> docs (authoritative docs source)
 compare_required "${shared_prefix}/bijux-docs/partials/header.html" "docs/overrides/partials/header.html"
 compare_required "${shared_prefix}/bijux-docs/partials/footer.html" "docs/overrides/partials/footer.html"
@@ -119,18 +107,6 @@ compare_required "${shared_prefix}/bijux-docs/assets/bijux_logo_hq.png" "docs/as
 compare_required "${shared_prefix}/bijux-docs/assets/site-icons/favicon.ico" "docs/assets/site-icons/favicon.ico"
 compare_required "${shared_prefix}/bijux-docs/assets/site-icons/apple-touch-icon.png" "docs/assets/site-icons/apple-touch-icon.png"
 compare_required "${shared_prefix}/bijux-docs/assets/site-icons/apple-touch-icon-precomposed.png" "docs/assets/site-icons/apple-touch-icon-precomposed.png"
-
-# root must stay source-only
-assert_absent "assets"
-assert_absent "404.html"
-assert_absent "index.html"
-assert_absent "learning"
-assert_absent "platform"
-assert_absent "projects"
-assert_absent "reading-paths"
-assert_absent "search"
-assert_absent "sitemap.xml"
-assert_absent "sitemap.xml.gz"
 
 # shared directory SHA contract
 local_manifest="${repo_root}/${shared_prefix}/shared-dir-sha256.txt"
