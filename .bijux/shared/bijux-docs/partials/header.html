@@ -60,10 +60,11 @@
 {% endfor %}
 <header class="{{ class }}" data-md-component="header" data-bijux-nav-mode="{{ nav_mode }}" data-bijux-theme-key="{{ theme_key }}" data-bijux-phone-nav="drawer" data-bijux-phone-compact="true" data-bijux-drawer-target="{{ drawer_control_id }}" data-bijux-header-contract="{{ header_contract }}" data-bijux-header-site-mode="{{ header_site_mode }}" data-bijux-active-repository="{{ active_repository if active_repository else "unknown" }}">
   <nav class="md-header__inner md-grid" aria-label="{{ lang.t('header') }}">
+    <label class="bijux-native-drawer-label" for="{{ drawer_control_id }}">{{ lang.t('nav') }}</label>
     <a href="{{ config.extra.homepage | d(nav.homepage.url, true) | url }}" title="{{ config.site_name | e }}" class="md-header__button md-logo" aria-label="{{ config.site_name }}" data-bijux-header-zone="brand" data-md-component="logo">
       {% include "partials/logo.html" %}
     </a>
-    <label class="md-header__button md-icon" for="{{ drawer_control_id }}" role="button" tabindex="0" aria-controls="{{ drawer_control_id }}" aria-label="{{ drawer_control_label }}" title="{{ drawer_control_label }}" aria-haspopup="true" data-bijux-header-zone="primary-control" data-bijux-header-control="drawer-toggle" data-bijux-control-target="{{ drawer_control_id }}" data-bijux-hit-area="primary" data-bijux-phone-compact="keep">
+    <label class="md-header__button md-icon" role="button" tabindex="0" aria-controls="{{ drawer_control_id }}" aria-label="{{ drawer_control_label }}" title="{{ drawer_control_label }}" aria-haspopup="true" data-bijux-header-zone="primary-control" data-bijux-header-control="drawer-toggle" data-bijux-control-target="{{ drawer_control_id }}" data-bijux-hit-area="primary" data-bijux-phone-compact="keep">
       {% set icon = config.theme.icon.menu or "material/menu" %}
       {% include ".icons/" ~ icon ~ ".svg" %}
       <span class="md-visually-hidden">{{ drawer_control_label }}</span>
@@ -85,19 +86,25 @@
     {% if hub_links %}
       {# Keep hub strip in header; responsive CSS controls visibility by viewport profile. #}
       <nav class="bijux-hub-strip" aria-label="Bijux sites" data-bijux-row-scope="{{ desktop_normal_row_scope }}" data-bijux-desktop-normal-only="true" data-bijux-phone-compact="hide">
-        <ul class="bijux-tabs__list bijux-tabs__list--hub">
+        <button type="button" class="bijux-registry-scroll" data-bijux-registry-scroll="previous" aria-label="Scroll Bijux sites backward" aria-controls="bijux-registry-links" hidden>
+          {% include ".icons/material/chevron-left.svg" %}
+        </button>
+        <ul id="bijux-registry-links" class="bijux-tabs__list bijux-tabs__list--hub">
           {% for entry in hub_links %}
             {% set item_class = "bijux-tabs__item" %}
             {% set current = "" %}
             {% if entry.key == active_repository %}
               {% set item_class = item_class ~ " bijux-tabs__item--active" %}
-              {% set current = 'aria-current="page"' %}
+              {% set current = 'aria-current="location"' %}
             {% endif %}
             <li class="{{ item_class }}">
               <a href="{{ entry.url }}" class="bijux-tabs__link bijux-tabs__link--hub" {{ current }}>{{ entry.label }}</a>
             </li>
           {% endfor %}
         </ul>
+        <button type="button" class="bijux-registry-scroll" data-bijux-registry-scroll="next" aria-label="Scroll Bijux sites forward" aria-controls="bijux-registry-links" hidden>
+          {% include ".icons/material/chevron-right.svg" %}
+        </button>
       </nav>
     {% endif %}
     <div class="bijux-header-tools" data-bijux-header-zone="tools">
@@ -135,7 +142,7 @@
           {% set current = "" %}
           {% if nav_item.active %}
             {% set item_class = item_class ~ " md-tabs__item--active bijux-tabs__item--active" %}
-            {% set current = 'aria-current="page"' %}
+            {% set current = 'aria-current="location"' %}
           {% endif %}
           <li class="{{ item_class }}">
             <a href="{{ bijux_nav.first_page_url(nav_item) }}" class="md-tabs__link bijux-tabs__link bijux-tabs__link--site" data-bijux-site-path="{{ bijux_nav.first_page_path(nav_item) | trim }}" {{ current }}>
@@ -203,7 +210,7 @@
               {% set current = "" %}
               {% if nav_item.active and not detail_active.has_child_active %}
                 {% set item_class = item_class ~ " bijux-tabs__item--active" %}
-                {% set current = 'aria-current="page"' %}
+                {% set current = 'aria-current="location"' %}
               {% endif %}
               <li class="{{ item_class }}">
                 <a href="{{ bijux_nav.first_page_url(nav_item) }}" class="bijux-tabs__link bijux-tabs__link--detail" data-bijux-detail-path="{{ bijux_nav.first_page_path(nav_item) | trim }}" {{ current }}>Home</a>
@@ -214,7 +221,7 @@
               {% set current = "" %}
               {% if nav_item.active and child.active %}
                 {% set item_class = item_class ~ " bijux-tabs__item--active" %}
-                {% set current = 'aria-current="page"' %}
+                {% set current = 'aria-current="location"' %}
               {% endif %}
               <li class="{{ item_class }}">
                 <a href="{{ bijux_nav.first_page_url(child) }}" class="bijux-tabs__link bijux-tabs__link--detail" data-bijux-detail-path="{{ bijux_nav.first_page_path(child) | trim }}" {{ current }}>{{ bijux_nav.detail_label(child) }}</a>
@@ -223,95 +230,6 @@
           </ul>
         </div>
       </nav>
-    {% endif %}
-  {% endfor %}
-  {% for nav_item in nav %}
-    {% set detail_source = nav_item.children if nav_item.children else [] %}
-    {% set promoted_home_wrapper = false %}
-    {% set program_index = loop.index %}
-    {% if nav_item.children %}
-      {% set promoted_home_wrapper = not allow_flattened_detail_rows and nav_item.children | length == 1 and nav_item.children[0].title == "Home" and nav_item.children[0].children %}
-      {% set detail_source = nav_item.children[0].children if promoted_home_wrapper else nav_item.children %}
-      {% for course_item in detail_source %}
-        {% set course_detail_items = namespace(list=[]) %}
-        {% if course_item.children %}
-          {% set course_root_path = bijux_nav.first_page_path(course_item) | trim %}
-          {% for child in course_item.children %}
-            {% set child_src_uri = child.file.src_uri if child.file else "" %}
-            {% set child_is_index = child.is_index or child_src_uri.endswith('/index.md') or child_src_uri == 'index.md' %}
-            {% set child_path = bijux_nav.first_page_path(child) | trim %}
-            {% if allow_flattened_detail_rows %}
-              {% set _ = course_detail_items.list.append(child) %}
-            {% elif child.children or (child_is_index and child_path != course_root_path) %}
-              {% set _ = course_detail_items.list.append(child) %}
-            {% endif %}
-          {% endfor %}
-        {% endif %}
-        {% set show_course_home = not allow_flattened_detail_rows and course_detail_items.list %}
-        {% set course_active_item = namespace(has_child_active=false) %}
-        {% if course_detail_items.list %}
-          {% for child in course_detail_items.list %}
-            {% set child_active = child.active or (current_page and child.pages and current_page in child.pages) %}
-            {% if child_active %}
-              {% set course_active_item.has_child_active = true %}
-            {% endif %}
-          {% endfor %}
-        {% endif %}
-        {% if course_item.children and course_detail_items.list and (allow_flattened_detail_rows and course_detail_items.list | length > 1 or (not allow_flattened_detail_rows and course_detail_items.list | length > 0)) %}
-          {% set course_active = course_item.active or (current_page and course_item.pages and current_page in course_item.pages) %}
-          {% set is_hidden = "" if nav_item.active and course_active else "hidden" %}
-          <nav class="bijux-detail-tabs bijux-course-tabs" aria-label="{{ course_item.title }} course sections" data-bijux-nav-row="course" data-bijux-row-scope="{{ desktop_normal_row_scope }}" data-bijux-desktop-normal-only="true" data-bijux-phone-compact="hide" data-bijux-course-strip data-bijux-course-root-path="{{ bijux_nav.first_page_path(course_item) | trim }}" data-bijux-course-title="{{ course_item.title }}" {{ is_hidden }}>
-            <div class="md-grid">
-              <div class="bijux-detail-select-wrap" data-bijux-row-scope="{{ desktop_normal_row_scope }}" data-bijux-desktop-normal-only="true" data-bijux-phone-compact="hide" data-bijux-compact-control="{{ compact_control_band }}">
-                <label class="bijux-detail-select-label" for="bijux-detail-select-course-{{ program_index }}-{{ loop.index }}">Section</label>
-                <select class="bijux-detail-select" id="bijux-detail-select-course-{{ program_index }}-{{ loop.index }}" data-bijux-row-scope="{{ desktop_normal_row_scope }}" data-bijux-desktop-normal-only="true" data-bijux-phone-compact="hide" data-bijux-detail-select data-bijux-compact-control="{{ compact_control_band }}">
-                  {% if show_course_home %}
-                    {% set option_selected = "selected" if course_active and not course_active_item.has_child_active else "" %}
-                    <option value="{{ bijux_nav.first_page_url(course_item) }}" data-bijux-course-path="{{ bijux_nav.first_page_path(course_item) | trim }}" {{ option_selected }}>
-                      Home
-                    </option>
-                  {% endif %}
-                  {% for child in course_detail_items.list %}
-                    {% set option_selected = "" %}
-                    {% set child_active = child.active or (current_page and child.pages and current_page in child.pages) %}
-                    {% if course_active and child_active %}
-                      {% set option_selected = "selected" %}
-                    {% endif %}
-                    <option value="{{ bijux_nav.first_page_url(child) }}" data-bijux-course-path="{{ bijux_nav.first_page_path(child) | trim }}" {{ option_selected }}>
-                      {{ bijux_nav.detail_label(child) }}
-                    </option>
-                  {% endfor %}
-                </select>
-              </div>
-              <ul class="bijux-tabs__list bijux-tabs__list--detail bijux-tabs__list--course">
-                {% if show_course_home %}
-                  {% set item_class = "bijux-tabs__item" %}
-                  {% set current = "" %}
-                  {% if course_active and not course_active_item.has_child_active %}
-                    {% set item_class = item_class ~ " bijux-tabs__item--active" %}
-                    {% set current = 'aria-current="page"' %}
-                  {% endif %}
-                  <li class="{{ item_class }}">
-                    <a href="{{ bijux_nav.first_page_url(course_item) }}" class="bijux-tabs__link bijux-tabs__link--detail bijux-tabs__link--course" data-bijux-course-path="{{ bijux_nav.first_page_path(course_item) | trim }}" {{ current }}>Home</a>
-                  </li>
-                {% endif %}
-                {% for child in course_detail_items.list %}
-                  {% set item_class = "bijux-tabs__item" %}
-                  {% set current = "" %}
-                  {% set child_active = child.active or (current_page and child.pages and current_page in child.pages) %}
-                  {% if course_active and child_active %}
-                    {% set item_class = item_class ~ " bijux-tabs__item--active" %}
-                    {% set current = 'aria-current="page"' %}
-                  {% endif %}
-                  <li class="{{ item_class }}">
-                    <a href="{{ bijux_nav.first_page_url(child) }}" class="bijux-tabs__link bijux-tabs__link--detail bijux-tabs__link--course" data-bijux-course-path="{{ bijux_nav.first_page_path(child) | trim }}" {{ current }}>{{ bijux_nav.detail_label(child) }}</a>
-                  </li>
-                {% endfor %}
-              </ul>
-            </div>
-          </nav>
-        {% endif %}
-      {% endfor %}
     {% endif %}
   {% endfor %}
 </header>

@@ -1,0 +1,255 @@
+name: automerge-pr
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review, labeled, unlabeled]
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  enable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Enable auto-merge when CODEOWNERS approval is present
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            let pullNumber = null;
+            if (context.payload.pull_request && context.payload.pull_request.number) {
+              pullNumber = context.payload.pull_request.number;
+            }
+            if (!pullNumber && context.payload.check_suite && Array.isArray(context.payload.check_suite.pull_requests)) {
+              const suitePullRequests = context.payload.check_suite.pull_requests;
+              if (suitePullRequests.length > 0 && suitePullRequests[0] && suitePullRequests[0].number) {
+                pullNumber = suitePullRequests[0].number;
+              }
+            }
+
+            if (!pullNumber) {
+              core.info("No pull request number found in event payload; skipping.");
+              return;
+            }
+
+            const prResponse = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pullNumber,
+            });
+            const pr = prResponse.data;
+
+            if (pr.state !== "open" || pr.draft) {
+              core.info("PR is not eligible for auto-merge enablement.");
+              return;
+            }
+
+            if (pr.labels.some((label) => label.name === "no-automerge")) {
+              core.info("PR has no-automerge label; skipping.");
+              return;
+            }
+            if (!pr.labels.some((label) => label.name === "automerge")) {
+              core.info("PR is missing automerge label; skipping.");
+              return;
+            }
+
+            const repoFullName = `${context.repo.owner}/${context.repo.repo}`;
+            if (pr.head.repo.full_name !== repoFullName) {
+              core.info("PR head is from a fork; skipping auto-merge enablement.");
+              return;
+            }
+
+            const changedFiles = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+            const changedPaths = changedFiles.map((file) => file.filename);
+            const startsWithAny = (path, prefixes) => prefixes.some((prefix) => path.startsWith(prefix));
+
+            const protectedExactPaths = new Set([
+              ".github/CODEOWNERS",
+              "CODEOWNERS",
+              ".github/standards/repo-config.manifest.json",
+              ".github/docs-deploy.env",
+            ]);
+            const protectedPrefixes = [
+              ".github/workflows/",
+              ".github/scripts/",
+              ".github/rulesets/",
+              ".github/standards/",
+            ];
+            const releaseSensitivePrefixes = [
+              ".github/workflows/release-",
+              "ops/release/",
+              "release/",
+            ];
+            const safeBotExactPaths = new Set([
+              "Cargo.lock",
+              "package-lock.json",
+              "uv.lock",
+              ".github/dependabot.yml",
+              "dependabot.yml",
+              ".github/bijux-std-shared.sha256",
+            ]);
+            const safeBotPrefixes = [
+              ".bijux/shared/",
+              ".bijux/checks.consumer.json",
+              ".github/bijux-std-shared.sha256",
+            ];
+
+            const touchesProtectedGovernance = changedPaths.some((path) =>
+              protectedExactPaths.has(path) || startsWithAny(path, protectedPrefixes),
+            );
+            const touchesReleaseSensitive = changedPaths.some((path) =>
+              startsWithAny(path, releaseSensitivePrefixes),
+            );
+            const allPathsSafeForBotAutomerge = changedPaths.length > 0 && changedPaths.every((path) =>
+              safeBotExactPaths.has(path) || startsWithAny(path, safeBotPrefixes),
+            );
+
+            const trustedBotAuthors = new Set([
+              "dependabot[bot]",
+              "@dependabot[bot]",
+              "renovate[bot]",
+              "github-actions[bot]",
+              "@github-actions[bot]",
+            ]);
+            const authorLogin = (pr.user && pr.user.login ? pr.user.login : "").toLowerCase();
+            const authorIsTrustedBot = trustedBotAuthors.has(authorLogin);
+
+            let prClass = "product";
+            if (touchesProtectedGovernance || touchesReleaseSensitive) {
+              prClass = "protected-governance";
+            } else if (authorIsTrustedBot && allPathsSafeForBotAutomerge) {
+              prClass = "safe-bot";
+            }
+            core.info(`PR #${pr.number} classified as '${prClass}'.`);
+
+            if (prClass !== "safe-bot") {
+              core.info("Only safe-bot PRs are eligible for automerge; skipping.");
+              return;
+            }
+            if (pr.mergeable_state === "behind") {
+              core.info("PR branch is behind base; skipping auto-merge enablement.");
+              return;
+            }
+
+            const allowedAssociations = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+
+            const latestByReviewer = new Map();
+            for (const review of reviews) {
+              if (!review.user || !review.user.login) {
+                continue;
+              }
+              const previous = latestByReviewer.get(review.user.login);
+              if (!previous) {
+                latestByReviewer.set(review.user.login, review);
+                continue;
+              }
+              const previousAt = new Date(previous.submitted_at || 0).getTime();
+              const currentAt = new Date(review.submitted_at || 0).getTime();
+              if (currentAt >= previousAt) {
+                latestByReviewer.set(review.user.login, review);
+              }
+            }
+
+            const trustedApprovals = Array.from(latestByReviewer.values()).filter((review) =>
+              review.state === "APPROVED" &&
+              allowedAssociations.has(review.author_association) &&
+              review.commit_id === pr.head.sha,
+            );
+
+            const codeownersPath = ".github/CODEOWNERS";
+            let codeownersContent = "";
+            try {
+              const codeownersResponse = await github.rest.repos.getContent({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                path: codeownersPath,
+                ref: pr.base.ref,
+              });
+              const payload = codeownersResponse.data;
+              if (!("content" in payload) || payload.type !== "file") {
+                core.info("CODEOWNERS file is not a plain file; skipping auto-merge enablement.");
+                return;
+              }
+              codeownersContent = Buffer.from(payload.content, "base64").toString("utf8");
+            } catch (error) {
+              core.info(`Unable to load ${codeownersPath}; skipping auto-merge enablement: ${error.message}`);
+              return;
+            }
+
+            const codeownerUsers = new Set();
+            for (const rawLine of codeownersContent.split(/\r?\n/)) {
+              const line = rawLine.trim();
+              if (!line || line.startsWith("#")) {
+                continue;
+              }
+              const tokens = line.split(/\s+/).slice(1);
+              for (const token of tokens) {
+                if (token.startsWith("@") && !token.includes("/")) {
+                  codeownerUsers.add(token.slice(1).toLowerCase());
+                }
+              }
+            }
+
+            const hasCodeownerApproval = trustedApprovals.some((review) =>
+              review.user && review.user.login && codeownerUsers.has(review.user.login.toLowerCase()),
+            );
+
+            const prAuthorLoginForCodeowner = (pr.user && pr.user.login ? pr.user.login : "").toLowerCase();
+            const authorIsTrustedCodeowner = Boolean(
+              prAuthorLoginForCodeowner &&
+              codeownerUsers.has(prAuthorLoginForCodeowner) &&
+              allowedAssociations.has(pr.author_association),
+            );
+
+            const hasTrustedCodeownerApproval = hasCodeownerApproval || authorIsTrustedCodeowner;
+            if (!hasTrustedCodeownerApproval) {
+              if (trustedApprovals.length === 0) {
+                core.info("No trusted approval present yet; skipping auto-merge enablement.");
+              } else {
+                core.info("Trusted approvals found, but none from CODEOWNERS users; skipping auto-merge enablement.");
+              }
+              return;
+            }
+
+            if (pr.auto_merge) {
+              core.info(`Auto-merge already enabled for #${pr.number}.`);
+              return;
+            }
+
+            try {
+              await github.graphql(
+                `mutation EnablePullRequestAutoMerge($pullRequestId: ID!) {
+                  enablePullRequestAutoMerge(
+                    input: { pullRequestId: $pullRequestId, mergeMethod: SQUASH }
+                  ) {
+                    pullRequest {
+                      number
+                    }
+                  }
+                }`,
+                { pullRequestId: pr.node_id },
+              );
+              core.info(`Auto-merge enabled for #${pr.number}.`);
+            } catch (error) {
+              const message = String(error.message || error);
+              if (message.includes("in unstable status")) {
+                core.info(`PR #${pr.number} is still unstable; will retry on later events.`);
+                return;
+              }
+
+              core.warning(`Auto-merge was not enabled for #${pr.number}: ${message}`);
+            }

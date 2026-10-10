@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "baselines": {
+    "44e9153959f98bfc27444d6b740144146ed17a77": {
+      "extra_javascript": [
+        "assets/javascripts/vendor/mermaid-11.6.0.min.js",
+        "assets/javascripts/mermaid-init.js",
+        "assets/javascripts/shell/theme-persistence.js",
+        "assets/javascripts/shell/viewport-profile.js",
+        "assets/javascripts/shell/nav-state.js",
+        "assets/javascripts/shell/detail-tabs.js",
+        "assets/javascripts/shell/nav-reveal.js",
+        "assets/javascripts/shell/bootstrap.js",
+        "assets/javascripts/navigation-sync.js",
+        "assets/javascripts/external-links.js"
+      ],
+      "source_evidence": {
+        "bijux-docs/CONTRACT.md": "897cc6251850595c63742eddf296ec70713af4d31eb8fbacdeb719aaa2a64bb4",
+        "bijux-docs/scripts/README.md": "331cbd10a5a5312389a94185e7b1c4402801b3f81f5ff758e60dd53c09124cf2",
+        "bijux-docs/tooling/scripts/sync_bijux_docs.sh": "8de12660e1549853e8d55fcd6cc5912b677058348982893e63345a54ade26a30",
+        "bijux-docs/tooling/scripts/verify_bijux_docs_source_of_truth.sh": "1747c88dc3ec111d0b2705061f3205ada4d481b7d8f32304f3b8164c0b36165e",
+        "bijux-docs/scripts/mermaid-init.js": "4e652f597bc6f5dd90ea7c7e05a010653e8578834e46909bd31609fb459ee940",
+        "bijux-docs/scripts/theme-persistence.js": "d6fa5f5fbfa7013fdfe82eeb823b9e2c87fd8d7327775e9ed956e636a446042d",
+        "bijux-docs/scripts/viewport-profile.js": "de051151e878a57253ca843cb3ac8a953e7316e952c556a29b375e9aadeaefde",
+        "bijux-docs/scripts/nav-state.js": "830cbfddbaebde27b71105d8f7ed5d608b8250b8a2f209fb8b2d90737bfbf7bc",
+        "bijux-docs/scripts/detail-tabs.js": "baf038a0ccf174af19469b5fcb3e8a3ecf4925f9cdf4146321e09c5678b789f9",
+        "bijux-docs/scripts/nav-reveal.js": "cb1bee9fe1466e82d7ba7162030fe11cb89ce53a0f0a0b1dbcab6733e8a2e3bb",
+        "bijux-docs/scripts/bootstrap.js": "63626c85f664d9360145bb4600bf6513e6c8a35a3ceda7ac1f822b17d9c9fef0",
+        "bijux-docs/scripts/nav-sync.js": "1f4e2527242ea4b7895b3e249183672a20698209735eb0b390beb9909aab6678"
+      },
+      "review": "Explicit reviewed historical plain-list migration. The old standard owns nine asset destinations, not a complete ten-entry ordering policy. The authored external-links.js predecessor is included only in this reviewed migration; it is not attributed to old shared ownership."
+    },
+    "10f073dba1d3a9617c8847d72d2bf62bdf7e996d": {
+      "extra_javascript": [
+        "assets/javascripts/vendor/mermaid-11.6.0.min.js",
+        "assets/javascripts/mermaid-init.js",
+        "assets/javascripts/shell/theme-persistence.js",
+        "assets/javascripts/shell/viewport-profile.js",
+        "assets/javascripts/shell/nav-state.js",
+        "assets/javascripts/shell/detail-tabs.js",
+        "assets/javascripts/shell/nav-reveal.js",
+        "assets/javascripts/shell/bootstrap.js",
+        "assets/javascripts/navigation-sync.js",
+        "assets/javascripts/external-links.js"
+      ],
+      "source_evidence": {
+        "bijux-docs/CONTRACT.md": "897cc6251850595c63742eddf296ec70713af4d31eb8fbacdeb719aaa2a64bb4",
+        "bijux-docs/scripts/README.md": "331cbd10a5a5312389a94185e7b1c4402801b3f81f5ff758e60dd53c09124cf2",
+        "bijux-docs/tooling/scripts/sync_bijux_docs.sh": "8de12660e1549853e8d55fcd6cc5912b677058348982893e63345a54ade26a30",
+        "bijux-docs/tooling/scripts/verify_bijux_docs_source_of_truth.sh": "1747c88dc3ec111d0b2705061f3205ada4d481b7d8f32304f3b8164c0b36165e",
+        "bijux-docs/scripts/mermaid-init.js": "4e652f597bc6f5dd90ea7c7e05a010653e8578834e46909bd31609fb459ee940",
+        "bijux-docs/scripts/theme-persistence.js": "d6fa5f5fbfa7013fdfe82eeb823b9e2c87fd8d7327775e9ed956e636a446042d",
+        "bijux-docs/scripts/viewport-profile.js": "de051151e878a57253ca843cb3ac8a953e7316e952c556a29b375e9aadeaefde",
+        "bijux-docs/scripts/nav-state.js": "830cbfddbaebde27b71105d8f7ed5d608b8250b8a2f209fb8b2d90737bfbf7bc",
+        "bijux-docs/scripts/detail-tabs.js": "baf038a0ccf174af19469b5fcb3e8a3ecf4925f9cdf4146321e09c5678b789f9",
+        "bijux-docs/scripts/nav-reveal.js": "cb1bee9fe1466e82d7ba7162030fe11cb89ce53a0f0a0b1dbcab6733e8a2e3bb",
+        "bijux-docs/scripts/bootstrap.js": "63626c85f664d9360145bb4600bf6513e6c8a35a3ceda7ac1f822b17d9c9fef0",
+        "bijux-docs/scripts/nav-sync.js": "1f4e2527242ea4b7895b3e249183672a20698209735eb0b390beb9909aab6678"
+      },
+      "review": "Explicit reviewed historical plain-list migration from exact 10f source. Twelve predecessor source hashes prove nine shared asset destinations. The authored external-links.js entry belongs only to this reviewed list and is not attributed to prior shared ownership; authored execution changes remain protected."
+    }
+  }
+}

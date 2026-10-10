@@ -6,7 +6,16 @@ import os
 import shlex
 import subprocess
 from pathlib import Path
+from types import ModuleType
 from typing import Any
+
+# Bootstrap only the adjacent finite package loader from its captured source bytes.
+_POLICY_LOADER_PATH = Path(__file__).resolve().with_name("workflow_execution") / "source_loading.py"
+_POLICY_LOADER_SOURCE = _POLICY_LOADER_PATH.read_bytes()
+_POLICY_LOADER = ModuleType("bijux_workflow_source_loading")
+_POLICY_LOADER.__file__ = str(_POLICY_LOADER_PATH)
+exec(compile(_POLICY_LOADER_SOURCE, str(_POLICY_LOADER_PATH), "exec"), _POLICY_LOADER.__dict__)
+WORKFLOW_EXECUTION = _POLICY_LOADER.load_package(_POLICY_LOADER_SOURCE)
 
 ROOT = Path(__file__).resolve().parents[3]
 SCRIPT_REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -249,11 +258,22 @@ def parse_text(path: Path) -> str | None:
 
 def main() -> None:
     inventory = load_workflow_inventory()
+    existing_path = STD_REPO / ".github/standards/repo-config.manifest.json"
+    existing = json.loads(existing_path.read_text(encoding="utf-8")) if existing_path.exists() else {"repositories": []}
+    # Reviewed policy is canonical configuration; consumer workflow bytes never select it.
+    existing_names = [entry["name"] for entry in existing["repositories"]]
+    retained = WORKFLOW_EXECUTION.validate_manifest(existing, existing_names)
+    for name, policy in retained.items():
+        if policy is not None and name not in MANAGED_REPOSITORIES:
+            raise ValueError(f"reviewed workflow policy belongs to unmanaged repository: {name}")
+    WORKFLOW_EXECUTION.validate_inventory(inventory)
     manifest: dict = {"version": 2, "workflow_inventory": inventory, "repositories": []}
 
     for repo_name in MANAGED_REPOSITORIES:
         repo_path = resolve_repository_checkout(repo_name)
         repo_entry: dict = {"name": repo_name}
+        if retained.get(repo_name) is not None:
+            repo_entry["workflow_execution_policy"] = retained[repo_name]
         release_env = parse_release_env(repo_path / ".github/release.env")
         repo_entry["release_env"] = release_env
 
@@ -280,7 +300,8 @@ def main() -> None:
 
         manifest["repositories"].append(repo_entry)
 
-    out_path = ROOT / "bijux-std/.github/standards/repo-config.manifest.json"
+    WORKFLOW_EXECUTION.validate_manifest(manifest, MANAGED_REPOSITORIES)
+    out_path = STD_REPO / ".github/standards/repo-config.manifest.json"
     out_path.write_text(json.dumps(manifest, indent=2, sort_keys=False) + "\n", encoding="utf-8")
 
 

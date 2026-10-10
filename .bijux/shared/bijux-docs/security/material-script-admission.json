@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "distribution": "mkdocs-material",
+  "version": "9.7.7",
+  "templates": [
+    {
+      "path": "partials/javascripts/announce.html",
+      "sha256": "fbc798036968edbf0b7a35cff569cdf058eb131738ff7b8108281908affac0a6",
+      "static_script_bodies": [
+        "var el=document.querySelector(\"[data-md-component=announce]\");if(el){var content=el.querySelector(\".md-typeset\");__md_hash(content.innerHTML)===__md_get(\"__announce\")&&(el.hidden=!0)}"
+      ]
+    },
+    {
+      "path": "partials/javascripts/base.html",
+      "sha256": "d6113712bc4deb30b4bd810ee0dfc28b6f04d2f88cc0016c0f1766eac7b762b6",
+      "static_script_bodies": []
+    },
+    {
+      "path": "partials/javascripts/consent.html",
+      "sha256": "6dc38ea451a27ffd6cf929c13f8b3eb68b44cc602145f99a6cc395a07c5638ab",
+      "static_script_bodies": [
+        "var consent=__md_get(\"__consent\");if(consent)for(var input of document.forms.consent.elements)input.name&&(input.checked=consent[input.name]||!1);else\"file:\"!==location.protocol&&setTimeout((function(){document.querySelector(\"[data-md-component=consent]\").hidden=!1}),250);var form=document.forms.consent;for(var action of[\"submit\",\"reset\"])form.addEventListener(action,(function(e){if(e.preventDefault(),\"reset\"===e.type)for(var n of document.forms.consent.elements)n.name&&(n.checked=!1);__md_set(\"__consent\",Object.fromEntries(Array.from(new FormData(form).keys()).map((function(e){return[e,!0]})))),location.hash=\"\",location.reload()}))"
+      ]
+    },
+    {
+      "path": "partials/javascripts/content.html",
+      "sha256": "3722e156f0f6339de39fbbfc178b6e401d1a4fb890f189ac5b80c2504bda7dcf",
+      "static_script_bodies": [
+        "var tabs=__md_get(\"__tabs\");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(\".tabbed-set\")){var labels=set.querySelector(\".tabbed-labels\");for(var tab of tabs)for(var label of labels.getElementsByTagName(\"label\"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}",
+        "var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith(\"__tabbed_\"))"
+      ]
+    },
+    {
+      "path": "partials/javascripts/outdated.html",
+      "sha256": "13165dec361fce13130f73f747aab982f7e1979608c061e5953b10286abc7447",
+      "static_script_bodies": []
+    },
+    {
+      "path": "partials/javascripts/palette.html",
+      "sha256": "8790389765ea6036effddba548b15093bb05bdc75624eaeaf8b13f3c24be4ab5",
+      "static_script_bodies": [
+        "var palette=__md_get(\"__palette\");if(palette&&palette.color){if(\"(prefers-color-scheme)\"===palette.color.media){var media=matchMedia(\"(prefers-color-scheme: light)\"),input=document.querySelector(media.matches?\"[data-md-color-media='(prefers-color-scheme: light)']\":\"[data-md-color-media='(prefers-color-scheme: dark)']\");palette.color.media=input.getAttribute(\"data-md-color-media\"),palette.color.scheme=input.getAttribute(\"data-md-color-scheme\"),palette.color.primary=input.getAttribute(\"data-md-color-primary\"),palette.color.accent=input.getAttribute(\"data-md-color-accent\")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute(\"data-md-color-\"+key,value)}"
+      ]
+    }
+  ],
+  "source": "Official installed9.7.7 distribution; static inline bodies and complete script partial fingerprints reviewed as canonical admission. Dynamic bodies require source-derived contracts.",
+  "license": {
+    "name": "MIT",
+    "notice": "tooling/material/UPSTREAM-LICENSE.txt",
+    "sha256": "e1150f26b4c0f872627b39fda49ae3bd850304f2f7f3171ae0531c1f8f4dd078"
+  }
+}

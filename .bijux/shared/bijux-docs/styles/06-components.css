@@ -263,11 +263,17 @@
   background: transparent;
 }
 
+/* Footer destinations remain above the sticky sidebar's transparent hit surface. */
+.md-footer {
+  position: relative;
+  z-index: 1;
+}
+
 .md-footer__inner.bijux-footer-nav {
   align-items: center;
-  background: transparent !important;
+  background: transparent;
   box-shadow: none;
-  display: grid !important;
+  display: grid;
   gap: 0.8rem;
   grid-template-areas: "prev center next";
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -278,13 +284,13 @@
 .md-footer__inner.bijux-footer-nav .md-footer__link--prev {
   grid-area: prev;
   justify-self: start;
-  margin: 0 !important;
+  margin: 0;
 }
 
 .md-footer__inner.bijux-footer-nav .md-footer__link--next {
   grid-area: next;
   justify-self: end;
-  margin: 0 !important;
+  margin: 0;
 }
 
 .bijux-footer-nav-spacer {
@@ -326,6 +332,7 @@
 }
 
 .md-footer__inner.bijux-footer-nav .md-footer__direction {
+  opacity: 1;
   color: var(--bijux-muted);
   font-size: 0.78rem;
   letter-spacing: 0.01em;
@@ -382,6 +389,16 @@
   justify-content: center;
   transition: background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
   width: 1.7rem;
+  position: relative;
+}
+
+/* Out-of-flow indications preserve the icon link's established hit area. */
+.bijux-footer-strip__links a > [data-bijux-link-indication] {
+  position: absolute;
+  inset-block-start: 2px;
+  inset-inline-end: 2px;
+  font-size: 0.4em;
+  line-height: 1;
 }
 
 .bijux-footer-strip__links a:hover {
@@ -430,6 +447,16 @@
   .bijux-footer-center,
   .bijux-footer-nav-spacer {
     justify-self: stretch;
+  }
+
+  /* Stacked reader destinations retain their direction and full available width. */
+  .md-footer__inner.bijux-footer-nav .md-footer__link {
+    max-width: 100%;
+  }
+
+  .md-footer__inner.bijux-footer-nav .md-footer__title {
+    display: block;
+    overflow-wrap: anywhere;
   }
 
   .bijux-footer-nav-spacer {
@@ -485,4 +512,16 @@
   padding: 0.9rem 1rem 1rem;
   color: var(--bijux-muted);
   font-size: 0.95rem;
+}
+
+/* Search scope remains visible while native results, loading and recovery change. */
+.bijux-search-scope {
+  margin: 0;
+  padding: 0.55rem 0.8rem;
+  border-block-end: 1px solid var(--md-default-fg-color--lightest);
+  background: var(--md-default-bg-color);
+  color: var(--md-default-fg-color);
+  font-size: 0.64rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }

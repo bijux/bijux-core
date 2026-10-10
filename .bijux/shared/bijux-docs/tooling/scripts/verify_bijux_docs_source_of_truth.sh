@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export PYTHONDONTWRITEBYTECODE=1
 
 repo_root="$(git rev-parse --show-toplevel)"
 if [[ -d "${repo_root}/shared/bijux-docs" ]]; then
@@ -10,6 +11,13 @@ else
   echo "ERROR: missing shared bijux docs directory (expected shared/bijux-docs or .bijux/shared/bijux-docs)" >&2
   exit 1
 fi
+
+shared_root="${repo_root}/${shared_prefix}/bijux-docs"
+# shellcheck source=shared/bijux-docs/tooling/scripts/docs_source_authority.sh
+source "${shared_root}/tooling/scripts/docs_source_authority.sh"
+verify_docs_authority "${repo_root}" "${shared_root}"
+python3 "${shared_root}/tooling/scripts/project_bijux_docs.py" "${repo_root}" "${shared_root}" --check
+python3 "${shared_root}/tooling/scripts/sync_mkdocs_hub.py" "${repo_root}" "${shared_root}" --check
 
 if [[ -d "${repo_root}/overrides" ]]; then
   echo "ERROR: root overrides/ must not exist; use ${shared_prefix}/bijux-docs as docs source of truth" >&2
@@ -97,11 +105,11 @@ compare_required "${shared_prefix}/bijux-docs/partials/nav.html" "docs/overrides
 compare_required "${shared_prefix}/bijux-docs/partials/nav-item.html" "docs/overrides/partials/nav-item.html"
 compare_required "${shared_prefix}/bijux-docs/partials/bijux-nav.html" "docs/overrides/partials/bijux-nav.html"
 
-for style in 00-tokens.css 01-theme.css 02-layout.css 03-header.css 04-nav.css 05-content.css 06-components.css 07-utilities.css 08-responsive.css extra.css README.md; do
+for style in 00-tokens.css 01-theme.css 02-layout.css 03-header.css 04-nav.css 05-content.css 06-components.css 07-utilities.css 08-responsive.css extra.css; do
   compare_required "${shared_prefix}/bijux-docs/styles/${style}" "docs/assets/styles/${style}"
 done
 
-for script in bootstrap.js detail-tabs.js nav-reveal.js nav-state.js theme-persistence.js viewport-profile.js README.md; do
+for script in bootstrap.js detail-tabs.js nav-reveal.js nav-state.js theme-persistence.js viewport-profile.js; do
   compare_required "${shared_prefix}/bijux-docs/scripts/${script}" "docs/assets/javascripts/shell/${script}"
 done
 compare_required "${shared_prefix}/bijux-docs/scripts/nav-sync.js" "docs/assets/javascripts/navigation-sync.js"
@@ -147,15 +155,21 @@ while read -r _ manifest_dir_rel; do
   local_dirs+=("${dir_rel}")
   verify_shared_manifest_entry "${local_manifest}" "${dir_rel}" "local repository" "${manifest_dir_rel}"
   manifest_entry_count=$((manifest_entry_count + 1))
-done <"${local_manifest}"
+done < <(awk 'NF' "${local_manifest}")
 
 if [[ "${manifest_entry_count}" -eq 0 ]]; then
   echo "ERROR: shared SHA manifest is empty: ${local_manifest}" >&2
   exit 1
 fi
 
-workspace_root="$(cd "${repo_root}/.." && pwd)"
-std_root="${BIJUX_STD_ROOT:-${workspace_root}/bijux-std}"
+if [[ "${BIJUX_STD_LOCAL_VERIFY:-0}" == "1" ]]; then
+  if [[ -n "${DOCS_SITE_DIR:-}" ]]; then
+    bash "${shared_root}/tooling/scripts/verify_bijux_docs_site.sh"
+  fi
+  echo "Bijux docs local candidate source-of-truth checks passed; accepted rollout was not verified"
+  exit 0
+fi
+std_root="${BIJUX_STD_ROOT}"
 std_manifest="${std_root}/shared/shared-dir-sha256.txt"
 
 if [[ -f "${std_manifest}" ]]; then
@@ -184,7 +198,12 @@ if [[ -f "${std_manifest}" ]]; then
     fi
   done
 else
-  echo "NOTE: bijux-std manifest not found at ${std_manifest}; skipped cross-repo SHA comparison"
+  echo "ERROR: accepted standard manifest is unavailable: ${std_manifest}" >&2
+  exit 1
 fi
 
-echo "Bijux docs source-of-truth checks passed"
+verify_docs_authority "${repo_root}" "${shared_root}"
+if [[ -n "${DOCS_SITE_DIR:-}" ]]; then
+  bash "${shared_root}/tooling/scripts/verify_bijux_docs_site.sh"
+fi
+echo "Bijux docs source-of-truth checks passed against exact accepted source"

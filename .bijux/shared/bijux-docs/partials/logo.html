@@ -1,0 +1,10 @@
+{% if config.theme.logo %}
+  {% if config.theme.logo == "assets/bijux_logo.png" %}
+    <img src="{{ config.theme.logo | url }}" alt="" width="48" height="48" decoding="async">
+  {% else %}
+    <img src="{{ config.theme.logo | url }}" alt="">
+  {% endif %}
+{% else %}
+  {% set icon = config.theme.icon.logo or "material/library" %}
+  {% include ".icons/" ~ icon ~ ".svg" %}
+{% endif %}

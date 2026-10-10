@@ -1,0 +1,754 @@
+{
+  "schema": 1,
+  "namespace": "--bijux-",
+  "owner": "bijux-std",
+  "external": {
+    "namespace": "--md-",
+    "owner": "mkdocs-material",
+    "provenance": "tooling/material/runtime-provenance.json",
+    "runtime_sha256": "4b099ef8b0fc29069e50781122ce83e6c955ec2a46b6537b06c856d746c6727b",
+    "runtime_examples": [
+      "--md-tooltip-x",
+      "--md-tooltip-y",
+      "--md-indicator-x",
+      "--md-indicator-width"
+    ],
+    "reason": "Material owns its CSS/runtime namespace. Shared palette declarations adapt selected colors; tooltip and indicator coordinates have actual admitted runtime setters. Properties merely consumed here, including --md-header-height with its 3rem fallback, are not invented as bijux CSS definitions."
+  },
+  "tokens": [
+    {
+      "name": "--bijux-border",
+      "purpose": "surface",
+      "description": "Subtle shared content and component separation without replacing selected or focus states.",
+      "consumer_scope": "qualified-content-theme",
+      "bindings": [
+        {
+          "file": "00-tokens.css",
+          "conditions": [],
+          "selectors": [
+            ":root"
+          ],
+          "value": "rgba(20, 32, 51, 0.12)",
+          "role": "default",
+          "reason": "Inherited canonical root default; consuming properties retain native CSS grammar."
+        },
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"slate\"]"
+          ],
+          "value": "rgba(45, 212, 191, 0.18)",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        }
+      ]
+    },
+    {
+      "name": "--bijux-card-shadow",
+      "purpose": "shadow",
+      "description": "Elevation for ordinary shared cards, notices and panels.",
+      "consumer_scope": "qualified-content-theme",
+      "bindings": [
+        {
+          "file": "00-tokens.css",
+          "conditions": [],
+          "selectors": [
+            ":root"
+          ],
+          "value": "0 18px 42px rgba(15, 23, 42, 0.08)",
+          "role": "default",
+          "reason": "Inherited canonical root default; consuming properties retain native CSS grammar."
+        },
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"slate\"]"
+          ],
+          "value": "0 24px 48px rgba(2, 6, 23, 0.38)",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        }
+      ]
+    },
+    {
+      "name": "--bijux-card-shadow-hover",
+      "purpose": "shadow",
+      "description": "Additional elevation for an actionable card hover state.",
+      "consumer_scope": "qualified-content-theme",
+      "bindings": [
+        {
+          "file": "00-tokens.css",
+          "conditions": [],
+          "selectors": [
+            ":root"
+          ],
+          "value": "0 26px 56px rgba(15, 23, 42, 0.14)",
+          "role": "default",
+          "reason": "Inherited canonical root default; consuming properties retain native CSS grammar."
+        },
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"slate\"]"
+          ],
+          "value": "0 30px 64px rgba(2, 6, 23, 0.52)",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        }
+      ]
+    },
+    {
+      "name": "--bijux-detail-bg",
+      "purpose": "surface",
+      "description": "Local-document context ribbon background.",
+      "consumer_scope": "qualified-content-theme",
+      "bindings": [
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"default\"]"
+          ],
+          "value": "rgba(255, 255, 255, 0.95)",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        },
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"slate\"]"
+          ],
+          "value": "rgba(15, 23, 42, 0.96)",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        }
+      ]
+    },
+    {
+      "name": "--bijux-detail-border",
+      "purpose": "surface",
+      "description": "Local-document context ribbon and selection border separation.",
+      "consumer_scope": "qualified-content-theme",
+      "bindings": [
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"default\"]"
+          ],
+          "value": "rgba(15, 118, 110, 0.14)",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        },
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"slate\"]"
+          ],
+          "value": "rgba(45, 212, 191, 0.18)",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        }
+      ]
+    },
+    {
+      "name": "--bijux-detail-link",
+      "purpose": "content-color",
+      "description": "Local-document context link foreground.",
+      "consumer_scope": "qualified-content-theme",
+      "bindings": [
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"default\"]"
+          ],
+          "value": "#2d4b5c",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        },
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"slate\"]"
+          ],
+          "value": "#d0f3f0",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        }
+      ]
+    },
+    {
+      "name": "--bijux-detail-link-active-bg",
+      "purpose": "surface",
+      "description": "Local-document active-link and related contextual surface tint.",
+      "consumer_scope": "qualified-content-theme",
+      "bindings": [
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"default\"]"
+          ],
+          "value": "rgba(13, 148, 136, 0.12)",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        },
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"slate\"]"
+          ],
+          "value": "rgba(13, 148, 136, 0.18)",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        }
+      ]
+    },
+    {
+      "name": "--bijux-focus-ring",
+      "purpose": "focus",
+      "description": "Visible shared keyboard focus paint, including a light indicator on saturated shell surfaces.",
+      "consumer_scope": "shared-shell-focus",
+      "bindings": [
+        {
+          "file": "00-tokens.css",
+          "conditions": [],
+          "selectors": [
+            ":root"
+          ],
+          "value": "#075985",
+          "role": "default",
+          "reason": "Inherited canonical root default; consuming properties retain native CSS grammar."
+        },
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"slate\"]"
+          ],
+          "value": "#67e8f9",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        },
+        {
+          "file": "07-utilities.css",
+          "conditions": [],
+          "selectors": [
+            ".md-header__inner",
+            ".bijux-hub-strip",
+            ".bijux-site-tabs"
+          ],
+          "value": "#fff",
+          "role": "shell-focus",
+          "reason": "Existing saturated masthead/site ribbon surfaces need adjacent light focus paint."
+        }
+      ]
+    },
+    {
+      "name": "--bijux-hub-bg",
+      "purpose": "surface",
+      "description": "Retained global-context background palette entry; current reference inventory may be empty.",
+      "consumer_scope": "qualified-content-theme",
+      "bindings": [
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"default\"]"
+          ],
+          "value": "rgba(11, 20, 34, 0.97)",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        },
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"slate\"]"
+          ],
+          "value": "rgba(8, 11, 29, 0.98)",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        }
+      ]
+    },
+    {
+      "name": "--bijux-hub-border",
+      "purpose": "surface",
+      "description": "Global-context ribbon and current-site border separation.",
+      "consumer_scope": "qualified-content-theme",
+      "bindings": [
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"default\"]"
+          ],
+          "value": "rgba(255, 255, 255, 0.12)",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        },
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"slate\"]"
+          ],
+          "value": "rgba(45, 212, 191, 0.16)",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        }
+      ]
+    },
+    {
+      "name": "--bijux-hub-link",
+      "purpose": "content-color",
+      "description": "Global-context site link foreground.",
+      "consumer_scope": "qualified-content-theme",
+      "bindings": [
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"default\"]"
+          ],
+          "value": "rgba(255, 255, 255, 0.76)",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        },
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"slate\"]"
+          ],
+          "value": "rgba(229, 231, 255, 0.82)",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        }
+      ]
+    },
+    {
+      "name": "--bijux-hub-link-active-bg",
+      "purpose": "surface",
+      "description": "Retained active global-link background palette entry; current reference inventory may be empty.",
+      "consumer_scope": "qualified-content-theme",
+      "bindings": [
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"default\"]"
+          ],
+          "value": "rgba(255, 255, 255, 0.14)",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        },
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"slate\"]"
+          ],
+          "value": "rgba(45, 212, 191, 0.16)",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        }
+      ]
+    },
+    {
+      "name": "--bijux-ink",
+      "purpose": "content-color",
+      "description": "Primary shared content foreground; remains distinct from muted and link colors.",
+      "consumer_scope": "qualified-content-theme",
+      "bindings": [
+        {
+          "file": "00-tokens.css",
+          "conditions": [],
+          "selectors": [
+            ":root"
+          ],
+          "value": "#142033",
+          "role": "default",
+          "reason": "Inherited canonical root default; consuming properties retain native CSS grammar."
+        },
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"slate\"]"
+          ],
+          "value": "#e7eef5",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        }
+      ]
+    },
+    {
+      "name": "--bijux-map-shadow",
+      "purpose": "shadow",
+      "description": "Elevation for map/media and existing showcase surfaces.",
+      "consumer_scope": "qualified-content-theme",
+      "bindings": [
+        {
+          "file": "00-tokens.css",
+          "conditions": [],
+          "selectors": [
+            ":root"
+          ],
+          "value": "0 22px 54px rgba(15, 23, 42, 0.13)",
+          "role": "default",
+          "reason": "Inherited canonical root default; consuming properties retain native CSS grammar."
+        },
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"slate\"]"
+          ],
+          "value": "0 28px 58px rgba(2, 6, 23, 0.5)",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        }
+      ]
+    },
+    {
+      "name": "--bijux-muted",
+      "purpose": "content-color",
+      "description": "Secondary labels and explanatory content foreground, including footer direction labels.",
+      "consumer_scope": "qualified-content-theme",
+      "bindings": [
+        {
+          "file": "00-tokens.css",
+          "conditions": [],
+          "selectors": [
+            ":root"
+          ],
+          "value": "#5d6c7e",
+          "role": "default",
+          "reason": "Inherited canonical root default; consuming properties retain native CSS grammar."
+        },
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"slate\"]"
+          ],
+          "value": "#b2c2cf",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        }
+      ]
+    },
+    {
+      "name": "--bijux-nav-active-shadow",
+      "purpose": "shadow",
+      "description": "Shared active navigation item elevation.",
+      "consumer_scope": "qualified-content-theme",
+      "bindings": [
+        {
+          "file": "00-tokens.css",
+          "conditions": [],
+          "selectors": [
+            ":root"
+          ],
+          "value": "0 14px 28px rgba(15, 23, 42, 0.18)",
+          "role": "default",
+          "reason": "Inherited canonical root default; consuming properties retain native CSS grammar."
+        },
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"slate\"]"
+          ],
+          "value": "0 18px 34px rgba(2, 6, 23, 0.48)",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        }
+      ]
+    },
+    {
+      "name": "--bijux-nav-indicator",
+      "purpose": "surface",
+      "description": "Existing current-navigation indicator gradient; not a scientific data series color.",
+      "consumer_scope": "qualified-content-theme",
+      "bindings": [
+        {
+          "file": "00-tokens.css",
+          "conditions": [],
+          "selectors": [
+            ":root"
+          ],
+          "value": "linear-gradient(90deg, rgba(245, 158, 11, 0.95), rgba(45, 212, 191, 0.95))",
+          "role": "default",
+          "reason": "Inherited canonical root default; consuming properties retain native CSS grammar."
+        },
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"slate\"]"
+          ],
+          "value": "linear-gradient(90deg, rgba(251, 191, 36, 0.92), rgba(103, 232, 249, 0.92))",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        }
+      ]
+    },
+    {
+      "name": "--bijux-panel",
+      "purpose": "surface",
+      "description": "Low-emphasis panel/content surface tint.",
+      "consumer_scope": "qualified-content-theme",
+      "bindings": [
+        {
+          "file": "00-tokens.css",
+          "conditions": [],
+          "selectors": [
+            ":root"
+          ],
+          "value": "rgba(13, 148, 136, 0.06)",
+          "role": "default",
+          "reason": "Inherited canonical root default; consuming properties retain native CSS grammar."
+        },
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"slate\"]"
+          ],
+          "value": "rgba(15, 118, 110, 0.14)",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        }
+      ]
+    },
+    {
+      "name": "--bijux-panel-strong",
+      "purpose": "surface",
+      "description": "Stronger panel emphasis for existing highlighted content and tree states.",
+      "consumer_scope": "qualified-content-theme",
+      "bindings": [
+        {
+          "file": "00-tokens.css",
+          "conditions": [],
+          "selectors": [
+            ":root"
+          ],
+          "value": "rgba(8, 145, 178, 0.08)",
+          "role": "default",
+          "reason": "Inherited canonical root default; consuming properties retain native CSS grammar."
+        },
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"slate\"]"
+          ],
+          "value": "rgba(8, 145, 178, 0.2)",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        }
+      ]
+    },
+    {
+      "name": "--bijux-ribbon-bg",
+      "purpose": "surface",
+      "description": "First global-site ribbon background gradient stop.",
+      "consumer_scope": "qualified-content-theme",
+      "bindings": [
+        {
+          "file": "00-tokens.css",
+          "conditions": [],
+          "selectors": [
+            ":root"
+          ],
+          "value": "#10213b",
+          "role": "default",
+          "reason": "Inherited canonical root default; consuming properties retain native CSS grammar."
+        },
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"slate\"]"
+          ],
+          "value": "#091524",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        }
+      ]
+    },
+    {
+      "name": "--bijux-ribbon-bg-strong",
+      "purpose": "surface",
+      "description": "Second global-site ribbon background gradient stop.",
+      "consumer_scope": "qualified-content-theme",
+      "bindings": [
+        {
+          "file": "00-tokens.css",
+          "conditions": [],
+          "selectors": [
+            ":root"
+          ],
+          "value": "#124e66",
+          "role": "default",
+          "reason": "Inherited canonical root default; consuming properties retain native CSS grammar."
+        },
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"slate\"]"
+          ],
+          "value": "#0f3f56",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        }
+      ]
+    },
+    {
+      "name": "--bijux-ribbon-fade",
+      "purpose": "surface",
+      "description": "Transparent ribbon edge fade matching the global ribbon palette.",
+      "consumer_scope": "qualified-content-theme",
+      "bindings": [
+        {
+          "file": "00-tokens.css",
+          "conditions": [],
+          "selectors": [
+            ":root"
+          ],
+          "value": "rgba(16, 33, 59, 0)",
+          "role": "default",
+          "reason": "Inherited canonical root default; consuming properties retain native CSS grammar."
+        },
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"slate\"]"
+          ],
+          "value": "rgba(9, 21, 36, 0)",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        }
+      ]
+    },
+    {
+      "name": "--bijux-shell-width",
+      "purpose": "geometry",
+      "description": "Effective desktop shell measure, with explicit wide and ultra viewport bindings.",
+      "consumer_scope": "qualified-content-measure",
+      "bindings": [
+        {
+          "file": "00-tokens.css",
+          "conditions": [],
+          "selectors": [
+            ":root"
+          ],
+          "value": "84rem",
+          "role": "default",
+          "reason": "Inherited canonical root default; consuming properties retain native CSS grammar."
+        },
+        {
+          "file": "08-responsive.css",
+          "conditions": [
+            "@media screen and (min-width: 90em)"
+          ],
+          "selectors": [
+            ":root"
+          ],
+          "value": "var(--bijux-shell-width-wide)",
+          "role": "responsive",
+          "reason": "Exact admitted desktop media condition selects a named shell measure."
+        },
+        {
+          "file": "08-responsive.css",
+          "conditions": [
+            "@media screen and (min-width: 110em)"
+          ],
+          "selectors": [
+            ":root"
+          ],
+          "value": "var(--bijux-shell-width-ultra)",
+          "role": "responsive",
+          "reason": "Exact admitted desktop media condition selects a named shell measure."
+        }
+      ]
+    },
+    {
+      "name": "--bijux-shell-width-ultra",
+      "purpose": "geometry",
+      "description": "Desktop shell measure selected at the admitted ultra viewport boundary.",
+      "consumer_scope": "qualified-content-measure",
+      "bindings": [
+        {
+          "file": "00-tokens.css",
+          "conditions": [],
+          "selectors": [
+            ":root"
+          ],
+          "value": "102rem",
+          "role": "default",
+          "reason": "Inherited canonical root default; consuming properties retain native CSS grammar."
+        }
+      ]
+    },
+    {
+      "name": "--bijux-shell-width-wide",
+      "purpose": "geometry",
+      "description": "Desktop shell measure selected at the admitted wide viewport boundary.",
+      "consumer_scope": "qualified-content-measure",
+      "bindings": [
+        {
+          "file": "00-tokens.css",
+          "conditions": [],
+          "selectors": [
+            ":root"
+          ],
+          "value": "92rem",
+          "role": "default",
+          "reason": "Inherited canonical root default; consuming properties retain native CSS grammar."
+        }
+      ]
+    },
+    {
+      "name": "--bijux-surface-gradient",
+      "purpose": "surface",
+      "description": "Decorative shared panel/card gradient that does not encode scientific meaning.",
+      "consumer_scope": "qualified-content-theme",
+      "bindings": [
+        {
+          "file": "00-tokens.css",
+          "conditions": [],
+          "selectors": [
+            ":root"
+          ],
+          "value": "linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0))",
+          "role": "default",
+          "reason": "Inherited canonical root default; consuming properties retain native CSS grammar."
+        },
+        {
+          "file": "01-theme.css",
+          "conditions": [],
+          "selectors": [
+            "[data-md-color-scheme=\"slate\"]"
+          ],
+          "value": "linear-gradient(180deg, rgba(30, 41, 59, 0.42), rgba(15, 23, 42, 0))",
+          "role": "palette",
+          "reason": "Exact admitted Material palette selector owns this shared theme value."
+        }
+      ]
+    }
+  ]
+}

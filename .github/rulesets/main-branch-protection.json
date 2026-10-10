@@ -5,7 +5,7 @@
   "conditions": {
     "ref_name": {
       "include": [
-        "refs/heads/main"
+        "~DEFAULT_BRANCH"
       ],
       "exclude": []
     }
@@ -36,19 +36,25 @@
         "strict_required_status_checks_policy": true,
         "required_status_checks": [
           {
-            "context": "policy / github"
+            "context": "policy / github",
+            "integration_id": 15368
           },
           {
-            "context": "policy / pr approval"
+            "context": "policy / pr approval",
+            "integration_id": 15368
           },
           {
-            "context": "std / standard"
+            "context": "std / standard",
+            "integration_id": 15368
           },
           {
-            "context": "std / report"
+            "context": "std / report",
+            "integration_id": 15368
           }
-        ]
+        ],
+        "do_not_enforce_on_create": false
       }
     }
-  ]
+  ],
+  "bypass_actors": []
 }

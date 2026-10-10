@@ -4,11 +4,13 @@ from __future__ import annotations
 import json
 import os
 import sys
-import time
 import urllib.parse
 import urllib.request
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any
+
+
+WAITING_EXTERNAL_EXIT_CODE = 75
 
 
 def require_env(name: str) -> str:
@@ -49,17 +51,13 @@ def format_run(run: dict[str, Any]) -> str:
 
 def latest_ci_run(
     runs: list[dict[str, Any]],
-    started_at: datetime,
-    lookback_seconds: int,
     target_ref_name: str,
 ) -> dict[str, Any] | None:
-    window_start = started_at - timedelta(seconds=lookback_seconds)
     candidates = [
         run
         for run in runs
         if run.get("name") == "CI"
         and run.get("event") == "push"
-        and parse_github_time(run["created_at"]) >= window_start
     ]
     if not candidates:
         return None
@@ -73,29 +71,14 @@ def latest_ci_run(
     return candidates[0]
 
 
-def run_is_current_enough(run: dict[str, Any], started_at: datetime) -> bool:
-    created_at = parse_github_time(run["created_at"])
-    updated_at = parse_github_time(run["updated_at"])
-    if created_at >= started_at:
-        return True
-    if updated_at >= started_at:
-        return True
-    return run.get("status") != "completed"
-
-
 def main() -> int:
     token = require_env("GITHUB_TOKEN")
     repository = require_env("GITHUB_REPOSITORY")
     target_sha = require_env("TARGET_SHA")
-    started_at = parse_github_time(require_env("CI_WAIT_STARTED_AT"))
     target_ref_name = os.environ.get("TARGET_REF_NAME", "").strip()
 
     api_root = os.environ.get("GITHUB_API_URL", "https://api.github.com").rstrip("/")
     workflow_file = os.environ.get("GH_RELEASE_CI_WORKFLOW_FILE", "ci.yml")
-    timeout_seconds = int(os.environ.get("GH_RELEASE_CI_WAIT_TIMEOUT_SECONDS", "1800"))
-    poll_seconds = int(os.environ.get("GH_RELEASE_CI_POLL_INTERVAL_SECONDS", "15"))
-    lookback_seconds = int(os.environ.get("GH_RELEASE_CI_LOOKBACK_SECONDS", "120"))
-    grace_seconds = int(os.environ.get("GH_RELEASE_CI_APPEARANCE_GRACE_SECONDS", "20"))
 
     url = (
         f"{api_root}/repos/{repository}/actions/workflows/"
@@ -104,49 +87,36 @@ def main() -> int:
     )
 
     print(
-        "Waiting for CI workflow to finish before release publish:",
+        "Observing CI workflow before release publish:",
         f"workflow={workflow_file}",
         f"sha={target_sha}",
-        f"timeout_seconds={timeout_seconds}",
         sep=" ",
     )
-    if grace_seconds > 0:
-        print(f"Allowing {grace_seconds}s for the CI run to appear in the Actions API.")
-        time.sleep(grace_seconds)
+    payload = github_get_json(url, token)
+    runs = payload.get("workflow_runs", [])
+    run = latest_ci_run(runs, target_ref_name)
+    if run is None:
+        print(
+            "CI run is waiting_external; invoke this observation again after the next "
+            "workflow event.",
+            file=sys.stderr,
+        )
+        return WAITING_EXTERNAL_EXIT_CODE
 
-    deadline = time.monotonic() + timeout_seconds
-    last_summary = ""
-    while time.monotonic() < deadline:
-        payload = github_get_json(url, token)
-        runs = payload.get("workflow_runs", [])
-        run = latest_ci_run(runs, started_at, lookback_seconds, target_ref_name)
-        if run is None:
-            print("CI run not visible yet; polling again soon.")
-            time.sleep(poll_seconds)
-            continue
-
-        summary = format_run(run)
-        if summary != last_summary:
-            print(f"Observed CI run: {summary}")
-            last_summary = summary
-
-        if not run_is_current_enough(run, started_at):
-            print("Latest matching CI run completed before this release started; waiting for the tag run.")
-            time.sleep(poll_seconds)
-            continue
-
-        status = run.get("status")
-        conclusion = run.get("conclusion")
-        if status != "completed":
-            time.sleep(poll_seconds)
-            continue
-        if conclusion == "success":
-            print("CI gate passed; release workflow may continue.")
-            return 0
-        print(f"CI gate failed with conclusion={conclusion}; stopping release publish.")
-        return 1
-
-    print(f"Timed out waiting for CI workflow {workflow_file} on {target_sha}.", file=sys.stderr)
+    print(f"Observed CI run: {format_run(run)}")
+    status = run.get("status")
+    conclusion = run.get("conclusion")
+    if status != "completed":
+        print(
+            "CI run is waiting_external; invoke this observation again after the next "
+            "workflow event.",
+            file=sys.stderr,
+        )
+        return WAITING_EXTERNAL_EXIT_CODE
+    if conclusion == "success":
+        print("CI gate passed; release workflow may continue.")
+        return 0
+    print(f"CI gate failed with conclusion={conclusion}; stopping release publish.")
     return 1
 
 

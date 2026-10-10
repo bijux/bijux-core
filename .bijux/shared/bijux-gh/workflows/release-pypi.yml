@@ -30,6 +30,10 @@ on:
         description: "Allow token bootstrap only when package does not yet exist on PyPI"
         required: false
         type: boolean
+      skip_existing:
+        description: "Skip distributions already present on PyPI"
+        required: false
+        type: boolean
   workflow_call:
     inputs:
       release_tag:
@@ -85,6 +89,7 @@ jobs:
   resolve:
     name: resolve-release-pypi-config
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     outputs:
       enabled: ${{ steps.config.outputs.enabled }}
       mode: ${{ steps.config.outputs.mode }}
@@ -98,6 +103,7 @@ jobs:
       skip_existing: ${{ steps.config.outputs.skip_existing }}
       allow_token_bootstrap_on_missing: ${{ steps.config.outputs.allow_token_bootstrap_on_missing }}
       wait_for_ci_command: ${{ steps.config.outputs.wait_for_ci_command }}
+      verification_command: ${{ steps.config.outputs.verification_command }}
       plan_command: ${{ steps.config.outputs.plan_command }}
       prepare_command: ${{ steps.config.outputs.prepare_command }}
       publish_command: ${{ steps.config.outputs.publish_command }}
@@ -261,6 +267,7 @@ jobs:
           fi
 
           wait_for_ci_command="$(from_values "" "${BIJUX_PYPI_WAIT_FOR_CI_COMMAND:-}" "${{ vars.BIJUX_PYPI_WAIT_FOR_CI_COMMAND || '' }}" "")"
+          verification_command="$(from_values "" "${BIJUX_PYPI_VERIFICATION_COMMAND:-}" "${{ vars.BIJUX_PYPI_VERIFICATION_COMMAND || '' }}" "")"
           plan_command="$(from_values "" "${BIJUX_PYPI_PLAN_COMMAND:-}" "${{ vars.BIJUX_PYPI_PLAN_COMMAND || '' }}" "")"
           prepare_command="$(from_values "" "${BIJUX_PYPI_PREPARE_COMMAND:-}" "${{ vars.BIJUX_PYPI_PREPARE_COMMAND || '' }}" "")"
           publish_command="$(from_values "" "${BIJUX_PYPI_PUBLISH_COMMAND:-}" "${{ vars.BIJUX_PYPI_PUBLISH_COMMAND || '' }}" "")"
@@ -303,6 +310,7 @@ jobs:
             echo "skip_existing=${skip_existing}"
             echo "allow_token_bootstrap_on_missing=${allow_token_bootstrap_on_missing}"
             echo "wait_for_ci_command=${wait_for_ci_command}"
+            echo "verification_command=${verification_command}"
             echo "plan_command=${plan_command}"
             echo "prepare_command=${prepare_command}"
             echo "publish_command=${publish_command}"
@@ -322,6 +330,34 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
+  prepublication:
+    name: verify-pypi-publication-evidence
+    needs: resolve
+    if: ${{ needs.resolve.outputs.enabled == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout the source revision to be published
+        if: ${{ needs.resolve.outputs.verification_command != '' }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+      - name: Verify repository publication evidence once
+        if: ${{ needs.resolve.outputs.verification_command != '' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ github.sha }}
+          TARGET_REF_NAME: ${{ needs.resolve.outputs.release_tag }}
+          VERIFICATION_COMMAND: ${{ needs.resolve.outputs.verification_command }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          eval "${VERIFICATION_COMMAND}"
+
   build:
     name: build-${{ matrix.package_slug }}
     needs: resolve
@@ -333,6 +369,7 @@ jobs:
     uses: ./.github/workflows/release-artifacts.yml
     with:
       package_slug: ${{ matrix.package_slug }}
+      release_tag: ${{ needs.resolve.outputs.release_tag }}
       package_dir: ${{ matrix.package_dir }}
       artifacts_dir: ${{ matrix.artifacts_dir }}
       makefile_path: ${{ matrix.makefile_path || '' }}
@@ -343,8 +380,10 @@ jobs:
     needs:
       - resolve
       - build
+      - prepublication
     if: ${{ needs.resolve.outputs.enabled == 'true' && needs.resolve.outputs.mode == 'artifact' }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     environment:
       name: ${{ matrix.environment_name || needs.resolve.outputs.environment_name }}
     permissions:
@@ -418,7 +457,7 @@ jobs:
         id: trusted_publish
         if: ${{ steps.auth.outputs.mode != 'token' }}
         continue-on-error: true
-        uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 # release/v1
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
         with:
           packages-dir: .github/tmp/${{ matrix.package_slug }}-dist
           skip-existing: ${{ needs.resolve.outputs.skip_existing == 'true' }}
@@ -438,7 +477,7 @@ jobs:
         if: ${{ (steps.auth.outputs.mode == 'token' || (steps.auth.outputs.mode != 'token' && needs.resolve.outputs.allow_token_bootstrap_on_missing == 'true' && steps.trusted_publish.outcome == 'failure' && steps.pypi_project.outputs.probe_status == 'missing')) && env.PYPI_API_TOKEN_PRESENT == 'true' }}
         env:
           PYPI_API_TOKEN_PRESENT: ${{ secrets.PYPI_API_TOKEN != '' }}
-        uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 # release/v1
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
         with:
           packages-dir: .github/tmp/${{ matrix.package_slug }}-dist
           skip-existing: ${{ needs.resolve.outputs.skip_existing == 'true' }}
@@ -465,10 +504,12 @@ jobs:
 
   publish_maturin:
     name: publish-pypi
-    needs: resolve
+    needs:
+      - resolve
+      - prepublication
     if: ${{ needs.resolve.outputs.enabled == 'true' && needs.resolve.outputs.mode == 'maturin' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 10
     environment:
       name: ${{ needs.resolve.outputs.environment_name }}
     permissions:
@@ -483,7 +524,7 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.sha }}
 
-      - name: Wait for CI to pass on the tagged commit
+      - name: Observe CI gate once for the tagged commit
         if: ${{ github.event_name == 'push' && needs.resolve.outputs.wait_for_ci_command != '' }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -493,8 +534,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          CI_WAIT_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          export CI_WAIT_STARTED_AT
           eval "${WAIT_FOR_CI_COMMAND}"
 
       - name: Decide whether to publish PyPI distributions
@@ -542,13 +581,13 @@ jobs:
 
       - name: Set up Rust
         if: ${{ steps.release.outputs.publish == 'true' && needs.resolve.outputs.setup_rust == 'true' }}
-        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # v1
         with:
           toolchain: ${{ needs.resolve.outputs.rust_toolchain }}
 
       - name: Restore the Rust cache
         if: ${{ steps.release.outputs.publish == 'true' && needs.resolve.outputs.setup_rust == 'true' }}
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
 
       - name: Prepare release tree
         if: ${{ steps.release.outputs.publish == 'true' }}
@@ -668,7 +707,7 @@ jobs:
         id: trusted_publish
         if: ${{ steps.release.outputs.publish == 'true' && needs.resolve.outputs.publish_command == '' && steps.auth.outputs.mode != 'token' }}
         continue-on-error: true
-        uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 # release/v1
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
         with:
           packages-dir: artifacts/python/build
           skip-existing: ${{ needs.resolve.outputs.skip_existing == 'true' }}
@@ -688,7 +727,7 @@ jobs:
         if: ${{ steps.release.outputs.publish == 'true' && needs.resolve.outputs.publish_command == '' && (steps.auth.outputs.mode == 'token' || (steps.auth.outputs.mode != 'token' && needs.resolve.outputs.allow_token_bootstrap_on_missing == 'true' && steps.trusted_publish.outcome == 'failure' && steps.pypi_project.outputs.probe_status == 'missing')) && env.PYPI_API_TOKEN_PRESENT == 'true' }}
         env:
           PYPI_API_TOKEN_PRESENT: ${{ secrets.PYPI_API_TOKEN != '' }}
-        uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 # release/v1
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
         with:
           packages-dir: artifacts/python/build
           skip-existing: ${{ needs.resolve.outputs.skip_existing == 'true' }}

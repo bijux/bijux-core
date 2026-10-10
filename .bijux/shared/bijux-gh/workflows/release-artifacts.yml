@@ -9,6 +9,9 @@ on:
       package_slug:
         required: true
         type: string
+      release_tag:
+        required: true
+        type: string
       package_dir:
         required: true
         type: string
@@ -39,6 +42,7 @@ jobs:
   build:
     name: release-artifacts-${{ inputs.package_slug }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     env:
       ARTIFACTS_DIR: ${{ inputs.artifacts_dir }}
 
@@ -47,6 +51,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          fetch-tags: true
+          ref: ${{ github.sha }}
 
       - name: Setup Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -54,7 +60,7 @@ jobs:
           python-version: "3.11"
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: true
           cache-dependency-glob: uv.lock
@@ -131,6 +137,64 @@ jobs:
               esac
               cp "$file_path" "$stage_dir/$asset_name"
             done < <(find "$sbom_dir" -type f -print0 | sort -z)
+          fi
+
+      - name: Verify release revision and repository artifact policy
+        shell: bash
+        env:
+          DIST_DIR: .github/tmp/${{ inputs.package_slug }}-dist
+          RELEASE_ASSET_DIR: .github/tmp/${{ inputs.package_slug }}-release
+          PACKAGE_DIR: ${{ inputs.package_dir }}
+          PACKAGE_SLUG: ${{ inputs.package_slug }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+
+          case "${RELEASE_TAG}" in
+            v?*) ;;
+            *)
+              echo "release_tag must start with 'v' and include a version: ${RELEASE_TAG}" >&2
+              exit 1
+              ;;
+          esac
+
+          tag_commit="$(git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}")"
+          head_commit="$(git rev-parse --verify HEAD)"
+          if [[ "${tag_commit}" != "${head_commit}" || "${head_commit}" != "${GITHUB_SHA}" ]]; then
+            echo "Release tag, checkout, and workflow revision must identify one commit." >&2
+            echo "tag ${RELEASE_TAG}: ${tag_commit}" >&2
+            echo "HEAD: ${head_commit}" >&2
+            echo "GITHUB_SHA: ${GITHUB_SHA}" >&2
+            exit 1
+          fi
+
+          test -d "${DIST_DIR}"
+          test -d "${RELEASE_ASSET_DIR}"
+          found_distribution=0
+          for distribution in "${DIST_DIR}"/*.whl "${DIST_DIR}"/*.tar.gz; do
+            [[ -f "${distribution}" ]] || continue
+            cmp -- "${distribution}" "${RELEASE_ASSET_DIR}/${PACKAGE_SLUG}-dist-$(basename "${distribution}")"
+            found_distribution=1
+          done
+          test "${found_distribution}" = 1
+          for release_asset in "${RELEASE_ASSET_DIR}"/*.whl "${RELEASE_ASSET_DIR}"/*.tar.gz; do
+            [[ -f "${release_asset}" ]] || continue
+            asset_name="$(basename "${release_asset}")"
+            case "${asset_name}" in
+              "${PACKAGE_SLUG}-dist-"*) ;;
+              *) echo "Unexpected release distribution: ${asset_name}" >&2; exit 1 ;;
+            esac
+            cmp -- "${DIST_DIR}/${asset_name#"${PACKAGE_SLUG}-dist-"}" "${release_asset}"
+          done
+
+          if [[ -f .github/release.env ]]; then
+            set -a
+            source .github/release.env
+            set +a
+          fi
+          verification_command="${BIJUX_RELEASE_ARTIFACT_VERIFICATION_COMMAND:-}"
+          if [[ -n "${verification_command}" ]]; then
+            eval "${verification_command}"
           fi
 
       - name: Upload publish artifacts

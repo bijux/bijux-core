@@ -68,8 +68,8 @@ Repositories should not maintain ad hoc variants unless there is a repository-sp
 
 Canonical reusable release helper scripts are provided under `.github/scripts`.
 
-- `wait_for_ci.py`: waits for the configured CI workflow to complete for the release SHA.
-- `check_workflow_prerequisites.py`: holds auxiliary workflows until the required policy and standards workflows succeed, identifies governed workflows by stable path across display-name changes, ignores malformed or wrong-event runs for the same SHA, and fails fast when prerequisite policy checks conclude unsuccessfully.
+- `wait_for_ci.py`: observes the configured CI workflow once for the release SHA, succeeds for admitted terminal evidence, fails for a terminal rejection, and returns exit code `75` while the run is external and unfinished.
+- `check_workflow_prerequisites.py`: observes required policy and standards workflows once, identifies governed workflows by stable path across display-name changes, ignores malformed or wrong-event runs for the same SHA, fails fast on terminal rejection, and returns exit code `75` while evidence is external and unfinished.
 
 Repository-specific release prepare scripts may still exist in `.github/scripts`, but shared helpers should come from this canonical source.
 
@@ -242,3 +242,61 @@ The workflow validates and uploads the first detected directory containing
 3. `artifacts/site/bijux-masterclass`
 4. `artifacts/docs/site`
 5. `artifacts/root/docs/site`
+
+## Pull request history
+
+Record notable repository changes directly in `CHANGELOG.md`, with actual PR links
+and concise behavior summaries. Keep the newest PR first. Pending reviews do not
+claim a merge date; use verified GitHub dates when reconciling merged history.
+
+## Dependency pull request job admission
+
+The canonical repository manifest can explicitly select
+`workflow_execution_policy.dependency_pull_requests: skip-managed-jobs`.
+This adds an early job condition to every managed workflow or canonical wrapper
+that handles `pull_request`, `pull_request_target` or `pull_request_review`.
+The condition matches `github.event.pull_request.user.login`, so a
+Dependabot-authored PR stays excluded when a human reruns or reviews it.
+A bot acting on a human-authored PR does not gain a new exclusion. Non-PR events
+retain their original admission, and existing job expressions, including
+`always()` and dependency/result conditions, remain conjoined with the exclusion.
+The guard belongs to the job, before runner and matrix allocation; a step-level
+skip does not satisfy this policy.
+
+Absent selection or `canonical` preserves existing generation, including default
+CI/verify wrapper behavior. `bijux-std` cannot select this suppression for its own
+mandatory qualification. Managed shared source bytes remain canonical; projected
+runtime jobs keep their names, dependencies, bodies and permissions. Ambiguous
+or untyped conditions require source review before files are written. Consumer
+authored workflows stay under their owner's admission policy.
+
+Skipped jobs are an intentional declared policy outcome; they provide no executed
+implementation evidence. This policy changes neither publication authorization
+nor source, deployment, profile or manual qualification requirements.
+
+## Manual publication controlled by IaC
+
+The twelve governed repositories select `manual-only` publication with
+`controller: iac` for each applicable canonical publisher: `release-github`,
+`release-ghcr`, `release-crates`, `release-pypi`, and `deploy-docs`. The projection
+removes automatic and reusable entry points. Validation rejects callers of these
+publishers and recognizable publication steps hidden in other workflows; ordinary
+CI artifact uploads and package dry runs remain available.
+
+Each publisher first runs a read-only admission job before any job with publication
+credentials. Configure the repository variable `BIJUX_PUBLICATION_ACTOR_ID` with
+the numeric ID of the dedicated controller App's bot account. Admission verifies
+the authenticated original and triggering actors, dispatch from `main`, the immutable `accepted_commit`,
+and the latest successful checks from the required GitHub Actions producer. The
+commit must still be current protected `main`; releases additionally require an
+existing `release_tag` resolving to that commit. Missing or unhealthy evidence
+rejects publication. PR-only approval evidence belongs to protected-main
+acceptance rather than a nonexistent push approval run.
+
+`bijux-iac` owns the manual dispatch controller and its environment credentials.
+Its App is limited to the twelve repositories with Actions write, Contents read,
+Checks read, Variables read, and mandatory Metadata read. Each dispatch mints a
+token for only the selected repository. App identity and permissions are checked
+before dispatch; the private key remains in IaC's main-only `publication-control`
+environment. Consumer refresh and live identity configuration must precede use;
+merging this standards source does not perform a release or configure credentials.

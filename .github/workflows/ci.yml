@@ -35,12 +35,12 @@ jobs:
           cache: pip
           cache-dependency-path: crates/bijux-cli-python/pyproject.toml
       - name: "Set up Rust"
-        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9
+        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f
         with:
           toolchain: "${{ env.RUST_TOOLCHAIN_VERSION }}"
           components: rustfmt
       - name: "Restore the Rust cache"
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
       - name: "Run repository formatting gate"
         run: "make fmt"
     if: "${{ github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]' }}"
@@ -58,12 +58,12 @@ jobs:
           cache: pip
           cache-dependency-path: crates/bijux-cli-python/pyproject.toml
       - name: "Set up Rust"
-        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9
+        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f
         with:
           toolchain: "${{ env.RUST_TOOLCHAIN_VERSION }}"
           components: clippy
       - name: "Restore the Rust cache"
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
       - name: "Run repository lint gate"
         run: "make lint"
     if: "${{ github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]' }}"
@@ -81,11 +81,11 @@ jobs:
           cache: pip
           cache-dependency-path: crates/bijux-cli-python/pyproject.toml
       - name: "Set up Rust"
-        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9
+        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f
         with:
           toolchain: "${{ env.RUST_TOOLCHAIN_VERSION }}"
       - name: "Restore the Rust cache"
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
       - name: "Install Rust security tools"
         run: "make gh-security-install-rust-tools"
       - name: "Run repository audit gate"
@@ -105,11 +105,11 @@ jobs:
           cache: pip
           cache-dependency-path: crates/bijux-cli-python/pyproject.toml
       - name: "Set up Rust"
-        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9
+        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f
         with:
           toolchain: "${{ env.RUST_TOOLCHAIN_VERSION }}"
       - name: "Restore the Rust cache"
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
       - name: "Install cargo-nextest"
         run: "make gh-test-install-rust-tools"
       - name: "Run repository test gate"

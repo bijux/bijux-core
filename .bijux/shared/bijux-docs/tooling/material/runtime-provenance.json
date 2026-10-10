@@ -1,0 +1,102 @@
+{
+  "schema": 1,
+  "upstream_version": "9.7.7",
+  "upstream_bundle": "assets/javascripts/bundle.d7400e89.min.js",
+  "upstream_sha256": "f288ab99e197c406766aea4581ba6e902d7d0e28c013bdd3cd3fab6cc77fb7c8",
+  "upstream_base_template_sha256": "e1762a3a14f8afe93968241dac537a9dae1e35e71b2faf225bdb7ee88143c14c",
+  "upstream_map_sha256": "dcfd5eb85b43e975773ecf102220197ef3f985f45abbbee4a5286e137f8097ba",
+  "upstream_license_sha256": "e1150f26b4c0f872627b39fda49ae3bd850304f2f7f3171ae0531c1f8f4dd078",
+  "adapter_sha256": "a25ce37d43fc524e9b02090a014931ef4076bc29a9b2537ccc3317159a6fa3fa",
+  "owned_source": "tooling/material/search-index-adapter.js",
+  "worker_adapter_sha256": "49508722bc042e3bb5ceecd8aa717dda92dca65c22e9166919a8e5b7be6904d1",
+  "worker_owned_source": "tooling/material/search-worker-adapter.js",
+  "upstream_worker": "assets/javascripts/workers/search.2c215733.min.js",
+  "upstream_worker_sha256": "cfb35333fafd6d2eb148eba21452849fb7fbde32fdfbf986836573f963106188",
+  "boundary": {
+    "original": "zi=document.forms.namedItem(\"search\")?ks():tt",
+    "replacement": "zi=document.forms.namedItem(\"search\")?window.bijuxSearchIndex.observe(ks,Z):tt",
+    "occurrences": 1
+  },
+  "worker_boundary": {
+    "original": "function Ei(e,t){let r=Mn(e);",
+    "replacement": "function Ei(e,t){let r=window.bijuxSearchWorker.channel(e,T);",
+    "occurrences": 1
+  },
+  "global_character_shortcuts": {
+    "original": ",r.pipe(g(({mode:c})=>c===\"global\")).subscribe(c=>{switch(c.type){case\"f\":case\"s\":case\"/\":i.focus(),i.select(),c.claim();break}});",
+    "replacement": ";",
+    "occurrences": 1,
+    "disabled_keys": [
+      "/",
+      "f",
+      "s"
+    ],
+    "retained": "Focused native query/result keyboard subscriptions and browser modifier defaults."
+  },
+  "fragment_restoration_owned_source": "tooling/material/fragment-restoration.js",
+  "fragment_restoration_sha256": "608c93415e2d852b0399f71a9464d259df7cd3a56b4ba7961f5bf277a18dc873",
+  "fragment_restoration_boundary": {
+    "original": "function gn(e){let t=x(\"a\",{href:e});t.addEventListener(\"click\",r=>r.stopPropagation()),t.click()}",
+    "replacement": "function gn(e){__bijuxScrollCurrentFragment(e)}",
+    "occurrences": 1,
+    "behavior": "Scroll only the fragment of the current native history entry; do not queue a redundant native anchor navigation."
+  },
+  "viewport_history_owned_source": "tooling/material/viewport-history.js",
+  "viewport_history_sha256": "60a66a9c298cf4ec5c6b21d54b3e2fefb65baaefb2e01c70c76dcf9eeaf63801",
+  "viewport_history_boundary": {
+    "original": "r.pipe(ne(\"offset\"),Ae(100)).subscribe(({offset:a})=>{history.replaceState(a,\"\")})",
+    "replacement": "__bijuxWatchViewportHistory(()=>r.pipe(ne(\"offset\"),Ae(100)))",
+    "occurrences": 1,
+    "behavior": "Cancel pending native viewport debounce work on cross-document departure and pagehide; recreate the subscription on trusted persisted pageshow. Preserve foreign object history state keys while saving native x/y."
+  },
+  "element_resize_owned_source": "tooling/material/element-resize-delivery.js",
+  "element_resize_sha256": "c673a8ff4d509c9af14b4a6c9692c7d29feb5a6f32fc129140e4a2169153e4c9",
+  "element_resize_boundary": {
+    "original": "new ResizeObserver(e=>e.forEach(t=>cn.next(t)))",
+    "replacement": "__bijuxElementResizeObserver(t=>cn.next(t))",
+    "occurrences": 1,
+    "helper_scope": "admitted native IIFE; no global observer or error interception"
+  },
+  "search_capability_owned_source": "tooling/material/search-capability-boundary.js",
+  "search_capability_sha256": "6fb3c73a902a0bb3cd80ef665297529fb5f4cdf63cfc42d24ecd2ef65a5596d2",
+  "search_capability_renderer": {
+    "original": "href:`${s}`,class:\"md-search-result__link\",tabIndex:-1",
+    "replacement": "href:`${s}`,target:__bijuxSearchCapabilityTarget(s),class:\"md-search-result__link\",tabIndex:-1",
+    "occurrences": 1,
+    "helper_scope": "unique admitted native runtime IIFE"
+  },
+  "output_asset": "assets/javascripts/material-search.4b099ef8b0fc29069e50781122ce83e6c955ec2a46b6537b06c856d746c6727b.js",
+  "output_sha256": "4b099ef8b0fc29069e50781122ce83e6c955ec2a46b6537b06c856d746c6727b",
+  "syntax_validation": {
+    "parser": "Node.js vm.Script",
+    "required_version": "v24.21.0",
+    "scope": "Complete generated classic-script bytes after all transformations; syntax-only validation before emission."
+  },
+  "source_map": "Upstream map applies only to unmodified upstream bundle; compatibility output has no map annotation.",
+  "transport": "Owned same-origin HTTP index XHR starts only on actual search focus/input/open or a native query/highlight deep link; direct cancel/retry, 45-second nonrenewable total deadline, 8-second no-progress stall bound, 80MiB browser-reported progress-byte limit, 40Mi UTF-16 response/source-character limit and 50,000-document candidate limit. Worker operation deadlines remain separately fixed at 8 seconds.",
+  "limits": [
+    "Index-ready means fetched/admitted index, not worker-ready.",
+    "File-protocol search is outside admitted HTTP website qualification.",
+    "Largest actual consumer search corpus and CPU measurements remain required before scale claims."
+  ],
+  "activity_state": {
+    "searching_stage": "worker-searching",
+    "ready_after": "actual latest native RESULT has been delivered to subscribers",
+    "pending": "remain searching while queued or in-flight work exists"
+  },
+  "template_extension": {
+    "block": "extrahead",
+    "include": "partials/site-head.html",
+    "owner": "consumer",
+    "optional": true,
+    "managed_default": false
+  },
+  "query_scheduling": {
+    "in_flight_limit": 1,
+    "pending_limit": 1,
+    "settle_ms": 150,
+    "operation_deadline_ms": 8000,
+    "obsolete_results": "discard when a newer native query is pending"
+  },
+  "behavior": "Native worker algorithm, SETUP/options, query/results, ranking, highlighting and rendering retained. Owned index Observable catches failure before native subscribers; owned native-Subject worker channel contains resource/protocol failures, bounds each actual setup/query operation to 8 seconds without renewal on queued edits, coalesces intermediate input behind a 150ms settle window with one native query in flight and one replaceable pending query, discards superseded results before native rendering, announces searching while work is pending and readiness only after the latest native result reaches subscribers, directly terminates retired workers, and replays cached native SETUP/query on retry without index refetch."
+}

@@ -142,3 +142,68 @@
   height: auto;
   max-width: 100%;
 }
+
+/* Reader surfaces contain intrinsic width and keep technical source direction stable. */
+.md-content,
+.md-content__inner { min-inline-size: 0; }
+.md-typeset pre,
+.md-typeset .md-typeset__scrollwrap { max-inline-size: 100%; overflow-x: auto; }
+.md-typeset pre,
+.md-typeset code { direction: ltr; unicode-bidi: plaintext; }
+/* Intrinsic code/table width belongs to a local reader surface, including flex children. */
+.md-typeset .highlight {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  overflow-x: auto;
+}
+
+.md-typeset .md-typeset__scrollwrap {
+  min-inline-size: 0;
+}
+
+.md-typeset .highlight :focus-visible,
+.md-typeset .highlight:focus-visible,
+.md-typeset .md-typeset__scrollwrap:focus-visible {
+  outline-offset: -2px;
+}
+
+.bijux-content-scroll-hint {
+  color: var(--bijux-muted);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  margin-block: 0.5rem;
+}
+
+/* Prose headings reflow; their decorative rule may give its space back. */
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4,
+.md-typeset h5,
+.md-typeset h6 {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+.md-typeset > h2::after {
+  min-width: 0;
+  min-inline-size: 0;
+}
+
+/* Raw fenced source can also be a flex child before diagram enhancement. */
+.md-typeset pre {
+  min-inline-size: 0;
+}
+
+/* Default Markdown tables remain semantic and readable without native JS wrappers. */
+.no-js .md-typeset table:not([class]) {
+  table-layout: fixed;
+  width: 100%;
+  max-inline-size: 100%;
+}
+.no-js .md-typeset table:not([class]) th,
+.no-js .md-typeset table:not([class]) td {
+  min-width: 0;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}

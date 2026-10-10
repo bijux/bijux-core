@@ -342,7 +342,7 @@
                 },
                 {
                   "name": "Set up Rust",
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}",
                     "components": "rustfmt"
@@ -350,7 +350,7 @@
                 },
                 {
                   "name": "Restore the Rust cache",
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4",
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
                   "with": {
                     "shared-key": "ci-fmt"
                   }
@@ -372,7 +372,7 @@
                 },
                 {
                   "name": "Set up Rust",
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}",
                     "components": "clippy"
@@ -380,7 +380,7 @@
                 },
                 {
                   "name": "Restore the Rust cache",
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4",
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
                   "with": {
                     "shared-key": "ci-lint"
                   }
@@ -402,14 +402,14 @@
                 },
                 {
                   "name": "Set up Rust",
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}"
                   }
                 },
                 {
                   "name": "Restore the Rust cache",
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4",
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
                   "with": {
                     "shared-key": "ci-audit"
                   }
@@ -435,14 +435,14 @@
                 },
                 {
                   "name": "Set up Rust",
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}"
                   }
                 },
                 {
                   "name": "Restore the Rust cache",
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4",
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
                   "with": {
                     "shared-key": "ci-test"
                   }
@@ -469,10 +469,38 @@
         "release-ghcr",
         "release-github"
       ],
-      "pinned_std_sha": "44a77e32edc759e92b95feb63b2988ff90f0ca59"
+      "pinned_std_sha": "44a77e32edc759e92b95feb63b2988ff90f0ca59",
+      "workflow_execution_policy": {
+        "schema": 1,
+        "publication_entrypoints": {
+          "deploy-docs": {
+            "mode": "manual-only",
+            "controller": "iac",
+            "refs": "main-only"
+          },
+          "release-crates": {
+            "mode": "manual-only",
+            "controller": "iac"
+          },
+          "release-ghcr": {
+            "mode": "manual-only",
+            "controller": "iac"
+          },
+          "release-github": {
+            "mode": "manual-only",
+            "controller": "iac"
+          }
+        }
+      }
     },
     {
       "name": "bijux-canon",
+      "additional_required_status_checks": [
+        {
+          "context": "verification-ready",
+          "workflow": "repo / verify"
+        }
+      ],
       "release_env": [
         {
           "key": "BIJUX_RELEASE_ENABLED",
@@ -523,6 +551,13 @@
               "artifacts_dir": "artifacts/bijux-canon-index",
               "build_targets": "build sbom",
               "dist_subdir": "release"
+            },
+            {
+              "package_slug": "bijux-canon",
+              "package_dir": "packages/compat-bijux-canon",
+              "artifacts_dir": "artifacts/compat-bijux-canon",
+              "makefile_path": "makes/packages/compat-package.mk",
+              "build_targets": "build sbom"
             },
             {
               "package_slug": "agentic-flows",
@@ -586,6 +621,9 @@
               "package_slug": "bijux-canon-index"
             },
             {
+              "package_slug": "bijux-canon"
+            },
+            {
               "package_slug": "agentic-flows"
             },
             {
@@ -620,6 +658,9 @@
             },
             {
               "package_slug": "bijux-canon-index"
+            },
+            {
+              "package_slug": "bijux-canon"
             },
             {
               "package_slug": "agentic-flows"
@@ -905,39 +946,11 @@
             "push": {
               "branches": [
                 "main"
-              ],
-              "paths": [
-                ".github/workflows/**",
-                "apis/**",
-                "configs/**",
-                "docs/**",
-                "makes/**",
-                "packages/**",
-                "Makefile",
-                "mkdocs.shared.yml",
-                "mkdocs.yml",
-                "pyproject.toml",
-                "tox.ini",
-                "uv.lock"
               ]
             },
             "pull_request": {
               "branches": [
                 "main"
-              ],
-              "paths": [
-                ".github/workflows/**",
-                "apis/**",
-                "configs/**",
-                "docs/**",
-                "makes/**",
-                "packages/**",
-                "Makefile",
-                "mkdocs.shared.yml",
-                "mkdocs.yml",
-                "pyproject.toml",
-                "tox.ini",
-                "uv.lock"
               ]
             },
             "workflow_dispatch": null,
@@ -970,7 +983,7 @@
                   }
                 },
                 {
-                  "uses": "astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9",
+                  "uses": "astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7",
                   "with": {
                     "enable-cache": true,
                     "cache-dependency-glob": "uv.lock"
@@ -1006,8 +1019,7 @@
                     {
                       "package_slug": "bijux-canon-ingest",
                       "package_dir": "packages/bijux-canon-ingest",
-                      "artifacts_dir": "artifacts/bijux-canon-ingest",
-                      "test_python_versions": "[\"3.11\", \"3.12\", \"3.13\"]"
+                      "artifacts_dir": "artifacts/bijux-canon-ingest"
                     },
                     {
                       "package_slug": "bijux-canon-reason",
@@ -1039,12 +1051,136 @@
                 "post_test_command": "${{ matrix.post_test_command || '' }}"
               }
             },
+            "supported_python": {
+              "name": "${{ matrix.package_slug }}-py${{ matrix.python-version }}",
+              "needs": "repository",
+              "runs-on": "ubuntu-latest",
+              "timeout-minutes": 30,
+              "strategy": {
+                "fail-fast": false,
+                "max-parallel": 12,
+                "matrix": {
+                  "package_slug": [
+                    "bijux-canon-dev",
+                    "bijux-canon-runtime",
+                    "bijux-canon-agent",
+                    "bijux-canon-ingest",
+                    "bijux-canon-reason",
+                    "bijux-canon-index",
+                    "compat-bijux-canon",
+                    "compat-agentic-flows",
+                    "compat-bijux-agent",
+                    "compat-bijux-rag",
+                    "compat-bijux-rar",
+                    "compat-bijux-vex"
+                  ],
+                  "python-version": [
+                    "3.11",
+                    "3.12",
+                    "3.13",
+                    "3.14"
+                  ]
+                }
+              },
+              "steps": [
+                {
+                  "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
+                },
+                {
+                  "uses": "actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+                  "with": {
+                    "python-version": "${{ matrix.python-version }}"
+                  }
+                },
+                {
+                  "uses": "astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7",
+                  "with": {
+                    "enable-cache": true,
+                    "cache-dependency-glob": "uv.lock"
+                  }
+                },
+                {
+                  "name": "Test one supported package distribution",
+                  "shell": "bash",
+                  "run": "set -euo pipefail\nexport PYTHONDONTWRITEBYTECODE=1\nselected_python=\"$(command -v python)\"\nmake PYTHON=\"${selected_python}\" PACKAGE=\"${{ matrix.package_slug }}\" test\n"
+                },
+                {
+                  "name": "Upload package test artifacts",
+                  "if": "${{ always() }}",
+                  "uses": "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+                  "with": {
+                    "name": "${{ matrix.package_slug }}-test-py${{ matrix.python-version }}",
+                    "path": "artifacts/${{ matrix.package_slug }}/test",
+                    "if-no-files-found": "ignore",
+                    "retention-days": 14
+                  }
+                }
+              ]
+            },
+            "installed_family": {
+              "name": "installed-family-${{ matrix.runner }}-py${{ matrix.python-version }}",
+              "needs": "repository",
+              "runs-on": "${{ matrix.runner }}",
+              "timeout-minutes": 30,
+              "strategy": {
+                "fail-fast": false,
+                "max-parallel": 4,
+                "matrix": {
+                  "runner": [
+                    "ubuntu-latest",
+                    "macos-latest"
+                  ],
+                  "python-version": [
+                    "3.11",
+                    "3.12",
+                    "3.13",
+                    "3.14"
+                  ]
+                }
+              },
+              "steps": [
+                {
+                  "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
+                },
+                {
+                  "uses": "actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+                  "with": {
+                    "python-version": "${{ matrix.python-version }}"
+                  }
+                },
+                {
+                  "uses": "astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7",
+                  "with": {
+                    "enable-cache": true,
+                    "cache-dependency-glob": "uv.lock"
+                  }
+                },
+                {
+                  "name": "Build and install the distribution family",
+                  "shell": "bash",
+                  "run": "set -euo pipefail\nexport PYTHONDONTWRITEBYTECODE=1\nexport UV_CACHE_DIR=\"${RUNNER_TEMP}/bijux-installed-family-uv-cache\"\nfamily_dir=\"artifacts/installed-family/${RUNNER_OS}/py${{ matrix.python-version }}\"\nwheel_dir=\"${family_dir}/wheels\"\nvenv_dir=\"${family_dir}/venv\"\nuv build --all-packages --wheel --out-dir \"${wheel_dir}\"\ntest \"$(find \"${wheel_dir}\" -maxdepth 1 -name '*.whl' | wc -l | tr -d ' ')\" = 13\nuv venv \"${venv_dir}\" --python \"${{ matrix.python-version }}\" --clear\nuv pip install --python \"${venv_dir}/bin/python\" \"${wheel_dir}\"/*.whl\nuv pip check --python \"${venv_dir}/bin/python\"\n\"${venv_dir}/bin/python\" -I - <<'PY'\nimport importlib\nimport importlib.metadata as metadata\n\ndistributions = (\n    \"agentic-flows\",\n    \"bijux-agent\",\n    \"bijux-canon\",\n    \"bijux-canon-agent\",\n    \"bijux-canon-dev\",\n    \"bijux-canon-index\",\n    \"bijux-canon-ingest\",\n    \"bijux-canon-reason\",\n    \"bijux-canon-repository\",\n    \"bijux-canon-runtime\",\n    \"bijux-rag\",\n    \"bijux-rar\",\n    \"bijux-vex\",\n)\nmodules = (\n    \"agentic_flows\",\n    \"bijux_agent\",\n    \"bijux_canon\",\n    \"bijux_canon_agent\",\n    \"bijux_canon_dev\",\n    \"bijux_canon_index\",\n    \"bijux_canon_ingest\",\n    \"bijux_canon_reason\",\n    \"bijux_canon_runtime\",\n    \"bijux_rag\",\n    \"bijux_rar\",\n    \"bijux_vex\",\n)\nloaded = [importlib.import_module(name) for name in modules]\nassert all(\"site-packages\" in str(module.__file__) for module in loaded)\nversions = {name: metadata.version(name) for name in distributions}\nassert len(set(versions.values())) == 1\nPY\n\"${venv_dir}/bin/bijux\" --version\n"
+                },
+                {
+                  "name": "Upload installed-family artifacts",
+                  "if": "${{ always() }}",
+                  "uses": "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+                  "with": {
+                    "name": "installed-family-${{ matrix.runner }}-py${{ matrix.python-version }}",
+                    "path": "artifacts/installed-family/**/wheels/*.whl",
+                    "if-no-files-found": "error",
+                    "retention-days": 14
+                  }
+                }
+              ]
+            },
             "verification_ready": {
               "name": "verification-ready",
               "if": "${{ always() }}",
               "needs": [
                 "repository",
-                "package"
+                "package",
+                "supported_python",
+                "installed_family"
               ],
               "runs-on": "ubuntu-latest",
               "steps": [
@@ -1053,9 +1189,11 @@
                   "shell": "bash",
                   "env": {
                     "REPOSITORY_RESULT": "${{ needs.repository.result }}",
-                    "PACKAGE_RESULT": "${{ needs.package.result }}"
+                    "PACKAGE_RESULT": "${{ needs.package.result }}",
+                    "SUPPORTED_PYTHON_RESULT": "${{ needs.supported_python.result }}",
+                    "INSTALLED_FAMILY_RESULT": "${{ needs.installed_family.result }}"
                   },
-                  "run": "set -euo pipefail\n[[ \"${REPOSITORY_RESULT}\" == \"success\" ]]\n[[ \"${PACKAGE_RESULT}\" == \"success\" ]]\n"
+                  "run": "set -euo pipefail\n[[ \"${REPOSITORY_RESULT}\" == \"success\" ]] || exit 1\n[[ \"${PACKAGE_RESULT}\" == \"success\" ]] || exit 1\n[[ \"${SUPPORTED_PYTHON_RESULT}\" == \"success\" ]] || exit 1\n[[ \"${INSTALLED_FAMILY_RESULT}\" == \"success\" ]] || exit 1\n"
                 }
               ]
             }
@@ -1071,7 +1209,30 @@
         "release-github",
         "release-pypi"
       ],
-      "pinned_std_sha": "214f8c6e8881a97a258e57c450badb74a5fb7b5c"
+      "pinned_std_sha": "214f8c6e8881a97a258e57c450badb74a5fb7b5c",
+      "workflow_execution_policy": {
+        "schema": 1,
+        "dependency_pull_requests": "canonical",
+        "publication_entrypoints": {
+          "deploy-docs": {
+            "mode": "manual-only",
+            "controller": "iac",
+            "refs": "main-only"
+          },
+          "release-ghcr": {
+            "mode": "manual-only",
+            "controller": "iac"
+          },
+          "release-github": {
+            "mode": "manual-only",
+            "controller": "iac"
+          },
+          "release-pypi": {
+            "mode": "manual-only",
+            "controller": "iac"
+          }
+        }
+      }
     },
     {
       "name": "bijux-core",
@@ -1183,34 +1344,17 @@
           "type": "json",
           "value": [
             {
-              "package_slug": "bijux-dag-core",
-              "artifact_name": "bijux-dag-release"
-            },
-            {
-              "package_slug": "bijux-dag-artifacts",
-              "artifact_name": "bijux-dag-release"
-            },
-            {
-              "package_slug": "bijux-dag-runtime",
-              "artifact_name": "bijux-dag-release"
-            },
-            {
-              "package_slug": "bijux-dag-app",
-              "artifact_name": "bijux-dag-release"
-            },
-            {
-              "package_slug": "bijux-dag-cli",
-              "artifact_name": "bijux-dag-release"
-            },
-            {
               "package_slug": "bijux-cli"
+            },
+            {
+              "package_slug": "bijux-dag"
             }
           ]
         },
         {
           "key": "BIJUX_GHCR_RELEASE_ALLOWED_PACKAGES",
           "type": "string",
-          "value": "bijux-dag-core bijux-dag-artifacts bijux-dag-runtime bijux-dag-app bijux-dag-cli bijux-cli"
+          "value": "bijux-cli bijux-dag"
         },
         {
           "key": "BIJUX_PYPI_ENABLED",
@@ -1340,7 +1484,7 @@
                 },
                 {
                   "name": "Set up Rust",
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}",
                     "components": "rustfmt"
@@ -1348,7 +1492,7 @@
                 },
                 {
                   "name": "Restore the Rust cache",
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4"
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6"
                 },
                 {
                   "name": "Run repository formatting gate",
@@ -1376,7 +1520,7 @@
                 },
                 {
                   "name": "Set up Rust",
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}",
                     "components": "clippy"
@@ -1384,7 +1528,7 @@
                 },
                 {
                   "name": "Restore the Rust cache",
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4"
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6"
                 },
                 {
                   "name": "Run repository lint gate",
@@ -1412,14 +1556,14 @@
                 },
                 {
                   "name": "Set up Rust",
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}"
                   }
                 },
                 {
                   "name": "Restore the Rust cache",
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4"
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6"
                 },
                 {
                   "name": "Install Rust security tools",
@@ -1451,14 +1595,14 @@
                 },
                 {
                   "name": "Set up Rust",
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}"
                   }
                 },
                 {
                   "name": "Restore the Rust cache",
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4"
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6"
                 },
                 {
                   "name": "Install cargo-nextest",
@@ -1483,7 +1627,33 @@
         "release-github",
         "release-pypi"
       ],
-      "pinned_std_sha": "a44a4e85b09714ce8863c9573ef1059e843b5e8e"
+      "pinned_std_sha": "a44a4e85b09714ce8863c9573ef1059e843b5e8e",
+      "workflow_execution_policy": {
+        "schema": 1,
+        "publication_entrypoints": {
+          "deploy-docs": {
+            "mode": "manual-only",
+            "controller": "iac",
+            "refs": "main-only"
+          },
+          "release-crates": {
+            "mode": "manual-only",
+            "controller": "iac"
+          },
+          "release-ghcr": {
+            "mode": "manual-only",
+            "controller": "iac"
+          },
+          "release-github": {
+            "mode": "manual-only",
+            "controller": "iac"
+          },
+          "release-pypi": {
+            "mode": "manual-only",
+            "controller": "iac"
+          }
+        }
+      }
     },
     {
       "name": "bijux-genomics",
@@ -1593,7 +1763,7 @@
                 },
                 {
                   "name": "Set up Rust",
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}",
                     "components": "rustfmt"
@@ -1605,7 +1775,7 @@
                 },
                 {
                   "name": "Restore the Rust cache",
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4",
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
                   "with": {
                     "shared-key": "ci-fmt"
                   }
@@ -1631,7 +1801,7 @@
                 },
                 {
                   "name": "Set up Rust",
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}",
                     "components": "clippy"
@@ -1643,7 +1813,7 @@
                 },
                 {
                   "name": "Restore the Rust cache",
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4",
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
                   "with": {
                     "shared-key": "ci-lint"
                   }
@@ -1665,7 +1835,7 @@
                 },
                 {
                   "name": "Set up Rust",
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}"
                   }
@@ -1676,7 +1846,7 @@
                 },
                 {
                   "name": "Restore the Rust cache",
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4",
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
                   "with": {
                     "shared-key": "ci-audit"
                   }
@@ -1706,7 +1876,7 @@
                 },
                 {
                   "name": "Set up Rust",
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}"
                   }
@@ -1717,7 +1887,7 @@
                 },
                 {
                   "name": "Restore the Rust cache",
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4",
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
                   "with": {
                     "shared-key": "ci-test"
                   }
@@ -1745,7 +1915,7 @@
                   "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
                 },
                 {
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}"
                   }
@@ -1754,7 +1924,7 @@
                   "uses": "mozilla/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad"
                 },
                 {
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4",
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
                   "with": {
                     "shared-key": "ci-build"
                   }
@@ -1782,7 +1952,7 @@
                   "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
                 },
                 {
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}"
                   }
@@ -1791,7 +1961,7 @@
                   "uses": "mozilla/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad"
                 },
                 {
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4",
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
                   "with": {
                     "shared-key": "ci-build"
                   }
@@ -1819,7 +1989,7 @@
                   "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
                 },
                 {
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}"
                   }
@@ -1828,7 +1998,7 @@
                   "uses": "mozilla/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad"
                 },
                 {
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4",
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
                   "with": {
                     "shared-key": "ci-build"
                   }
@@ -1856,7 +2026,7 @@
                   "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
                 },
                 {
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}"
                   }
@@ -1865,7 +2035,7 @@
                   "uses": "mozilla/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad"
                 },
                 {
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4",
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
                   "with": {
                     "shared-key": "ci-build"
                   }
@@ -1893,7 +2063,7 @@
                   "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
                 },
                 {
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}"
                   }
@@ -1902,7 +2072,7 @@
                   "uses": "mozilla/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad"
                 },
                 {
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4",
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
                   "with": {
                     "shared-key": "ci-build"
                   }
@@ -1930,7 +2100,7 @@
                   "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
                 },
                 {
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}"
                   }
@@ -1939,7 +2109,7 @@
                   "uses": "mozilla/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad"
                 },
                 {
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4",
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
                   "with": {
                     "shared-key": "ci-build"
                   }
@@ -1967,7 +2137,7 @@
                   "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
                 },
                 {
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}"
                   }
@@ -1976,7 +2146,7 @@
                   "uses": "mozilla/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad"
                 },
                 {
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4",
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
                   "with": {
                     "shared-key": "ci-build"
                   }
@@ -2040,7 +2210,7 @@
                   "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
                 },
                 {
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}"
                   }
@@ -2049,7 +2219,7 @@
                   "uses": "mozilla/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad"
                 },
                 {
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4",
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
                   "with": {
                     "shared-key": "ci-build"
                   }
@@ -2072,7 +2242,7 @@
                   "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
                 },
                 {
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}"
                   }
@@ -2081,7 +2251,7 @@
                   "uses": "mozilla/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad"
                 },
                 {
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4",
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
                   "with": {
                     "shared-key": "ci-build"
                   }
@@ -2104,7 +2274,7 @@
                   "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
                 },
                 {
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}"
                   }
@@ -2113,7 +2283,7 @@
                   "uses": "mozilla/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad"
                 },
                 {
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4",
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
                   "with": {
                     "shared-key": "ci-build"
                   }
@@ -2136,7 +2306,7 @@
                   "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
                 },
                 {
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}"
                   }
@@ -2145,7 +2315,7 @@
                   "uses": "mozilla/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad"
                 },
                 {
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4",
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
                   "with": {
                     "shared-key": "ci-build"
                   }
@@ -2164,7 +2334,17 @@
         "github-policy",
         "pr-approval-policy"
       ],
-      "pinned_std_sha": "05d63cd12b4d96afe4b74dbda1cd1e27bee344e5"
+      "pinned_std_sha": "05d63cd12b4d96afe4b74dbda1cd1e27bee344e5",
+      "workflow_execution_policy": {
+        "schema": 1,
+        "publication_entrypoints": {
+          "deploy-docs": {
+            "mode": "manual-only",
+            "controller": "iac",
+            "refs": "main-only"
+          }
+        }
+      }
     },
     {
       "name": "bijux-iac",
@@ -2172,7 +2352,25 @@
       "workflow_allowlist": [
         "github-policy",
         "pr-approval-policy"
-      ]
+      ],
+      "additional_required_status_checks": [
+        {
+          "context": "iac / contracts",
+          "workflow": "github-governance-plan"
+        },
+        {
+          "context": "iac / plan",
+          "workflow": "github-governance-plan"
+        },
+        {
+          "context": "iac / governance",
+          "workflow": "github-governance-plan"
+        }
+      ],
+      "workflow_execution_policy": {
+        "schema": 1,
+        "publication_entrypoints": {}
+      }
     },
     {
       "name": "bijux-masterclass",
@@ -2271,7 +2469,17 @@
         "github-policy",
         "pr-approval-policy"
       ],
-      "pinned_std_sha": "5d4059e207559a51ed40dac1384693c57347018f"
+      "pinned_std_sha": "5d4059e207559a51ed40dac1384693c57347018f",
+      "workflow_execution_policy": {
+        "schema": 1,
+        "publication_entrypoints": {
+          "deploy-docs": {
+            "mode": "manual-only",
+            "controller": "iac",
+            "refs": "main-only"
+          }
+        }
+      }
     },
     {
       "name": "bijux-phylogenetics",
@@ -2485,7 +2693,7 @@
                   }
                 },
                 {
-                  "uses": "astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9",
+                  "uses": "astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7",
                   "with": {
                     "enable-cache": true,
                     "cache-dependency-glob": "uv.lock"
@@ -2543,7 +2751,7 @@
                   }
                 },
                 {
-                  "uses": "astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9",
+                  "uses": "astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7",
                   "with": {
                     "enable-cache": true,
                     "cache-dependency-glob": "uv.lock"
@@ -2601,7 +2809,7 @@
                   }
                 },
                 {
-                  "uses": "astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9",
+                  "uses": "astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7",
                   "with": {
                     "enable-cache": true,
                     "cache-dependency-glob": "uv.lock"
@@ -2703,7 +2911,7 @@
                   }
                 },
                 {
-                  "uses": "astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9",
+                  "uses": "astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7",
                   "with": {
                     "enable-cache": true,
                     "cache-dependency-glob": "uv.lock"
@@ -2792,7 +3000,29 @@
         "release-github",
         "release-pypi"
       ],
-      "pinned_std_sha": "214f8c6e8881a97a258e57c450badb74a5fb7b5c"
+      "pinned_std_sha": "214f8c6e8881a97a258e57c450badb74a5fb7b5c",
+      "workflow_execution_policy": {
+        "schema": 1,
+        "publication_entrypoints": {
+          "deploy-docs": {
+            "mode": "manual-only",
+            "controller": "iac",
+            "refs": "main-only"
+          },
+          "release-ghcr": {
+            "mode": "manual-only",
+            "controller": "iac"
+          },
+          "release-github": {
+            "mode": "manual-only",
+            "controller": "iac"
+          },
+          "release-pypi": {
+            "mode": "manual-only",
+            "controller": "iac"
+          }
+        }
+      }
     },
     {
       "name": "bijux-pollenomics",
@@ -3006,7 +3236,7 @@
                   }
                 },
                 {
-                  "uses": "astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9",
+                  "uses": "astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7",
                   "with": {
                     "enable-cache": true,
                     "cache-dependency-glob": "uv.lock"
@@ -3064,7 +3294,7 @@
                   }
                 },
                 {
-                  "uses": "astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9",
+                  "uses": "astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7",
                   "with": {
                     "enable-cache": true,
                     "cache-dependency-glob": "uv.lock"
@@ -3122,7 +3352,7 @@
                   }
                 },
                 {
-                  "uses": "astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9",
+                  "uses": "astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7",
                   "with": {
                     "enable-cache": true,
                     "cache-dependency-glob": "uv.lock"
@@ -3159,39 +3389,11 @@
             "push": {
               "branches": [
                 "main"
-              ],
-              "paths": [
-                ".github/workflows/**",
-                "apis/**",
-                "configs/**",
-                "docs/**",
-                "makes/**",
-                "packages/**",
-                "Makefile",
-                "mkdocs.shared.yml",
-                "mkdocs.yml",
-                "pyproject.toml",
-                "tox.ini",
-                "uv.lock"
               ]
             },
             "pull_request": {
               "branches": [
                 "main"
-              ],
-              "paths": [
-                ".github/workflows/**",
-                "apis/**",
-                "configs/**",
-                "docs/**",
-                "makes/**",
-                "packages/**",
-                "Makefile",
-                "mkdocs.shared.yml",
-                "mkdocs.yml",
-                "pyproject.toml",
-                "tox.ini",
-                "uv.lock"
               ]
             },
             "workflow_dispatch": null,
@@ -3224,7 +3426,7 @@
                   }
                 },
                 {
-                  "uses": "astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9",
+                  "uses": "astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7",
                   "with": {
                     "enable-cache": true,
                     "cache-dependency-glob": "uv.lock"
@@ -3280,6 +3482,26 @@
                 "api_toolchain_targets": "${{ matrix.api_toolchain_targets || '[\"api\", \"openapi-drift\"]' }}",
                 "post_test_command": "${{ matrix.post_test_command || '' }}"
               }
+            },
+            "verification_ready": {
+              "name": "verification-ready",
+              "if": "${{ always() }}",
+              "needs": [
+                "repository",
+                "package"
+              ],
+              "runs-on": "ubuntu-latest",
+              "steps": [
+                {
+                  "name": "Require repository and package verification success",
+                  "shell": "bash",
+                  "env": {
+                    "REPOSITORY_RESULT": "${{ needs.repository.result }}",
+                    "PACKAGE_RESULT": "${{ needs.package.result }}"
+                  },
+                  "run": "set -euo pipefail\n[[ \"${REPOSITORY_RESULT}\" == \"success\" ]] || exit 1\n[[ \"${PACKAGE_RESULT}\" == \"success\" ]] || exit 1\n"
+                }
+              ]
             }
           }
         }
@@ -3293,7 +3515,36 @@
         "release-github",
         "release-pypi"
       ],
-      "pinned_std_sha": "214f8c6e8881a97a258e57c450badb74a5fb7b5c"
+      "pinned_std_sha": "214f8c6e8881a97a258e57c450badb74a5fb7b5c",
+      "additional_required_status_checks": [
+        {
+          "context": "verification-ready",
+          "workflow": "repo / verify"
+        }
+      ],
+      "workflow_execution_policy": {
+        "schema": 1,
+        "dependency_pull_requests": "canonical",
+        "publication_entrypoints": {
+          "deploy-docs": {
+            "mode": "manual-only",
+            "controller": "iac",
+            "refs": "main-only"
+          },
+          "release-ghcr": {
+            "mode": "manual-only",
+            "controller": "iac"
+          },
+          "release-github": {
+            "mode": "manual-only",
+            "controller": "iac"
+          },
+          "release-pypi": {
+            "mode": "manual-only",
+            "controller": "iac"
+          }
+        }
+      }
     },
     {
       "name": "bijux-proteomics",
@@ -3603,7 +3854,7 @@
                   }
                 },
                 {
-                  "uses": "astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9",
+                  "uses": "astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7",
                   "with": {
                     "enable-cache": true,
                     "cache-dependency-glob": "uv.lock"
@@ -3661,7 +3912,7 @@
                   }
                 },
                 {
-                  "uses": "astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9",
+                  "uses": "astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7",
                   "with": {
                     "enable-cache": true,
                     "cache-dependency-glob": "uv.lock"
@@ -3719,7 +3970,7 @@
                   }
                 },
                 {
-                  "uses": "astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9",
+                  "uses": "astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7",
                   "with": {
                     "enable-cache": true,
                     "cache-dependency-glob": "uv.lock"
@@ -3756,39 +4007,11 @@
             "push": {
               "branches": [
                 "main"
-              ],
-              "paths": [
-                ".github/workflows/**",
-                "apis/**",
-                "configs/**",
-                "docs/**",
-                "makes/**",
-                "packages/**",
-                "Makefile",
-                "mkdocs.shared.yml",
-                "mkdocs.yml",
-                "pyproject.toml",
-                "tox.ini",
-                "uv.lock"
               ]
             },
             "pull_request": {
               "branches": [
                 "main"
-              ],
-              "paths": [
-                ".github/workflows/**",
-                "apis/**",
-                "configs/**",
-                "docs/**",
-                "makes/**",
-                "packages/**",
-                "Makefile",
-                "mkdocs.shared.yml",
-                "mkdocs.yml",
-                "pyproject.toml",
-                "tox.ini",
-                "uv.lock"
               ]
             },
             "workflow_dispatch": null,
@@ -3821,7 +4044,7 @@
                   }
                 },
                 {
-                  "uses": "astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9",
+                  "uses": "astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7",
                   "with": {
                     "enable-cache": true,
                     "cache-dependency-glob": "uv.lock"
@@ -3907,7 +4130,7 @@
                     "REPOSITORY_RESULT": "${{ needs.repository.result }}",
                     "PACKAGE_RESULT": "${{ needs.package.result }}"
                   },
-                  "run": "set -euo pipefail\n[[ \"${REPOSITORY_RESULT}\" == \"success\" ]]\n[[ \"${PACKAGE_RESULT}\" == \"success\" ]]\n"
+                  "run": "set -euo pipefail\n[[ \"${REPOSITORY_RESULT}\" == \"success\" ]] || exit 1\n[[ \"${PACKAGE_RESULT}\" == \"success\" ]] || exit 1\n"
                 }
               ]
             }
@@ -3923,7 +4146,36 @@
         "release-github",
         "release-pypi"
       ],
-      "pinned_std_sha": "214f8c6e8881a97a258e57c450badb74a5fb7b5c"
+      "pinned_std_sha": "214f8c6e8881a97a258e57c450badb74a5fb7b5c",
+      "additional_required_status_checks": [
+        {
+          "context": "verification-ready",
+          "workflow": "repo / verify"
+        }
+      ],
+      "workflow_execution_policy": {
+        "schema": 1,
+        "dependency_pull_requests": "canonical",
+        "publication_entrypoints": {
+          "deploy-docs": {
+            "mode": "manual-only",
+            "controller": "iac",
+            "refs": "main-only"
+          },
+          "release-ghcr": {
+            "mode": "manual-only",
+            "controller": "iac"
+          },
+          "release-github": {
+            "mode": "manual-only",
+            "controller": "iac"
+          },
+          "release-pypi": {
+            "mode": "manual-only",
+            "controller": "iac"
+          }
+        }
+      }
     },
     {
       "name": "bijux-std",
@@ -3975,7 +4227,11 @@
         "github-policy",
         "pr-approval-policy"
       ],
-      "pinned_std_sha": "5da4225aedcfc2af92bb431875243fa2db2b0ce9"
+      "pinned_std_sha": "5da4225aedcfc2af92bb431875243fa2db2b0ce9",
+      "workflow_execution_policy": {
+        "schema": 1,
+        "publication_entrypoints": {}
+      }
     },
     {
       "name": "bijux-gnss",
@@ -4218,7 +4474,7 @@
                 },
                 {
                   "name": "Set up Rust",
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}",
                     "components": "rustfmt"
@@ -4226,7 +4482,7 @@
                 },
                 {
                   "name": "Restore the Rust cache",
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4"
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6"
                 },
                 {
                   "name": "Run repository formatting gate",
@@ -4249,7 +4505,7 @@
                 },
                 {
                   "name": "Set up Rust",
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}",
                     "components": "clippy"
@@ -4257,7 +4513,7 @@
                 },
                 {
                   "name": "Restore the Rust cache",
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4"
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6"
                 },
                 {
                   "name": "Run repository lint gate",
@@ -4276,14 +4532,14 @@
                 },
                 {
                   "name": "Set up Rust",
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}"
                   }
                 },
                 {
                   "name": "Restore the Rust cache",
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4"
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6"
                 },
                 {
                   "name": "Install Rust audit tools",
@@ -4310,14 +4566,14 @@
                 },
                 {
                   "name": "Set up Rust",
-                  "uses": "dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9",
+                  "uses": "dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
                   "with": {
                     "toolchain": "${{ env.RUST_TOOLCHAIN_VERSION }}"
                   }
                 },
                 {
                   "name": "Restore the Rust cache",
-                  "uses": "Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4"
+                  "uses": "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6"
                 },
                 {
                   "name": "Install cargo-nextest",
@@ -4341,7 +4597,29 @@
         "release-ghcr",
         "release-github"
       ],
-      "pinned_std_sha": "44a77e32edc759e92b95feb63b2988ff90f0ca59"
+      "pinned_std_sha": "44a77e32edc759e92b95feb63b2988ff90f0ca59",
+      "workflow_execution_policy": {
+        "schema": 1,
+        "publication_entrypoints": {
+          "deploy-docs": {
+            "mode": "manual-only",
+            "controller": "iac",
+            "refs": "main-only"
+          },
+          "release-crates": {
+            "mode": "manual-only",
+            "controller": "iac"
+          },
+          "release-ghcr": {
+            "mode": "manual-only",
+            "controller": "iac"
+          },
+          "release-github": {
+            "mode": "manual-only",
+            "controller": "iac"
+          }
+        }
+      }
     },
     {
       "name": "bijux.github.io",
@@ -4380,7 +4658,17 @@
         "github-policy",
         "pr-approval-policy"
       ],
-      "pinned_std_sha": "5d4059e207559a51ed40dac1384693c57347018f"
+      "pinned_std_sha": "5d4059e207559a51ed40dac1384693c57347018f",
+      "workflow_execution_policy": {
+        "schema": 1,
+        "publication_entrypoints": {
+          "deploy-docs": {
+            "mode": "manual-only",
+            "controller": "iac",
+            "refs": "main-only"
+          }
+        }
+      }
     }
   ]
 }

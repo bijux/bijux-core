@@ -1,404 +1,116 @@
 (function () {
+  "use strict";
   const shell = (window.bijuxShell = window.bijuxShell || {});
-  let viewportRevealBound = false;
 
-  function centerLinkInScrollableTabs(link) {
-    if (!link) {
-      return;
+  function revealActive(container, selector) {
+    if (!container || container.clientWidth === 0) return;
+    const active = container.querySelector(selector);
+    if (!active) return;
+    const bounds = container.getBoundingClientRect();
+    const target = active.getBoundingClientRect();
+    // Relative scrolling works with both browser RTL scroll-coordinate models.
+    if (target.left < bounds.left || target.right > bounds.right) {
+      container.scrollBy({ left: target.left - bounds.left - (bounds.width - target.width) / 2, behavior: "instant" });
     }
-
-    const list = link.closest(".bijux-tabs__list");
-    if (!list) {
-      link.scrollIntoView({ block: "nearest", inline: "center" });
-      return;
-    }
-
-    const listRect = list.getBoundingClientRect();
-    const linkRect = link.getBoundingClientRect();
-    const target =
-      list.scrollLeft + (linkRect.left - listRect.left) - listRect.width / 2 + linkRect.width / 2;
-
-    list.scrollTo({
-      left: Math.max(0, target),
-      behavior: "auto",
-    });
-  }
-
-  function revealActiveNavigationTarget() {
-    const activeHubLink = document.querySelector(
-      ".bijux-hub-strip .bijux-tabs__item--active a"
-    );
-    const activeSiteLink = document.querySelector(
-      ".bijux-site-tabs .bijux-tabs__item--active a"
-    );
-    const activeDetailLink = document.querySelector(
-      "[data-bijux-detail-strip]:not([hidden]) .bijux-tabs__item--active a"
-    );
-    const activeCourseLink = document.querySelector(
-      "[data-bijux-course-strip]:not([hidden]) .bijux-tabs__item--active a"
-    );
-    const activeSidebarLink = document.querySelector(
-      ".md-sidebar--primary .md-nav__link--active"
-    );
-
-    centerLinkInScrollableTabs(activeHubLink);
-    centerLinkInScrollableTabs(activeSiteLink);
-    centerLinkInScrollableTabs(activeDetailLink);
-    centerLinkInScrollableTabs(activeCourseLink);
-    activeSidebarLink?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }
-
-  function revealAfterLayoutSettles() {
-    revealActiveNavigationTarget();
-    window.setTimeout(revealActiveNavigationTarget, 120);
-    window.setTimeout(revealActiveNavigationTarget, 320);
   }
 
   function runDesktopNavigationSync() {
-    revealAfterLayoutSettles();
+    for (const container of document.querySelectorAll(".bijux-hub-strip > .bijux-tabs__list, .bijux-site-tabs .bijux-tabs__list, [data-bijux-detail-strip]:not([hidden]) .bijux-tabs__list, [data-bijux-course-strip]:not([hidden]) .bijux-tabs__list")) {
+      revealActive(container, ".bijux-tabs__item--active a");
+    }
   }
 
-  function runPhoneNavigationSync() {
-    bindViewportReveal();
-    bindMobileDynamicTree();
-    revealMobileDrawerContext();
-  }
-
-  function resolveViewportMode() {
-    if (window.bijuxViewportProfile && typeof window.bijuxViewportProfile.current === "function") {
-      return window.bijuxViewportProfile.current();
-    }
-
-    const fallbackWidth =
-      window.visualViewport && typeof window.visualViewport.width === "number"
-        ? window.visualViewport.width
-        : window.innerWidth;
-
-    if (
-      window.bijuxViewportProfile &&
-      typeof window.bijuxViewportProfile.classifyWidth === "function"
-    ) {
-      return window.bijuxViewportProfile.classifyWidth(fallbackWidth);
-    }
-
-    if (typeof window.matchMedia === "function" && window.matchMedia("(max-width: 47.9375em)").matches) {
-      return "phone";
-    }
-
-    return "normal";
-  }
-
-  function directChildren(parent, selector) {
-    if (!parent) {
-      return [];
-    }
-    return Array.from(parent.children).filter((child) => child.matches(selector));
-  }
-
-  function normalizeTreePath(path) {
-    const navState = shell.navState;
-    if (navState && typeof navState.normalizePath === "function") {
-      return navState.normalizePath(path || "/");
-    }
-
-    if (!path) {
-      return "/";
-    }
-
-    const normalized = String(path).replace(/\/+$/, "");
-    return normalized || "/";
-  }
-
-  function normalizeCurrentTreePath() {
-    const navState = shell.navState;
-    if (navState && typeof navState.normalizeCurrentPath === "function") {
-      return navState.normalizeCurrentPath(window.location.pathname);
-    }
-    return normalizeTreePath(window.location.pathname);
-  }
-
-  function readTreeNode(nodeElement) {
-    const path = normalizeTreePath(nodeElement.dataset.bijuxNodePath || "/");
-    const url = nodeElement.dataset.bijuxNodeUrl || "";
-    const title = nodeElement.dataset.bijuxNodeTitle || nodeElement.textContent?.trim() || "Untitled";
-    const childList = directChildren(nodeElement, "ul.bijux-mobile-tree__children")[0] || null;
-    const childNodes = childList
-      ? directChildren(childList, "li.bijux-mobile-tree__node").map(readTreeNode)
-      : [];
-
-    return {
-      title,
-      path,
-      url,
-      children: childNodes,
-    };
-  }
-
-  function dedupeNodes(nodes) {
-    const uniqueNodes = [];
-    const seenPaths = new Set();
-
-    for (const node of nodes) {
-      const key = node.path || node.url || node.title;
-      if (!key || seenPaths.has(key)) {
-        continue;
+  function bind(signal) {
+    if (signal.aborted) return;
+    for (const strip of document.querySelectorAll(".bijux-hub-strip")) {
+      const list = strip.querySelector(".bijux-tabs__list");
+      const previous = strip.querySelector('[data-bijux-registry-scroll="previous"]');
+      const next = strip.querySelector('[data-bijux-registry-scroll="next"]');
+      if (!list || !previous || !next) continue;
+      let lastFocusedControl;
+      for (const button of [previous, next]) {
+        button.addEventListener("focus", () => { lastFocusedControl = button; }, { signal });
+        button.addEventListener("blur", () => {
+          queueMicrotask(() => {
+            if (lastFocusedControl === button && button.getClientRects().length)
+              lastFocusedControl = undefined;
+          });
+        }, { signal });
       }
-      seenPaths.add(key);
-      uniqueNodes.push(node);
-    }
-
-    return uniqueNodes;
-  }
-
-  function effectiveChildren(node) {
-    let children = Array.isArray(node?.children) ? [...node.children] : [];
-    if (!children.length) {
-      return children;
-    }
-
-    const first = children[0];
-    if (first && first.path === node.path && Array.isArray(first.children) && first.children.length) {
-      children = first.children;
-    }
-
-    return dedupeNodes(children.filter((child) => child.path !== node.path));
-  }
-
-  function rootTreeNodes(treeNodes, isHubSite) {
-    const roots = dedupeNodes(treeNodes);
-    if (isHubSite) {
-      return roots;
-    }
-
-    const directories = roots.filter((node) => effectiveChildren(node).length > 0);
-    if (directories.length) {
-      return directories;
-    }
-
-    return roots;
-  }
-
-  function findTrail(nodes, targetPath, trail = []) {
-    for (const node of nodes) {
-      const nextTrail = [...trail, node];
-      const childNodes = effectiveChildren(node);
-      const isExact = targetPath === node.path;
-      const isDescendant = node.path !== "/" && targetPath.startsWith(`${node.path}/`);
-
-      if (isExact) {
-        return nextTrail;
-      }
-
-      if (isDescendant && childNodes.length) {
-        const childTrail = findTrail(childNodes, targetPath, nextTrail);
-        if (childTrail) {
-          return childTrail;
+      const focusedControl = () => document.activeElement === document.body &&
+        lastFocusedControl && !lastFocusedControl.getClientRects().length
+        ? lastFocusedControl : document.activeElement;
+      function restoreHiddenFocus(focused) {
+        if (focused !== previous && focused !== next) return;
+        const target = strip.clientWidth > 0
+          ? list.querySelector('[aria-current="location"]') || list.querySelector("a")
+          : document.querySelector('[data-bijux-header-control="drawer-toggle"]');
+        if (target?.getClientRects().length) {
+          target.focus({ preventScroll: true });
+          if (strip.clientWidth > 0) revealActive(list, ":focus");
         }
-        return nextTrail;
+        lastFocusedControl = undefined;
       }
-    }
-
-    return null;
-  }
-
-  function bindMobileDynamicTree() {
-    const nav = document.querySelector(".md-sidebar--primary .bijux-nav--mobile[data-bijux-nav-variant='mobile']");
-    if (!nav || nav.dataset.bijuxMobileDynamicBound === "true") {
-      return;
-    }
-
-    const dynamicSection = nav.querySelector("[data-bijux-mobile-dynamic]");
-    const dynamicList = nav.querySelector("[data-bijux-mobile-dynamic-list]");
-    const dynamicTitle = nav.querySelector("[data-bijux-mobile-nav-title]");
-    const backButton = nav.querySelector("[data-bijux-mobile-nav-back]");
-    const forwardButton = nav.querySelector("[data-bijux-mobile-nav-forward]");
-    const treeSource = nav.querySelector("[data-bijux-mobile-tree-source] > ul.bijux-mobile-tree__list");
-
-    if (!dynamicSection || !dynamicList || !dynamicTitle || !backButton || !forwardButton || !treeSource) {
-      return;
-    }
-
-    const rootElements = directChildren(treeSource, "li.bijux-mobile-tree__node");
-    if (!rootElements.length) {
-      return;
-    }
-
-    const treeNodes = rootElements.map(readTreeNode);
-    const isHubSite = nav.dataset.bijuxHubSite === "true";
-    const rootNodes = rootTreeNodes(treeNodes, isHubSite);
-    if (!rootNodes.length) {
-      return;
-    }
-
-    nav.dataset.bijuxMobileDynamicBound = "true";
-    const backStack = [];
-    const forwardStack = [];
-    let currentState = {
-      title: "Navigation",
-      nodes: rootNodes,
-    };
-
-    function setControlsState() {
-      backButton.disabled = backStack.length === 0;
-      forwardButton.disabled = forwardStack.length === 0;
-    }
-
-    function markActiveForNode(link, node, hasChildren) {
-      const currentPath = normalizeCurrentTreePath();
-      const isExact = currentPath === node.path;
-      const isNested = node.path !== "/" && currentPath.startsWith(`${node.path}/`);
-      if (isExact || (!hasChildren && isNested)) {
-        link.setAttribute("aria-current", "page");
-        link.closest(".md-nav__item")?.classList.add("md-nav__item--active");
-      }
-    }
-
-    function renderCurrentState() {
-      dynamicTitle.textContent = currentState.title || "Navigation";
-      dynamicList.textContent = "";
-
-      for (const node of currentState.nodes) {
-        const item = document.createElement("li");
-        item.className = "md-nav__item";
-
-        const link = document.createElement("a");
-        link.className = "md-nav__link";
-        link.href = node.url || "#";
-        link.textContent = node.title;
-
-        const childNodes = effectiveChildren(node);
-        const hasChildren = childNodes.length > 0;
-        if (hasChildren) {
-          link.dataset.bijuxMobileDrill = "true";
+      signal.addEventListener("abort", () => {
+        const focused = focusedControl();
+        previous.hidden = next.hidden = true;
+        previous.removeAttribute("aria-disabled");
+        next.removeAttribute("aria-disabled");
+        restoreHiddenFocus(focused);
+      }, { once: true });
+      function update() {
+        if (signal.aborted) return;
+        const focused = focusedControl();
+        // Include the space currently reserved for controls without hiding a
+        // focused action during scroll updates.
+        const available = list.clientWidth +
+          (previous.hidden ? 0 : previous.getBoundingClientRect().width) +
+          (next.hidden ? 0 : next.getBoundingClientRect().width);
+        const overflow = list.clientWidth > 0 && list.scrollWidth > available + 1;
+        previous.hidden = next.hidden = !overflow;
+        if (!overflow) {
+          restoreHiddenFocus(focused);
+          return;
         }
-
-        markActiveForNode(link, node, hasChildren);
-
-        link.addEventListener("click", (event) => {
-          const plainPrimaryClick =
-            event.button === 0 &&
-            !event.metaKey &&
-            !event.ctrlKey &&
-            !event.shiftKey &&
-            !event.altKey;
-
-          if (!hasChildren || !plainPrimaryClick) {
-            return;
-          }
-
-          event.preventDefault();
-          backStack.push(currentState);
-          forwardStack.length = 0;
-          currentState = {
-            title: node.title,
-            nodes: childNodes,
-          };
-          renderCurrentState();
-        });
-
-        item.appendChild(link);
-        dynamicList.appendChild(item);
+        const links = list.querySelectorAll("a");
+        const bounds = list.getBoundingClientRect();
+        const first = links[0]?.getBoundingClientRect();
+        const last = links[links.length - 1]?.getBoundingClientRect();
+        const fits = rect => rect && rect.left >= bounds.left - 1 && rect.right <= bounds.right + 1;
+        previous.setAttribute("aria-disabled", String(fits(first)));
+        next.setAttribute("aria-disabled", String(fits(last)));
       }
-
-      setControlsState();
-    }
-
-    backButton.addEventListener("click", () => {
-      if (!backStack.length) {
-        return;
+      function move(button, direction) {
+        if (button.getAttribute("aria-disabled") === "true") return;
+        const rtl = getComputedStyle(list).direction === "rtl";
+        list.scrollBy({ left: direction * (rtl ? -1 : 1) * Math.max(44, list.clientWidth * 0.8), behavior: "instant" });
+        update();
       }
-      forwardStack.push(currentState);
-      currentState = backStack.pop();
-      renderCurrentState();
-    });
-
-    forwardButton.addEventListener("click", () => {
-      if (!forwardStack.length) {
-        return;
+      previous.addEventListener("click", () => move(previous, -1), { signal });
+      next.addEventListener("click", () => move(next, 1), { signal });
+      list.addEventListener("scroll", update, { signal });
+      list.addEventListener("focusin", () => {
+        revealActive(list, ":focus");
+        update();
+      }, { signal });
+      window.addEventListener("resize", update, { signal });
+      if (typeof ResizeObserver === "function") {
+        const observer = new ResizeObserver(update);
+        signal.addEventListener("abort", () => observer.disconnect(), { once: true });
+        try {
+          observer.observe(strip);
+          for (const link of list.querySelectorAll("a")) observer.observe(link);
+        } catch (error) { observer.disconnect(); throw error; }
       }
-      backStack.push(currentState);
-      currentState = forwardStack.pop();
-      renderCurrentState();
-    });
-
-    const currentPath = normalizeCurrentTreePath();
-    const trail = findTrail(rootNodes, currentPath);
-    if (trail && trail.length) {
-      for (const node of trail) {
-        const childNodes = effectiveChildren(node);
-        if (!childNodes.length) {
-          break;
-        }
-        backStack.push(currentState);
-        currentState = {
-          title: node.title,
-          nodes: childNodes,
-        };
-      }
+      document.fonts?.ready.then(update);
+      update();
     }
-
-    renderCurrentState();
-    dynamicSection.hidden = false;
-    nav.dataset.bijuxMobileDynamicReady = "true";
-  }
-
-  function revealMobileDrawerContext() {
-    const viewportMode = resolveViewportMode();
-
-    if (viewportMode !== "phone") {
-      return;
-    }
-
-    const activeMobileLink = document.querySelector(
-      ".md-sidebar--primary .bijux-nav--mobile .md-nav__link--active, " +
-        ".md-sidebar--primary .bijux-nav--mobile .md-nav__item--active > .md-nav__container > .md-nav__link, " +
-        ".md-sidebar--primary .bijux-nav--mobile .md-nav__item--active > .md-nav__link"
-    );
-
-    activeMobileLink?.scrollIntoView({
-      behavior: "auto",
-      block: "center",
-      inline: "nearest",
-    });
-  }
-
-  function bindMobileDrawerReveal() {
-    bindViewportReveal();
-    const drawerToggle = document.querySelector("#__drawer");
-    if (!drawerToggle || drawerToggle.dataset.bijuxRevealBound === "true") {
-      return;
-    }
-
-    drawerToggle.dataset.bijuxRevealBound = "true";
-    drawerToggle.addEventListener("change", () => {
-      if (!drawerToggle.checked) {
-        return;
-      }
-
-      window.setTimeout(() => {
-        revealMobileDrawerContext();
-      }, 180);
-    });
-  }
-
-  function bindViewportReveal() {
-    if (viewportRevealBound) {
-      return;
-    }
-    viewportRevealBound = true;
-    window.addEventListener("bijux:viewport-change", () => {
-      revealMobileDrawerContext();
-    });
   }
 
   shell.navReveal = {
-    revealActiveNavigationTarget,
-    revealAfterLayoutSettles,
+    bind,
     runDesktopNavigationSync,
-    runPhoneNavigationSync,
-    revealMobileDrawerContext,
-    bindMobileDrawerReveal,
-    bindMobileDynamicTree,
-    bindViewportReveal,
+    runPhoneNavigationSync: runDesktopNavigationSync,
+    bindMobileDrawerReveal() {},
   };
 })();

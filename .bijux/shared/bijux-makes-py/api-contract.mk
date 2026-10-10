@@ -213,8 +213,8 @@ api-test: | $(VENV_PYTHON)
 	@echo "✔ Schemathesis finished. Log → $(API_TEST_DIR_ABS)/schemathesis.log"
 	@[ -f "$(SCHEMATHESIS_JUNIT)" ] && echo "  JUnit → $(SCHEMATHESIS_JUNIT)" || true
 	@if [ -d .hypothesis ] && [ ! -L .hypothesis ]; then \
-	  echo "→ Removing stray .hypothesis (root)"; \
-	  rm -rf .hypothesis; \
+	  echo "✘ Refusing to delete legacy .hypothesis; run make artifact-aliases-migrate from the repository root"; \
+	  exit 2; \
 	fi
 
 api-serve: | $(VENV_PYTHON)

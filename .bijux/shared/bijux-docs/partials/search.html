@@ -1,0 +1,66 @@
+{#
+  Shared search presentation derives from the pinned Material 9.7.7 native partial.
+  Material owns form/component selectors, query/results and option behavior.
+  Scope uses the current configured site name; the network registry is not a search provider.
+Copyright (c) 2016-2025 Martin Donath <martin.donath@squidfunk.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to
+deal in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+IN THE SOFTWARE.
+#}
+{% set bijux_search_name = config.site_name | trim %}
+{% set bijux_search_label = lang.t('search.placeholder') ~ ' ' ~ bijux_search_name %}
+<div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="{{ bijux_search_label | e }}" aria-describedby="bijux-search-scope" placeholder="{{ bijux_search_label | e }}" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        {% set icon = config.theme.icon.search or "material/magnify" %}
+        {% include ".icons/" ~ icon ~ ".svg" %}
+        {% set icon = config.theme.icon.previous or "material/arrow-left" %}
+        {% include ".icons/" ~ icon ~ ".svg" %}
+      </label>
+      <nav class="md-search__options" aria-label="{{ lang.t('search') }}">
+        {% if "search.share" in features %}
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="{{ lang.t('search.share') }}" aria-label="{{ lang.t('search.share') }}" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            {% set icon = config.theme.icon.share or "material/share-variant" %}
+            {% include ".icons/" ~ icon ~ ".svg" %}
+          </a>
+        {% endif %}
+        <button type="reset" class="md-search__icon md-icon" title="{{ lang.t('search.reset') }}" aria-label="{{ lang.t('search.reset') }}" tabindex="-1">
+          {% set icon = config.theme.icon.close or "material/close" %}
+          {% include ".icons/" ~ icon ~ ".svg" %}
+        </button>
+      </nav>
+      {% if "search.suggest" in features %}
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      {% endif %}
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <p class="bijux-search-scope" id="bijux-search-scope">Results from <strong>{{ bijux_search_name | e }}</strong> only.</p>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            {{ lang.t("search.result.initializer") }}
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "strict": true,
+  "use_directory_urls": true,
+  "required_exclude_docs": [
+    "/overrides/",
+    "/hooks/",
+    "/assets/styles/README.md",
+    "/assets/javascripts/shell/README.md"
+  ],
+  "dev_addr": "127.0.0.1:8000",
+  "theme": {
+    "name": "material",
+    "language": "en",
+    "logo": "assets/bijux_logo.png",
+    "favicon": "assets/site-icons/favicon.ico",
+    "font": false,
+    "repository_icon": "fontawesome/brands/github",
+    "required_features": [
+      "navigation.tabs",
+      "navigation.tabs.sticky",
+      "navigation.sections",
+      "navigation.indexes",
+      "navigation.path",
+      "navigation.instant",
+      "navigation.top",
+      "navigation.footer",
+      "toc.follow",
+      "search.suggest",
+      "search.highlight",
+      "content.tabs.link",
+      "content.code.annotate",
+      "content.code.copy",
+      "content.code.select",
+      "content.action.edit",
+      "content.action.view"
+    ]
+  },
+  "required_plugins": [
+    "search",
+    "autorefs"
+  ],
+  "required_markdown_extensions": [
+    "admonition",
+    "attr_list",
+    "def_list",
+    "footnotes",
+    "md_in_html",
+    "tables",
+    "toc",
+    "pymdownx.details",
+    "pymdownx.superfences",
+    "pymdownx.highlight",
+    "pymdownx.inlinehilite",
+    "pymdownx.snippets",
+    "pymdownx.tabbed",
+    "pymdownx.tasklist",
+    "pymdownx.emoji"
+  ],
+  "extra_css": [
+    "assets/styles/extra.css"
+  ],
+  "extra_javascript": [
+    "assets/javascripts/mermaid-init.js",
+    "assets/javascripts/shell/theme-persistence.js",
+    "assets/javascripts/shell/viewport-profile.js",
+    "assets/javascripts/shell/nav-state.js",
+    "assets/javascripts/shell/detail-tabs.js",
+    "assets/javascripts/shell/nav-reveal.js",
+    "assets/javascripts/shell/search-recovery.js",
+    "assets/javascripts/shell/content-reflow.js",
+    "assets/javascripts/external-links.js",
+    "assets/javascripts/shell/bootstrap.js",
+    "assets/javascripts/navigation-sync.js"
+  ],
+  "copyright": "\u00a9 2026 Bijan Mousavi <bijan@bijux.io>",
+  "diagram": {
+    "fence_class": "bijux-diagram",
+    "vendor": "assets/javascripts/vendor/mermaid-11.17.2.min.js",
+    "sha256": "d7db2d59ac3457fb61477895a767b0642222f85133ac124beee47c0cc41e8139",
+    "security_level": "strict",
+    "maximum_source_characters": 50000,
+    "maximum_edges": 500
+  },
+  "retired_extra_javascript": [
+    "assets/javascripts/vendor/mermaid-11.6.0.min.js"
+  ],
+  "retired_theme_logos": [
+    "assets/bijux_logo_hq.png"
+  ]
+}

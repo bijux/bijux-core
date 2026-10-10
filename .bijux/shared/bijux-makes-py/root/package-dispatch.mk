@@ -10,6 +10,14 @@ ROOT_MAKE_DIR="$(abspath $(ROOT_MAKE_DIR))" \
 CONFIG_DIR="$(abspath $(CONFIG_DIR))" \
 PROJECT_DIR="$(abspath $(MONOREPO_ROOT))/packages/$(1)" \
 PROJECT_ARTIFACTS_DIR="$(abspath $(MONOREPO_ROOT))/artifacts/$(1)" \
+PYTHONPYCACHEPREFIX="$(abspath $(MONOREPO_ROOT))/artifacts/$(1)/pycache" \
+XDG_CACHE_HOME="$(abspath $(MONOREPO_ROOT))/artifacts/$(1)/xdg_cache" \
+HYPOTHESIS_STORAGE_DIRECTORY="$(abspath $(MONOREPO_ROOT))/artifacts/$(1)/hypothesis" \
+COVERAGE_FILE="$(abspath $(MONOREPO_ROOT))/artifacts/$(1)/test/.coverage" \
+UV_CACHE_DIR="$(abspath $(MONOREPO_ROOT))/artifacts/$(1)/uv_cache" \
+PIP_CACHE_DIR="$(abspath $(MONOREPO_ROOT))/artifacts/$(1)/pip_cache" \
+NPM_CONFIG_CACHE="$(abspath $(MONOREPO_ROOT))/artifacts/$(1)/npm_cache" \
+TMPDIR="$(abspath $(MONOREPO_ROOT))/artifacts/$(1)/process" \
 API_DIR="$(abspath $(MONOREPO_ROOT))/apis/$(1)"
 endef
 

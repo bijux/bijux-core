@@ -1,34 +1,50 @@
 /* Header structure: hub strip and header tools surfaces. */
 .bijux-hub-strip {
+  align-items: center;
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  position: relative;
+}
+
+.bijux-hub-strip > .bijux-tabs__list {
   flex: 1 1 auto;
   min-width: 0;
   overflow-x: auto;
-  position: relative;
+}
+
+.bijux-registry-scroll {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  flex: 0 0 auto;
+  inline-size: 2.2rem;
+  block-size: 2.2rem;
+  justify-content: center;
+  min-inline-size: 44px;
+  min-block-size: 44px;
+}
+
+.bijux-registry-scroll svg {
+  inline-size: 1.2rem;
+  block-size: 1.2rem;
+  fill: currentColor;
+}
+
+.bijux-registry-scroll[aria-disabled="true"] { cursor: default; opacity: 0.55; }
+.bijux-registry-scroll:focus-visible { outline-offset: -3px; opacity: 1; }
+[dir="rtl"] .bijux-registry-scroll svg { transform: rotate(180deg); }
+
+body[data-bijux-drawer-ready="true"] .bijux-hub-strip > .bijux-tabs__list {
   scrollbar-width: none;
 }
 
-.bijux-hub-strip::-webkit-scrollbar {
+body[data-bijux-drawer-ready="true"] .bijux-hub-strip > .bijux-tabs__list::-webkit-scrollbar {
   display: none;
-}
-
-.bijux-hub-strip::before,
-.bijux-hub-strip::after {
-  content: "";
-  inset-block: 0;
-  pointer-events: none;
-  position: absolute;
-  width: 1.15rem;
-  z-index: 1;
-}
-
-.bijux-hub-strip::before {
-  background: linear-gradient(90deg, var(--bijux-hub-bg), rgba(30, 40, 82, 0));
-  inset-inline-start: 0;
-}
-
-.bijux-hub-strip::after {
-  background: linear-gradient(270deg, var(--bijux-hub-bg), rgba(30, 40, 82, 0));
-  inset-inline-end: 0;
 }
 
 .bijux-header-tools {
@@ -50,6 +66,61 @@
 
 .bijux-header-tools .md-search {
   padding: 0;
+}
+
+/* A search backdrop covers the viewport without enlarging document geometry.
+   Material's scaled mobile circle and double-height desktop plane otherwise
+   escape the viewport before its asynchronous scroll lock takes effect. */
+[data-md-toggle="search"] ~ .md-header .md-search__overlay {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  border-radius: 0;
+  transform: none;
+  visibility: hidden;
+  transition: opacity 0.2s;
+}
+
+[data-md-toggle="search"]:checked ~ .md-header .md-search__overlay {
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  transform: none;
+  visibility: visible;
+  transition: opacity 0.2s;
+}
+
+/* Full-width mobile results fade in without sliding outside their viewport. */
+@media screen and (max-width: 59.984375em) {
+  .md-header .md-search__inner { transform: none; }
+}
+
+/* An enhanced owned header has one modal Search invoker at every width.
+   Native Material headers retain their independently owned inline desktop field. */
+body[data-bijux-drawer-ready="true"] #__search:not(:checked) ~ header[data-bijux-drawer-target] .md-search {
+  display: none;
+}
+
+/* Match the admitted Material boundary between modal and inline search. */
+@media screen and (max-width: 59.984375em) {
+  #__search:not(:checked) ~ .md-header .md-search { display: none; }
+}
+
+/* The upgraded close button is an action only for an open search component.
+   Material's desktop icon is otherwise decorative and disables pointer events. */
+#__search:not(:checked) ~ .md-header button.md-search__icon[for="__search"] {
+  display: none;
+}
+#__search:checked ~ .md-header button.md-search__icon[for="__search"] {
+  pointer-events: auto;
+}
+#__search:checked ~ .md-header button.md-search__icon[for="__search"] svg:first-child {
+  display: none;
+}
+#__search:checked ~ .md-header button.md-search__icon[for="__search"] svg:last-child {
+  display: inline-block;
 }
 
 .bijux-header-tools .md-search__inner {
@@ -109,7 +180,7 @@
   background: transparent;
   border: 0;
   box-shadow: none;
-  color: #0f172a;
+  color: #fff;
   display: inline-flex;
   justify-content: center;
   opacity: 0.92;
@@ -119,7 +190,7 @@
 .bijux-header-tools .bijux-theme-toggle:hover {
   background: transparent;
   box-shadow: none;
-  color: #0f5f73;
+  color: #fff;
   opacity: 1;
   transform: translateY(-1px);
 }
@@ -142,4 +213,29 @@
 .bijux-header-tools .bijux-theme-toggle svg {
   height: 1.05rem;
   width: 1.05rem;
+}
+
+/* Keyboard focus keeps its complete ring inside the masthead even while hovered. */
+.bijux-header-tools .bijux-theme-toggle:focus-visible,
+[data-md-color-scheme="slate"] .bijux-header-tools .bijux-theme-toggle:focus-visible {
+  transform: none;
+}
+
+/* Search feedback belongs to the content surface rather than the white masthead. */
+.md-search__output .bijux-search-recovery {
+  background: var(--md-default-bg-color);
+  color: var(--md-default-fg-color);
+}
+
+/* Clear becomes clickable as the query changes; its hit area must not shrink
+   during Material's icon reveal transition. */
+.md-search__options > button.md-search__icon[type="reset"] {
+  min-inline-size: 24px;
+  min-block-size: 24px;
+  transform: none;
+}
+
+/* Search counts sit on Material's shaded metadata surface; muted text is too light there. */
+.md-search-result__meta {
+  color: var(--md-default-fg-color);
 }

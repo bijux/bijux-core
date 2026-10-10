@@ -22,6 +22,7 @@ jobs:
   policy:
     name: policy / github
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -30,6 +31,9 @@ jobs:
 
       - name: Gather changed files
         shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           write_single_commit_diff() {
@@ -57,9 +61,25 @@ jobs:
             fi
           }
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            base_ref="${{ github.base_ref }}"
-            git fetch --no-tags --prune --depth=1 origin "${base_ref}"
-            git diff --name-only "origin/${base_ref}...HEAD" > /tmp/changed-files.txt
+            for commit_sha in "${PR_BASE_SHA}" "${PR_HEAD_SHA}"; do
+              if [[ ! "${commit_sha}" =~ ^[0-9a-f]{40}$ ]]; then
+                echo "ERROR: pull request event requires full base and head commit SHAs" >&2
+                exit 1
+              fi
+              if [[ "$(git cat-file -t "${commit_sha}" 2>/dev/null)" != commit ]]; then
+                echo "ERROR: pull request event commit is absent from checkout: ${commit_sha}" >&2
+                exit 1
+              fi
+            done
+            if [[ "$(git rev-parse --is-shallow-repository)" != false ]]; then
+              echo "ERROR: pull request policy requires complete checkout history" >&2
+              exit 1
+            fi
+            if ! git merge-base "${PR_BASE_SHA}" "${PR_HEAD_SHA}" >/dev/null; then
+              echo "ERROR: pull request event commits have no common ancestor" >&2
+              exit 1
+            fi
+            git diff --name-only "${PR_BASE_SHA}...${PR_HEAD_SHA}" > /tmp/changed-files.txt
           elif [[ "${{ github.event_name }}" == "merge_group" ]]; then
             base_sha="${{ github.event.merge_group.base_sha }}"
             head_sha="${{ github.event.merge_group.head_sha }}"
@@ -83,6 +103,62 @@ jobs:
         run: |
           set -euo pipefail
           python3 .github/scripts/check_protected_github_changes.py --changed-file-list /tmp/changed-files.txt
+
+      - name: Select canonical workflow verification source
+        id: workflow_source
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo_name="${GITHUB_REPOSITORY#*/}"
+          candidate_args=()
+          if [[ "${GITHUB_REPOSITORY}" == 'bijux/bijux-std' ]]; then
+            source_root="${PWD}"
+            source_sha="${GITHUB_SHA}"
+            candidate_args=(--candidate)
+          else
+            source_sha="$(cat .github/standards/bijux-std.sha)"
+            [[ "${source_sha}" =~ ^[0-9a-f]{40}$ ]] || { echo 'ERROR: full standard source pin required' >&2; exit 1; }
+            mkdir -p artifacts
+            [[ ! -L artifacts ]] || { echo 'ERROR: artifacts must be owned by this checkout' >&2; exit 1; }
+            source_root="$(mktemp -d "${PWD}/artifacts/workflow-source.XXXXXXXX")"
+            git -C "${source_root}" init --quiet
+            git -C "${source_root}" remote add origin https://github.com/bijux/bijux-std.git
+            git -C "${source_root}" fetch --quiet --depth 1 origin "${source_sha}"
+            [[ "$(git -C "${source_root}" rev-parse 'FETCH_HEAD^{commit}')" == "${source_sha}" ]]
+            git -C "${source_root}" checkout --quiet --detach "${source_sha}"
+          fi
+          requires_parser="$(python3 "${source_root}/.github/scripts/check_workflow_projection.py" \
+            --target "${PWD}" --repo "${repo_name}" --source-sha "${source_sha}" \
+            "${candidate_args[@]}" --requires-parser)"
+          [[ "${requires_parser}" == true || "${requires_parser}" == false ]]
+          printf 'requires_parser=%s\n' "${requires_parser}" >> "${GITHUB_OUTPUT}"
+          printf 'BIJUX_WORKFLOW_SOURCE_ROOT=%s\n' "${source_root}" >> "${GITHUB_ENV}"
+          printf 'BIJUX_WORKFLOW_SOURCE_SHA=%s\n' "${source_sha}" >> "${GITHUB_ENV}"
+
+      - name: Provision selected workflow parser
+        if: steps.workflow_source.outputs.requires_parser == 'true'
+        uses: ruby/setup-ruby@e81a8fa391b11a595c1b7ed84177cc0fe02faf83
+        with:
+          ruby-version: '3.3.12'
+
+      - name: Admit selected workflow parser runtime
+        if: steps.workflow_source.outputs.requires_parser == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ruby -ryaml -rjson -e 'abort "Ruby 3.3.12 required" unless RUBY_VERSION == "3.3.12"; abort "Psych structural parser required" unless YAML.respond_to?(:parse_stream) && YAML.respond_to?(:safe_load); puts JSON.generate({ruby: RUBY_VERSION, psych: Psych::VERSION})'
+
+      - name: Verify canonical managed workflow projection
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate_args=()
+          if [[ "${GITHUB_REPOSITORY}" == 'bijux/bijux-std' ]]; then
+            candidate_args=(--candidate)
+          fi
+          python3 "${BIJUX_WORKFLOW_SOURCE_ROOT}/.github/scripts/check_workflow_projection.py" \
+            --target "${PWD}" --repo "${GITHUB_REPOSITORY#*/}" \
+            --source-sha "${BIJUX_WORKFLOW_SOURCE_SHA}" "${candidate_args[@]}"
 
       - name: Render generated .github files from manifest
         shell: bash

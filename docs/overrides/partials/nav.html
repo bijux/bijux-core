@@ -1,412 +1,47 @@
-{% set class = "md-nav md-nav--primary" %}
-{% if "toc.integrate" in features %}
-  {% set class = class ~ " md-nav--integrated" %}
-{% endif %}
 {% set bijux = config.extra.bijux if config.extra and config.extra.bijux else {} %}
 {% set hub_links = bijux.hub_links if bijux and bijux.hub_links else [] %}
 {% set active_repository = bijux.repository if bijux and bijux.repository else "" %}
-{% set repo_name = config.repo_name if config and config.repo_name else "" %}
-{% set is_bijux_hub_site = repo_name == "bijux/bijux.github.io" or active_repository in ["bijux", "bijux.github.io"] %}
-{% set bijux_primary_section_nav = true %}
-{% set current_page = page if page is defined else none %}
-{% set scoped = namespace(items=[], title=config.site_name, visible=false) %}
-{% set active_root = namespace(item=None) %}
-{% for nav_item in nav %}
-  {% if nav_item.active %}
-    {% set active_root.item = nav_item %}
-  {% endif %}
-{% endfor %}
-{% if current_page and current_page.parent and current_page.parent.children %}
-  {% set parent_has_nested = namespace(value=false) %}
-  {% for child in current_page.parent.children %}
-    {% if child.children %}
-      {% set parent_has_nested.value = true %}
-    {% endif %}
-  {% endfor %}
-  {% if not parent_has_nested.value %}
-    {% for child in current_page.parent.children %}
-      {% if not child.children %}
-        {% set _ = scoped.items.append(child) %}
-      {% endif %}
-    {% endfor %}
-    {% set scoped.title = current_page.parent.title %}
-    {% set scoped.visible = scoped.items | length > 0 %}
-  {% endif %}
-{% endif %}
-{% set current_page_src_uri = current_page.file.src_uri if current_page and current_page.file else "" %}
-{% set bijux_index_page = current_page and (current_page.is_index or current_page_src_uri.endswith('/index.md') or current_page_src_uri == 'index.md') %}
-{% set landing_home_page = bijux_index_page and current_page and active_root.item and current_page.parent == active_root.item %}
-{% if landing_home_page %}
-  {% set scoped.visible = false %}
-{% endif %}
-{% if scoped.visible and bijux_index_page and current_page and current_page.parent and current_page.parent.children %}
-  {% set current_page_path = (current_page.url | trim("/")) if current_page.url else "" %}
-  {% set matches_nested_node = namespace(value=false) %}
-  {% for child in current_page.parent.children %}
-    {% set child_path = (child.url | trim("/")) if child.url else "" %}
-    {% if child_path == current_page_path and child.children %}
-      {% set matches_nested_node.value = true %}
-    {% endif %}
-  {% endfor %}
-  {% if matches_nested_node.value %}
-    {% set scoped.visible = false %}
-  {% endif %}
-{% endif %}
-{% set bijux_expand_scoped_groups = false %}
-{% if scoped.visible and current_page and current_page.title == "Overview" %}
-  {% set bijux_expand_scoped_groups = true %}
-{% endif %}
 {% import "partials/nav-item.html" as item with context %}
-{% import "partials/bijux-nav.html" as bijux_nav with context %}
-{% set mobile_sites_order = "5-sites" %}
-{% macro nav_entry_url(entry) -%}
-  {% if entry %}
-    {% set resolved = bijux_nav.first_page_url(entry) | trim %}
-    {% if resolved %}
-      {{ resolved }}
-    {% elif entry.url %}
-      {{ entry.url | url }}
-    {% endif %}
-  {% endif %}
-{%- endmacro %}
-{% macro nav_entry_path(entry) -%}
-  {% if entry %}
-    {% set resolved = bijux_nav.first_page_path(entry) | trim %}
-    {% if resolved %}
-      {{ resolved }}
-    {% elif entry.url %}
-      {{ entry.url | trim("/") }}
-    {% endif %}
-  {% endif %}
-{%- endmacro %}
-{% macro mobile_row_item(entry) -%}
-  {% set target_url = nav_entry_url(entry) | trim %}
-  {% if entry and target_url %}
-    {% set item_class = "md-nav__item" %}
-    {% set current = "" %}
-    {% if entry.active %}
-      {% set item_class = item_class ~ " md-nav__item--active" %}
-      {% set current = 'aria-current="page"' %}
-    {% endif %}
-    <li class="{{ item_class }}">
-      <a href="{{ target_url }}" class="md-nav__link" {{ current }}>{{ entry.title }}</a>
-    </li>
-  {% endif %}
-{%- endmacro %}
-{% macro mobile_row(label, items, row_key, scrollfix=true, row_kind="local") -%}
-  {% if items and items | length > 0 %}
-    <section class="bijux-mobile-local" aria-label="{{ label }}" data-bijux-mobile-order="{{ row_key }}" data-bijux-mobile-kind="{{ row_kind }}">
-      <div class="bijux-mobile-local__label">{{ label }}</div>
-      <ul class="md-nav__list"{% if scrollfix %} data-md-scrollfix{% endif %}>
-        {% set seen_paths = namespace(values=[]) %}
-        {% for entry in items %}
-          {% set entry_path = nav_entry_path(entry) | trim %}
-          {% if entry_path and entry_path not in seen_paths.values %}
-            {% set _ = seen_paths.values.append(entry_path) %}
-            {{ mobile_row_item(entry) }}
-          {% endif %}
-        {% endfor %}
-      </ul>
-    </section>
-  {% endif %}
-{%- endmacro %}
-{% macro mobile_tree_node(entry) -%}
-  {% if entry %}
-    {% set node_path = nav_entry_path(entry) | trim %}
-    {% set node_url = nav_entry_url(entry) | trim %}
-    {% if node_path and node_url %}
-      <li class="bijux-mobile-tree__node" data-bijux-node-path="{{ node_path }}" data-bijux-node-url="{{ node_url }}" data-bijux-node-title="{{ entry.title | e }}">
-        {% if entry.children and entry.children | length > 0 %}
-          <ul class="bijux-mobile-tree__children">
-            {% for child in entry.children %}
-              {{ mobile_tree_node(child) }}
-            {% endfor %}
-          </ul>
-        {% endif %}
-      </li>
-    {% endif %}
-  {% endif %}
-{%- endmacro %}
-{% set mobile_sites_block %}
+{% set page_occurrences = {} %}
+{% for document in nav.pages %}
+  {% set source = document.file.src_uri %}
+  {% set _ = page_occurrences.update({source: page_occurrences.get(source, 0) + 1}) %}
+{% endfor %}
+<nav id="bijux-navigation" class="md-nav md-nav--primary bijux-nav bijux-nav--mobile" aria-label="{{ config.site_name | e }} documentation navigation" data-md-level="0" data-bijux-nav-variant="complete">
+  <div class="bijux-nav__title">
+    <a href="{{ config.extra.homepage | d(nav.homepage.url, true) | url }}" class="md-nav__button md-logo" aria-label="{{ config.site_name }}" data-md-component="logo">
+      {% include "partials/logo.html" %}
+    </a>
+    <span class="bijux-nav__site-name">{{ config.site_name }}</span>
+    <label class="bijux-drawer-close md-icon" role="button" tabindex="0" aria-label="Close navigation" data-bijux-control-target="__drawer" data-bijux-control-close>
+      {% include ".icons/material/close.svg" %}
+    </label>
+  </div>
+  <ul class="md-nav__list bijux-tree" data-md-scrollfix>
+    {% for nav_item in nav %}
+      {%- set authored = none -%}
+      {%- if config.nav is mapping -%}
+        {%- set names = config.nav | list -%}
+        {%- if loop.index0 < names | length -%}
+          {%- set name = names[loop.index0] -%}
+          {%- set authored = {name: config.nav[name]} -%}
+        {%- endif -%}
+      {%- elif config.nav is sequence and config.nav is not string and loop.index0 < config.nav | length -%}
+        {%- set authored = config.nav[loop.index0] -%}
+      {%- endif -%}
+      {{ item.render(nav_item, "bijux-node-" ~ loop.index, 1, authored, page_occurrences) }}
+    {% endfor %}
+  </ul>
   {% if hub_links %}
-    <section class="bijux-mobile-hub" aria-label="Bijux sites" data-bijux-mobile-order="{{ mobile_sites_order }}" data-bijux-mobile-kind="sites">
-      <div class="bijux-mobile-hub__label">Sites</div>
+    <section class="bijux-site-registry" aria-labelledby="bijux-sites-title">
+      <h2 id="bijux-sites-title">Bijux sites</h2>
       <ul class="bijux-mobile-hub__list">
         {% for entry in hub_links %}
-          {% set item_class = "bijux-mobile-hub__item" %}
-          {% set current = "" %}
-          {% if entry.key == active_repository %}
-            {% set item_class = item_class ~ " bijux-mobile-hub__item--active" %}
-            {% set current = 'aria-current="page"' %}
-          {% endif %}
-          <li class="{{ item_class }}">
-            <a href="{{ entry.url }}" class="bijux-mobile-hub__link" {{ current }}>{{ entry.label }}</a>
+          <li class="bijux-mobile-hub__item{{ ' bijux-mobile-hub__item--active' if entry.key == active_repository else '' }}">
+            <a href="{{ entry.url }}" class="bijux-mobile-hub__link"{{ ' aria-current="location"' if entry.key == active_repository else '' }}>{{ entry.label }}</a>
           </li>
         {% endfor %}
       </ul>
     </section>
   {% endif %}
-{% endset %}
-{% set bijux_primary_section_nav = false %}
-{# Phone drawer model contract:
-   - Hub: Sections -> Pages -> Sites
-   - Project repos: Directories rows -> Pages fallback -> Sites #}
-<nav class="{{ class }} bijux-nav bijux-nav--mobile" aria-label="{{ lang.t('nav') }}" data-bijux-nav-variant="mobile" data-bijux-mobile-tree-mode="default" data-bijux-hub-site="{{ 'true' if is_bijux_hub_site else 'false' }}" data-md-level="0">
-  <label class="md-nav__title bijux-nav__title" for="__drawer">
-    <a href="{{ config.extra.homepage | d(nav.homepage.url, true) | url }}" title="{{ config.site_name | e }}" class="md-nav__button md-logo" aria-label="{{ config.site_name }}" data-md-component="logo">
-      {% include "partials/logo.html" %}
-    </a>
-    <span class="bijux-nav__title-text">
-      <span class="bijux-nav__site-name">{{ config.site_name }}</span>
-      {% if active_root.item and active_root.item.title != "Home" %}
-        <span class="bijux-nav__section-name">{{ active_root.item.title }}</span>
-      {% endif %}
-    </span>
-  </label>
-  {% if config.repo_url %}
-    <div class="md-nav__source">
-      {% include "partials/source.html" %}
-    </div>
-  {% endif %}
-  <section class="bijux-mobile-local bijux-mobile-dynamic" aria-label="Navigation" data-bijux-mobile-order="1-navigation" data-bijux-mobile-kind="navigation" data-bijux-mobile-dynamic hidden>
-    <div class="bijux-mobile-dynamic__header">
-      <button class="bijux-mobile-dynamic__control" type="button" data-bijux-mobile-nav-back aria-label="Go back in navigation" title="Go back" disabled>
-        <span aria-hidden="true">←</span>
-      </button>
-      <div class="bijux-mobile-local__label bijux-mobile-dynamic__label" data-bijux-mobile-nav-title>Navigation</div>
-      <button class="bijux-mobile-dynamic__control" type="button" data-bijux-mobile-nav-forward aria-label="Go forward in navigation" title="Go forward" disabled>
-        <span aria-hidden="true">→</span>
-      </button>
-    </div>
-    <ul class="md-nav__list" data-bijux-mobile-dynamic-list data-md-scrollfix></ul>
-  </section>
-  <nav class="bijux-mobile-tree-source" data-bijux-mobile-tree-source aria-hidden="true" hidden>
-    <ul class="bijux-mobile-tree__list">
-      {% for nav_item in nav %}
-        {{ mobile_tree_node(nav_item) }}
-      {% endfor %}
-    </ul>
-  </nav>
-  <div data-bijux-mobile-static>
-  {% set top_directories = namespace(list=[]) %}
-    {% set top_level_pages = namespace(list=[]) %}
-    {% for nav_item in nav %}
-      {% set nav_path = (nav_item.url | trim("/")) if nav_item.url else "" %}
-      {% set first_child = nav_item.children[0] if nav_item.children else none %}
-      {% set first_path = (first_child.url | trim("/")) if first_child and first_child.url else "" %}
-      {% set flatten_wrapper_home = first_child and first_child.children and first_path == nav_path %}
-      {% if flatten_wrapper_home %}
-        {% for child in first_child.children %}
-          {% set child_path = (child.url | trim("/")) if child.url else "" %}
-          {% if child_path != nav_path %}
-            {% if child.children %}
-              {% set _ = top_directories.list.append(child) %}
-            {% else %}
-              {% set _ = top_level_pages.list.append(child) %}
-            {% endif %}
-          {% endif %}
-        {% endfor %}
-      {% else %}
-        {% if nav_item.children %}
-          {% set _ = top_directories.list.append(nav_item) %}
-        {% elif nav_item.url %}
-          {% set _ = top_level_pages.list.append(nav_item) %}
-        {% endif %}
-      {% endif %}
-    {% endfor %}
-    {% if top_directories.list | length == 0 %}
-      {% for nav_item in nav %}
-        {% set nav_path = (nav_item.url | trim("/")) if nav_item.url else "" %}
-        {% if nav_item.children %}
-          {% for child in nav_item.children %}
-            {% set child_path = (child.url | trim("/")) if child.url else "" %}
-            {% if child_path != nav_path %}
-              {% if child.children %}
-                {% set _ = top_directories.list.append(child) %}
-              {% else %}
-                {% set _ = top_level_pages.list.append(child) %}
-              {% endif %}
-            {% endif %}
-          {% endfor %}
-        {% elif nav_item.url %}
-          {% set _ = top_level_pages.list.append(nav_item) %}
-        {% endif %}
-      {% endfor %}
-    {% endif %}
-    {% set active_top = namespace(item=top_directories.list[0] if top_directories.list else none) %}
-    {% for entry in top_directories.list %}
-      {% if entry.active %}
-        {% set active_top.item = entry %}
-      {% endif %}
-    {% endfor %}
-    {% if active_top.item and not active_top.item.children %}
-      {% set top_fallback_selected = namespace(value=false) %}
-      {% for entry in top_directories.list %}
-        {% if not top_fallback_selected.value and entry.children %}
-          {% set active_top.item = entry %}
-          {% set top_fallback_selected.value = true %}
-        {% endif %}
-      {% endfor %}
-    {% endif %}
-    {% set second_level_dirs = namespace(list=[]) %}
-    {% set second_level_pages = namespace(list=[]) %}
-    {% set second_source = namespace(list=[]) %}
-    {% if active_top.item and active_top.item.children %}
-      {% set active_top_path = (active_top.item.url | trim("/")) if active_top.item.url else "" %}
-      {% set top_first_child = active_top.item.children[0] if active_top.item.children else none %}
-      {% set top_first_path = (top_first_child.url | trim("/")) if top_first_child and top_first_child.url else "" %}
-      {% set flatten_top_wrapper = top_first_child and top_first_child.children and top_first_path == active_top_path %}
-      {% set second_source.list = top_first_child.children if flatten_top_wrapper else active_top.item.children %}
-      {% for child in second_source.list %}
-        {% set child_path = (child.url | trim("/")) if child.url else "" %}
-        {% if child_path != active_top_path %}
-          {% if child.children %}
-            {% set _ = second_level_dirs.list.append(child) %}
-          {% else %}
-            {% set _ = second_level_pages.list.append(child) %}
-          {% endif %}
-        {% endif %}
-      {% endfor %}
-    {% endif %}
-    {% if second_level_dirs.list | length == 0 and second_level_pages.list | length == 0 %}
-      {% set second_level_fallback = namespace(applied=false) %}
-      {% for entry in top_directories.list %}
-        {% if not second_level_fallback.applied and entry.children %}
-          {% set entry_path = (entry.url | trim("/")) if entry.url else "" %}
-          {% set entry_first_child = entry.children[0] if entry.children else none %}
-          {% set entry_first_path = (entry_first_child.url | trim("/")) if entry_first_child and entry_first_child.url else "" %}
-          {% set flatten_entry_wrapper = entry_first_child and entry_first_child.children and entry_first_path == entry_path %}
-          {% set entry_source = entry_first_child.children if flatten_entry_wrapper else entry.children %}
-          {% for child in entry_source %}
-            {% set child_path = (child.url | trim("/")) if child.url else "" %}
-            {% if child_path != entry_path %}
-              {% if child.children %}
-                {% set _ = second_level_dirs.list.append(child) %}
-              {% else %}
-                {% set _ = second_level_pages.list.append(child) %}
-              {% endif %}
-            {% endif %}
-          {% endfor %}
-          {% if second_level_dirs.list | length > 0 or second_level_pages.list | length > 0 %}
-            {% set active_top.item = entry %}
-            {% set second_level_fallback.applied = true %}
-          {% endif %}
-        {% endif %}
-      {% endfor %}
-    {% endif %}
-    {% set active_second = namespace(item=second_level_dirs.list[0] if second_level_dirs.list else none) %}
-    {% for entry in second_level_dirs.list %}
-      {% if entry.active %}
-        {% set active_second.item = entry %}
-      {% endif %}
-    {% endfor %}
-    {% set third_level_dirs = namespace(list=[]) %}
-    {% set third_level_pages = namespace(list=[]) %}
-    {% set third_source = namespace(list=[]) %}
-    {% if active_second.item and active_second.item.children %}
-      {% set active_second_path = (active_second.item.url | trim("/")) if active_second.item.url else "" %}
-      {% set second_first_child = active_second.item.children[0] if active_second.item.children else none %}
-      {% set second_first_path = (second_first_child.url | trim("/")) if second_first_child and second_first_child.url else "" %}
-      {% set flatten_second_wrapper = second_first_child and second_first_child.children and second_first_path == active_second_path %}
-      {% set third_source.list = second_first_child.children if flatten_second_wrapper else active_second.item.children %}
-      {% for child in third_source.list %}
-        {% set child_path = (child.url | trim("/")) if child.url else "" %}
-        {% if child_path != active_second_path %}
-          {% if child.children %}
-            {% set _ = third_level_dirs.list.append(child) %}
-          {% else %}
-            {% set _ = third_level_pages.list.append(child) %}
-          {% endif %}
-        {% endif %}
-      {% endfor %}
-    {% endif %}
-    {% if third_level_dirs.list | length == 0 and third_level_pages.list | length == 0 %}
-      {% set third_level_fallback = namespace(applied=false) %}
-      {% for entry in second_level_dirs.list %}
-        {% if not third_level_fallback.applied and entry.children %}
-          {% set entry_path = (entry.url | trim("/")) if entry.url else "" %}
-          {% set entry_first_child = entry.children[0] if entry.children else none %}
-          {% set entry_first_path = (entry_first_child.url | trim("/")) if entry_first_child and entry_first_child.url else "" %}
-          {% set flatten_entry_wrapper = entry_first_child and entry_first_child.children and entry_first_path == entry_path %}
-          {% set entry_source = entry_first_child.children if flatten_entry_wrapper else entry.children %}
-          {% for child in entry_source %}
-            {% set child_path = (child.url | trim("/")) if child.url else "" %}
-            {% if child_path != entry_path %}
-              {% if child.children %}
-                {% set _ = third_level_dirs.list.append(child) %}
-              {% else %}
-                {% set _ = third_level_pages.list.append(child) %}
-              {% endif %}
-            {% endif %}
-          {% endfor %}
-          {% if third_level_dirs.list | length > 0 or third_level_pages.list | length > 0 %}
-            {% set active_second.item = entry %}
-            {% set third_level_fallback.applied = true %}
-          {% endif %}
-        {% endif %}
-      {% endfor %}
-    {% endif %}
-    {% set active_third = namespace(item=third_level_dirs.list[0] if third_level_dirs.list else none) %}
-    {% for entry in third_level_dirs.list %}
-      {% if entry.active %}
-        {% set active_third.item = entry %}
-      {% endif %}
-    {% endfor %}
-    {% set fourth_level_pages = namespace(list=[]) %}
-    {% if active_third.item and active_third.item.children %}
-      {% set active_third_path = (active_third.item.url | trim("/")) if active_third.item.url else "" %}
-      {% set third_first_child = active_third.item.children[0] if active_third.item.children else none %}
-      {% set third_first_path = (third_first_child.url | trim("/")) if third_first_child and third_first_child.url else "" %}
-      {% set flatten_third_wrapper = third_first_child and third_first_child.children and third_first_path == active_third_path %}
-      {% set fourth_source = third_first_child.children if flatten_third_wrapper else active_third.item.children %}
-      {% for child in fourth_source %}
-        {% set child_path = (child.url | trim("/")) if child.url else "" %}
-        {% if not child.children and child_path != active_third_path %}
-          {% set _ = fourth_level_pages.list.append(child) %}
-        {% endif %}
-      {% endfor %}
-    {% endif %}
-    {% set page_row_items = namespace(list=[]) %}
-    {% if third_level_dirs.list | length == 0 and fourth_level_pages.list | length > 0 %}
-      {% set page_row_items.list = fourth_level_pages.list %}
-    {% elif third_level_dirs.list | length == 0 and third_level_pages.list | length > 0 %}
-      {% set page_row_items.list = third_level_pages.list %}
-    {% elif third_level_dirs.list | length == 0 and second_level_pages.list | length > 0 %}
-      {% set page_row_items.list = second_level_pages.list %}
-    {% elif third_level_dirs.list | length == 0 and second_level_dirs.list | length == 0 and top_level_pages.list | length > 0 %}
-      {% set page_row_items.list = top_level_pages.list %}
-    {% endif %}
-    {% set first_local_label = "Directories" if top_directories.list | length > 0 else "Pages" %}
-    {% set first_local_row_key = "1-top-directories" if top_directories.list | length > 0 else "1-top-pages" %}
-    {% set first_local_items = top_directories.list if top_directories.list | length > 0 else top_level_pages.list %}
-    {{ mobile_row(first_local_label, first_local_items, first_local_row_key, true, "directories" if top_directories.list | length > 0 else "pages") }}
-    {{ mobile_row("Subdirectories", second_level_dirs.list, "2-subdirectories", true, "subdirectories") }}
-    {{ mobile_row("Nested Directories", third_level_dirs.list, "3-third-level-directories", true, "nested-directories") }}
-    {% if first_local_row_key != "1-top-pages" %}
-      {{ mobile_row("Pages", page_row_items.list, "4-pages", true, "pages") }}
-    {% endif %}
-  </div>
-  {{ mobile_sites_block }}
-</nav>
-{% set bijux_primary_section_nav = true %}
-<nav class="{{ class }} bijux-nav bijux-nav--scoped" aria-label="{{ lang.t('nav') }}" data-bijux-nav-empty="{{ 'false' if scoped.visible else 'true' }}" data-bijux-nav-variant="scoped" data-md-level="0">
-  <label class="md-nav__title" for="__drawer">
-    <a href="{{ config.extra.homepage | d(nav.homepage.url, true) | url }}" title="{{ config.site_name | e }}" class="md-nav__button md-logo" aria-label="{{ config.site_name }}" data-md-component="logo">
-      {% include "partials/logo.html" %}
-    </a>
-    {{ scoped.title }}
-  </label>
-  {% if config.repo_url %}
-    <div class="md-nav__source">
-      {% include "partials/source.html" %}
-    </div>
-  {% endif %}
-  <ul class="md-nav__list" data-md-scrollfix>
-    {% if scoped.visible %}
-      {% for nav_item in scoped.items %}
-        {% set path = "__nav_scoped_" ~ loop.index %}
-        {{ item.render(nav_item, path, 1) }}
-      {% endfor %}
-    {% endif %}
-  </ul>
 </nav>

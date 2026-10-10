@@ -24,7 +24,6 @@ watch:
 exclude_docs: |
   /automation/
   /badges.md
-  /overrides/
   /spec/
   /reports/
   /bijux-core/**
@@ -130,7 +129,10 @@ exclude_docs: |
   !/bijux-dev/makes/make-system-overview.md
   !/bijux-dev/makes/ci-targets.md
   !/bijux-dev/packages/bijux-dev.md
-
+  /overrides/
+  /hooks/
+  /assets/styles/README.md
+  /assets/javascripts/shell/README.md
 extra:
   bijux:
     repository: bijux-core

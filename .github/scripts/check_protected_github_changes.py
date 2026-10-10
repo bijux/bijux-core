@@ -70,7 +70,17 @@ def workflow_paths_from_manifest() -> set[str]:
 
 
 def protected_paths() -> set[str]:
-    return BASE_PROTECTED_PATHS.union(workflow_paths_from_manifest())
+    owned_package = {f".github/scripts/workflow_execution/{name}.py" for name in (
+        "__init__", "source_loading", "schema", "yaml_io", "events", "refs", "dependency_prs",
+        "publication", "canonical_sources", "source_authority", "verification",
+    )}
+    owned_package.update(path.relative_to(ROOT).as_posix()
+                         for path in (ROOT / ".github/scripts/workflow_execution").glob("*.py"))
+    snapshots = {f".github/standards/workflow-sources/{name}" for name in (
+        "bijux-std.yml", "automerge-pr.yml", "source-manifest.json",
+    )}
+    return BASE_PROTECTED_PATHS.union(workflow_paths_from_manifest(), owned_package, snapshots,
+                                     {".github/scripts/check_workflow_projection.py"})
 
 
 def main() -> int:

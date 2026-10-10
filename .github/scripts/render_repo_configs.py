@@ -7,7 +7,16 @@ import os
 import re
 import shlex
 from pathlib import Path
+from types import ModuleType
 from typing import Any
+
+# Bootstrap only the adjacent finite package loader from its captured source bytes.
+_POLICY_LOADER_PATH = Path(__file__).resolve().with_name("workflow_execution") / "source_loading.py"
+_POLICY_LOADER_SOURCE = _POLICY_LOADER_PATH.read_bytes()
+_POLICY_LOADER = ModuleType("bijux_workflow_source_loading")
+_POLICY_LOADER.__file__ = str(_POLICY_LOADER_PATH)
+exec(compile(_POLICY_LOADER_SOURCE, str(_POLICY_LOADER_PATH), "exec"), _POLICY_LOADER.__dict__)
+WORKFLOW_EXECUTION = _POLICY_LOADER.load_package(_POLICY_LOADER_SOURCE)
 
 ROOT = Path(__file__).resolve().parents[3]
 SCRIPT_REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -26,6 +35,25 @@ DEPENDABOT_PR_SKIP_CONDITION = (
     "github.event_name != 'pull_request' || "
     "github.event.pull_request.user.login != 'dependabot[bot]'"
 )
+
+
+def shared_github_source_root(repository_root: Path) -> Path:
+    """Resolve managed GitHub sources in the standard or a synchronized consumer."""
+    candidates = (
+        repository_root / "shared/bijux-gh",
+        repository_root / ".bijux/shared/bijux-gh",
+    )
+    for candidate in candidates:
+        if candidate.is_dir():
+            return candidate
+    raise FileNotFoundError(
+        "managed bijux-gh sources are missing from shared/ and .bijux/shared/"
+    )
+
+
+SHARED_GITHUB_ROOT = shared_github_source_root(SCRIPT_REPO_ROOT)
+REQUIRED_STATUS_RULESET = SHARED_GITHUB_ROOT / "rulesets/main-branch-protection.json"
+REQUIRED_STATUS_REFERENCE = SHARED_GITHUB_ROOT / "required-status-checks.md"
 
 
 def repository_checkout_variable(repo_name: str) -> str:
@@ -70,13 +98,38 @@ def yaml_block_scalar(value: str, indent: int) -> list[str]:
     pad = " " * indent
     lines = [f"{pad}|"]
     for line in value.splitlines():
-        lines.append(f"{pad}  {line}")
-    if value.endswith("\n"):
-        lines.append(f"{pad}")
+        lines.append(f"{pad}  {line}" if line else "")
     return lines
 
 
-def dump_yaml(obj: Any, indent: int = 0) -> list[str]:
+def _dump_typed_workflow_yaml(obj: Any, indent: int = 0) -> list[str]:
+    """Retain source scalar and collection types when projecting complete workflows."""
+    pad = " " * indent
+    if isinstance(obj, dict) and obj:
+        lines = []
+        for key, value in obj.items():
+            if not isinstance(key, str):
+                raise ValueError("workflow mapping keys must be strings")
+            label = json.dumps(key, ensure_ascii=False)
+            if isinstance(value, (dict, list)) and value:
+                lines.append(f"{pad}{label}:")
+                lines.extend(_dump_typed_workflow_yaml(value, indent + 2))
+            else:
+                lines.append(f"{pad}{label}: {json.dumps(value, ensure_ascii=False, allow_nan=False)}")
+        return lines
+    if isinstance(obj, list) and obj:
+        lines = []
+        for item in obj:
+            child = _dump_typed_workflow_yaml(item, indent + 2)
+            lines.append(f"{pad}- {child[0].strip()}")
+            lines.extend(child[1:])
+        return lines
+    return [f"{pad}{json.dumps(obj, ensure_ascii=False, allow_nan=False)}"]
+
+
+def dump_yaml(obj: Any, indent: int = 0, *, preserve_scalar_types: bool = False) -> list[str]:
+    if preserve_scalar_types:
+        return _dump_typed_workflow_yaml(obj, indent)
     pad = " " * indent
     lines: list[str] = []
 
@@ -137,8 +190,8 @@ def render_release_env(entries: list[dict]) -> str:
     return PROVENANCE_HEADER + "\n".join(lines)
 
 
-def render_yaml_document(data: Any) -> str:
-    return PROVENANCE_HEADER + "\n".join(dump_yaml(data)) + "\n"
+def render_yaml_document(data: Any, *, preserve_scalar_types: bool = False) -> str:
+    return PROVENANCE_HEADER + "\n".join(dump_yaml(data, preserve_scalar_types=preserve_scalar_types)).rstrip("\n") + "\n"
 
 
 def render_dependabot_document(data: Any) -> str:
@@ -157,6 +210,59 @@ def render_dependabot_document(data: Any) -> str:
         rendered.append(line)
 
     return "\n".join(rendered) + "\n"
+
+
+def additional_required_status_checks(repo: dict[str, Any]) -> list[dict[str, str]]:
+    """Return validated repository-specific status check definitions."""
+    checks = repo.get("additional_required_status_checks", [])
+    if not isinstance(checks, list):
+        raise ValueError("additional_required_status_checks must be a list")
+    validated: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for check in checks:
+        if not isinstance(check, dict):
+            raise ValueError("additional required status checks must be objects")
+        context = check.get("context")
+        workflow = check.get("workflow")
+        if not isinstance(context, str) or not context.strip():
+            raise ValueError("additional required status check context is required")
+        if not isinstance(workflow, str) or not workflow.strip():
+            raise ValueError("additional required status check workflow is required")
+        if context in seen:
+            raise ValueError(f"duplicate required status check context: {context}")
+        seen.add(context)
+        validated.append({"context": context, "workflow": workflow})
+    return validated
+
+
+def render_required_status_ruleset(repo: dict[str, Any]) -> str:
+    """Render branch protection with repository-specific product gates."""
+    ruleset = json.loads(REQUIRED_STATUS_RULESET.read_text(encoding="utf-8"))
+    required_rule = next(
+        rule for rule in ruleset["rules"] if rule["type"] == "required_status_checks"
+    )
+    configured = required_rule["parameters"]["required_status_checks"]
+    existing = {check["context"] for check in configured}
+    for check in additional_required_status_checks(repo):
+        if check["context"] not in existing:
+            configured.append({"context": check["context"], "integration_id": 15368})
+            existing.add(check["context"])
+    return json.dumps(ruleset, indent=2) + "\n"
+
+
+def render_required_status_reference(repo: dict[str, Any]) -> str:
+    """Render human-readable status check ownership for one repository."""
+    reference = REQUIRED_STATUS_REFERENCE.read_text(encoding="utf-8")
+    checks = additional_required_status_checks(repo)
+    if not checks:
+        return reference
+    details = ["Repository-specific required checks:", ""]
+    details.extend(
+        f"- `{check['context']}` (from workflow `{check['workflow']}`)"
+        for check in checks
+    )
+    details.append("")
+    return reference.replace("\nNotes:\n", "\n" + "\n".join(details) + "\nNotes:\n")
 
 
 def normalize_labeler_rules(data: Any) -> Any:
@@ -253,65 +359,12 @@ def normalize_verify_trigger_paths(
     return wrapper_definition
 
 
-def inject_policy_gate(
+def normalize_workflow_wrapper(
     wrapper_name: str,
     wrapper_definition: dict[str, Any],
 ) -> dict[str, Any]:
     if wrapper_name == "verify":
-        wrapper_definition = normalize_verify_trigger_paths(wrapper_definition)
-
-    if wrapper_name != "verify":
-        return wrapper_definition
-
-    jobs = wrapper_definition.get("jobs")
-    if not isinstance(jobs, dict) or "policy_gate" in jobs:
-        return wrapper_definition
-
-    permissions = wrapper_definition.setdefault("permissions", {})
-    if isinstance(permissions, dict):
-        permissions.setdefault("actions", "read")
-        permissions.setdefault("pull-requests", "read")
-
-    policy_gate_job = {
-        "name": "policy-prerequisites",
-        "runs-on": "ubuntu-latest",
-        "steps": [
-            {
-                "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
-            },
-            {
-                "name": "Wait for policy and standards prerequisites",
-                "shell": "bash",
-                "env": {
-                    "GITHUB_TOKEN": "${{ github.token }}",
-                },
-                "run": (
-                    "set -euo pipefail\n"
-                    "python3 .github/scripts/check_workflow_prerequisites.py"
-                ),
-            },
-        ],
-    }
-
-    updated_jobs: dict[str, Any] = {"policy_gate": policy_gate_job}
-    for job_name, job_definition in jobs.items():
-        if not isinstance(job_definition, dict):
-            updated_jobs[job_name] = job_definition
-            continue
-
-        existing_needs = job_definition.get("needs")
-        if existing_needs is None:
-            job_definition["needs"] = "policy_gate"
-        elif isinstance(existing_needs, str):
-            if existing_needs != "policy_gate":
-                job_definition["needs"] = ["policy_gate", existing_needs]
-        elif isinstance(existing_needs, list):
-            if "policy_gate" not in existing_needs:
-                job_definition["needs"] = ["policy_gate", *existing_needs]
-
-        updated_jobs[job_name] = job_definition
-
-    wrapper_definition["jobs"] = updated_jobs
+        return normalize_verify_trigger_paths(wrapper_definition)
     return wrapper_definition
 
 
@@ -331,7 +384,7 @@ def inject_dependabot_pull_request_skip(
     wrapper_name: str,
     wrapper_definition: dict[str, Any],
 ) -> dict[str, Any]:
-    if wrapper_name != "ci":
+    if wrapper_name not in {"ci", "verify"}:
         return wrapper_definition
 
     jobs = wrapper_definition.get("jobs")
@@ -349,50 +402,65 @@ def inject_dependabot_pull_request_skip(
     return wrapper_definition
 
 
-def render_repo(repo_name: str, manifest: dict) -> None:
-    repo = find_repo_config(manifest, repo_name)
-    repo_root = resolve_repository_checkout(repo_name)
-
-    release_path = repo_root / ".github/release.env"
-    release_content = render_release_env(repo.get("release_env", []))
-    write_if_needed(release_path, release_content)
-
-    dependabot_data = repo.get("dependabot")
-    if dependabot_data is not None:
-        dependabot_path = repo_root / ".github/dependabot.yml"
-        dependabot_content = render_dependabot_document(dependabot_data)
-        write_if_needed(dependabot_path, dependabot_content)
-
-    labeler_data = repo.get("labeler")
-    if labeler_data is not None:
-        labeler_path = repo_root / ".github/labeler.yml"
-        normalized_labeler = normalize_labeler_rules(labeler_data)
-        validate_labeler_rules(normalized_labeler)
-        labeler_content = render_yaml_document(normalized_labeler)
-        write_if_needed(labeler_path, labeler_content)
-
-    codecov_data = repo.get("codecov")
-    if codecov_data is not None:
-        codecov_path = repo_root / ".github/codecov.yml"
-        codecov_content = render_yaml_document(codecov_data)
-        write_if_needed(codecov_path, codecov_content)
-
+def prepare_workflow_wrappers(repo: dict, policy: dict | None) -> dict:
     wrappers = repo.get("workflow_wrappers", {})
-    wrapper_paths = {
-        "ci": repo_root / ".github/workflows/ci.yml",
-        "verify": repo_root / ".github/workflows/verify.yml",
+    prepared = {}
+    for name in ["ci", "verify"]:
+        definition = wrappers.get(name)
+        if definition is not None:
+            prepared[name] = WORKFLOW_EXECUTION.project_automatic_events(name, definition, policy)
+            prepared[name] = WORKFLOW_EXECUTION.project_dependency_pull_requests(name, prepared[name], policy)
+    WORKFLOW_EXECUTION.validate_publication_calls(
+        {f".github/workflows/{name}.yml": definition for name, definition in prepared.items()}, policy
+    )
+    return prepared
+
+
+def prepare_repo_files(repo_name: str, manifest: dict) -> dict[str, bytes | None]:
+    """Derive owned generated bytes without selecting or writing a destination."""
+    policy = WORKFLOW_EXECUTION.validate_manifest(manifest, [repo_name])[repo_name]
+    repo = find_repo_config(manifest, repo_name)
+    wrappers = prepare_workflow_wrappers(repo, policy)
+    prepared = {
+        ".github/release.env": render_release_env(repo.get("release_env", [])).encode(),
+        ".github/rulesets/main-branch-protection.json": render_required_status_ruleset(repo).encode(),
+        ".github/required-status-checks.md": render_required_status_reference(repo).encode(),
     }
-    for wrapper_name, wrapper_path in wrapper_paths.items():
-        wrapper_definition = wrappers.get(wrapper_name)
-        if wrapper_definition is None:
-            remove_if_generated(wrapper_path)
+    for key, path, render in [
+        ("dependabot", ".github/dependabot.yml", render_dependabot_document),
+        ("codecov", ".github/codecov.yml", render_yaml_document),
+    ]:
+        if repo.get(key) is not None:
+            prepared[path] = render(repo[key]).encode()
+    if repo.get("labeler") is not None:
+        normalized = normalize_labeler_rules(repo["labeler"])
+        validate_labeler_rules(normalized)
+        prepared[".github/labeler.yml"] = render_yaml_document(normalized).encode()
+    for name in ["ci", "verify"]:
+        definition = wrappers.get(name)
+        path = f".github/workflows/{name}.yml"
+        if definition is None:
+            prepared[path] = None
             continue
-        wrapper_definition = inject_dependabot_pull_request_skip(
-            wrapper_name,
-            wrapper_definition,
-        )
-        wrapper_definition = inject_policy_gate(wrapper_name, wrapper_definition)
-        write_if_needed(wrapper_path, render_yaml_document(wrapper_definition))
+        if not WORKFLOW_EXECUTION.requires_dependency_projection(policy) and (policy or {}).get("dependency_pull_requests") != "canonical":
+            definition = inject_dependabot_pull_request_skip(name, definition)
+        definition = normalize_workflow_wrapper(name, definition)
+        prepared[path] = render_yaml_document(
+            definition,
+            preserve_scalar_types=WORKFLOW_EXECUTION.requires_event_projection(policy)
+            or WORKFLOW_EXECUTION.requires_dependency_projection(policy),
+        ).encode()
+    return prepared
+
+
+def render_repo(repo_name: str, manifest: dict) -> None:
+    prepared = prepare_repo_files(repo_name, manifest)
+    repo_root = resolve_repository_checkout(repo_name)
+    for relative, content in prepared.items():
+        if content is None:
+            remove_if_generated(repo_root / relative)
+        else:
+            write_if_needed(repo_root / relative, content.decode())
 
 
 def main() -> None:
@@ -404,6 +472,9 @@ def main() -> None:
     manifest = json.loads(Path(args.manifest).read_text(encoding="utf-8"))
     repos = args.repo or [repo["name"] for repo in manifest["repositories"]]
 
+    policies = WORKFLOW_EXECUTION.validate_manifest(manifest, repos)
+    for repo_name in repos:
+        prepare_workflow_wrappers(find_repo_config(manifest, repo_name), policies[repo_name])
     for repo_name in repos:
         render_repo(repo_name, manifest)
 
