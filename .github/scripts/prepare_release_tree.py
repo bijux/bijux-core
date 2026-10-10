@@ -241,7 +241,14 @@ def rewrite_template_compatibility_defaults(path: Path, release_version: str) ->
 def regenerate_lockfile(output_dir: Path) -> None:
     cargo_toml = output_dir / "Cargo.toml"
     subprocess.run(
-        ["cargo", "generate-lockfile", "--manifest-path", str(cargo_toml)],
+        [
+            "cargo",
+            "generate-lockfile",
+            "--config",
+            'resolver.incompatible-rust-versions="fallback"',
+            "--manifest-path",
+            str(cargo_toml),
+        ],
         check=True,
         stdout=subprocess.DEVNULL,
     )
