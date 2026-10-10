@@ -300,3 +300,16 @@ token for only the selected repository. App identity and permissions are checked
 before dispatch; the private key remains in IaC's main-only `publication-control`
 environment. Consumer refresh and live identity configuration must precede use;
 merging this standards source does not perform a release or configure credentials.
+
+## Genomics source admission
+
+Genomics' canonical CI wrapper runs formatting, lint and dependency audit while
+its product suites are repaired. Product tests, scientific fixtures, benchmarks
+and release-readiness jobs are absent from this wrapper; successful CI therefore
+provides source admission evidence, not product or release qualification.
+Local product test commands remain available. Publication still requires its
+independent artifact checks and authenticated manual admission.
+
+Restore the product lanes in the canonical repository manifest after they pass
+on the accepted Genomics source, with the restored workflow covered by the
+projection contracts. Other repositories retain their existing test lanes.

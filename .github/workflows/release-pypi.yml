@@ -199,7 +199,7 @@
         "shell": "bash"
         "run": "set -euo pipefail\nmode='${{ matrix.publish_auth }}'\nif [[ -z \"${mode}\" ]]; then\n  mode='${{ needs.resolve.outputs.publish_auth_default }}'\nfi\ncase \"${mode}\" in\n  trusted|token) ;;\n  *)\n    echo \"Unsupported publish auth mode: ${mode}\" >&2\n    echo \"Expected one of: trusted, token\" >&2\n    exit 1\n    ;;\nesac\necho \"mode=${mode}\" >> \"$GITHUB_OUTPUT\"\n"
       - "name": "Download publish artifacts"
-        "uses": "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c"
+        "uses": "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333"
         "with":
           "name": "${{ matrix.artifact_name || format('{0}{1}', matrix.package_slug, needs.resolve.outputs.artifact_suffix) }}"
           "path": ".github/tmp/${{ matrix.package_slug }}-dist"

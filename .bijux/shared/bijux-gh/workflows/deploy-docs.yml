@@ -58,6 +58,28 @@ jobs:
             exit 1
           fi
 
+      - name: Admit accepted documentation standards
+        shell: bash
+        run: |
+          set -euo pipefail
+          accepted_ref="$(cat .github/standards/bijux-std.sha)"
+          if [[ "${#accepted_ref}" != 40 || "$accepted_ref" == *[!0-9a-f]* ]]; then
+            echo "Documentation standards require a full lowercase commit SHA" >&2
+            exit 1
+          fi
+          source_root="$PWD/artifacts/accepted-standard"
+          mkdir -p "$source_root"
+          git -C "$source_root" init --quiet
+          git -C "$source_root" remote add origin https://github.com/bijux/bijux-std.git
+          git -C "$source_root" fetch --quiet --depth 1 origin "$accepted_ref"
+          git -C "$source_root" checkout --quiet --detach FETCH_HEAD
+          if [[ "$(git -C "$source_root" rev-parse HEAD)" != "$accepted_ref" ]]; then
+            echo "Fetched documentation standards do not match the accepted pin" >&2
+            exit 1
+          fi
+          printf 'BIJUX_STD_ROOT=%s\n' "$source_root" >> "$GITHUB_ENV"
+          printf 'BIJUX_STD_REF=%s\n' "$accepted_ref" >> "$GITHUB_ENV"
+
       - name: Resolve docs deploy configuration
         id: config
         shell: bash
@@ -217,7 +239,7 @@ jobs:
 
       - name: Setup Node.js
         if: ${{ steps.config.outputs.setup_node == 'true' }}
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ steps.config.outputs.node_version }}
 

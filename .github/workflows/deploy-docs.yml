@@ -67,6 +67,9 @@
         "with":
           "fetch-depth": 0
           "persist-credentials": false
+      - "name": "Admit accepted documentation standards"
+        "shell": "bash"
+        "run": "set -euo pipefail\naccepted_ref=\"$(cat .github/standards/bijux-std.sha)\"\nif [[ \"${#accepted_ref}\" != 40 || \"$accepted_ref\" == *[!0-9a-f]* ]]; then\n  echo \"Documentation standards require a full lowercase commit SHA\" >&2\n  exit 1\nfi\nsource_root=\"$PWD/artifacts/accepted-standard\"\nmkdir -p \"$source_root\"\ngit -C \"$source_root\" init --quiet\ngit -C \"$source_root\" remote add origin https://github.com/bijux/bijux-std.git\ngit -C \"$source_root\" fetch --quiet --depth 1 origin \"$accepted_ref\"\ngit -C \"$source_root\" checkout --quiet --detach FETCH_HEAD\nif [[ \"$(git -C \"$source_root\" rev-parse HEAD)\" != \"$accepted_ref\" ]]; then\n  echo \"Fetched documentation standards do not match the accepted pin\" >&2\n  exit 1\nfi\nprintf 'BIJUX_STD_ROOT=%s\\n' \"$source_root\" >> \"$GITHUB_ENV\"\nprintf 'BIJUX_STD_REF=%s\\n' \"$accepted_ref\" >> \"$GITHUB_ENV\"\n"
       - "name": "Resolve docs deploy configuration"
         "id": "config"
         "shell": "bash"
@@ -97,7 +100,7 @@
           "cache-dependency-glob": "uv.lock"
       - "name": "Setup Node.js"
         "if": "${{ steps.config.outputs.setup_node == 'true' }}"
-        "uses": "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020"
+        "uses": "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1"
         "with":
           "node-version": "${{ steps.config.outputs.node_version }}"
       - "name": "Install Rust toolchain"
