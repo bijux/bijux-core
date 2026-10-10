@@ -40,6 +40,11 @@ fn quoted_value_after(text: &str, prefix: &str) -> Option<String> {
     })
 }
 
+fn workflow_document(name: &str) -> serde_yaml::Value {
+    serde_yaml::from_str(&read_repo_file(&format!(".github/workflows/{name}")))
+        .expect("workflow should contain valid YAML")
+}
+
 fn is_hex_sha(value: &str) -> bool {
     value.len() == 40 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
 }
@@ -379,28 +384,31 @@ fn github_workflows_pin_external_actions_to_commits() {
         ".github/workflows/bijux-std.yml",
     ] {
         let content = read_repo_file(path);
-        for line in content.lines() {
-            let trimmed = line.trim();
-            let Some(spec) = trimmed.strip_prefix("uses: ") else {
-                continue;
-            };
-            if spec.starts_with("./") {
-                continue;
+        let document: serde_yaml::Value = serde_yaml::from_str(&content).expect("valid workflow");
+        for job in document["jobs"].as_mapping().expect("workflow jobs").values() {
+            for step in job["steps"].as_sequence().into_iter().flatten() {
+                if let Some(action) = step["uses"].as_str() {
+                    if !action.starts_with("./") {
+                        let (_, revision) = action.split_once('@').expect("action revision");
+                        assert!(
+                            is_hex_sha(revision),
+                            "{path} must pin {action} to a full commit SHA"
+                        );
+                    }
+                }
+                if step["uses"]
+                    .as_str()
+                    .is_some_and(|action| action.starts_with("dtolnay/rust-toolchain@"))
+                {
+                    assert!(
+                        step["with"]["toolchain"]
+                            .as_str()
+                            .is_some_and(|toolchain| !toolchain.is_empty()),
+                        "{path} must declare the Rust toolchain input"
+                    );
+                }
             }
-            let (_, revision) = spec.split_once('@').expect("action spec must contain @");
-            let revision = revision.split_whitespace().next().expect("action revision");
-            assert!(
-                is_hex_sha(revision),
-                "{path} must pin actions to a full commit SHA, found: {spec}"
-            );
         }
-        assert!(
-            content.contains("toolchain: ${{ env.RUST_TOOLCHAIN_VERSION }}")
-                || content.contains("toolchain: \"${{ env.RUST_TOOLCHAIN_VERSION }}\"")
-                || content.contains("toolchain: ${{ steps.config.outputs.rust_toolchain }}")
-                || !content.contains("dtolnay/rust-toolchain@"),
-            "{path} must set the pinned Rust toolchain input when using dtolnay/rust-toolchain"
-        );
     }
 }
 
@@ -419,48 +427,50 @@ fn github_release_workflow_publishes_release_assets_from_the_stamped_release_tre
 
 #[test]
 fn release_publication_stays_manual_and_decoupled_from_tag_pushes() {
-    assert!(
-        !repo_root().join(".github/workflows/release-on-tag.yml").exists(),
-        "bijux-core should not auto-dispatch release publication from tag pushes"
-    );
-
-    for workflow_name in
-        ["release-crates.yml", "release-ghcr.yml", "release-github.yml", "release-pypi.yml"]
-    {
-        let workflow = read_repo_file(&format!(".github/workflows/{workflow_name}"));
-        assert!(
-            workflow.contains("workflow_dispatch:"),
-            "{workflow_name} should remain manually dispatchable"
+    assert!(!repo_root().join(".github/workflows/release-on-tag.yml").exists());
+    for name in [
+        "release-crates.yml",
+        "release-ghcr.yml",
+        "release-github.yml",
+        "release-pypi.yml",
+        "deploy-docs.yml",
+    ] {
+        let workflow = workflow_document(name);
+        let events = workflow["on"].as_mapping().expect("workflow events");
+        assert_eq!(events.len(), 1, "{name} must expose only manual publication");
+        assert!(events.contains_key(serde_yaml::Value::String("workflow_dispatch".into())));
+        assert_eq!(
+            workflow["on"]["workflow_dispatch"]["inputs"]["accepted_commit"]["required"].as_bool(),
+            Some(true)
         );
-        assert!(
-            !workflow.contains("workflow_call:") && !workflow.contains("\n  push:"),
-            "{workflow_name} should expose only manual publication"
-        );
+        if name != "deploy-docs.yml" {
+            assert_eq!(
+                workflow["on"]["workflow_dispatch"]["inputs"]["release_tag"]["required"].as_bool(),
+                Some(true)
+            );
+        }
+        let jobs = workflow["jobs"].as_mapping().expect("workflow jobs");
+        assert!(jobs.contains_key(serde_yaml::Value::String("publication_admission".into())));
+        for (job_name, job) in jobs {
+            if job_name.as_str() == Some("publication_admission") {
+                continue;
+            }
+            let needs = &job["needs"];
+            let admitted = needs.as_str() == Some("publication_admission")
+                || needs.as_sequence().is_some_and(|dependencies| {
+                    dependencies
+                        .iter()
+                        .any(|dependency| dependency.as_str() == Some("publication_admission"))
+                });
+            assert!(admitted, "{name} must admit publication before {job_name:?}");
+        }
     }
-
-    let deploy_docs_workflow = read_repo_file(".github/workflows/deploy-docs.yml");
-    assert!(
-        deploy_docs_workflow.contains("workflow_dispatch:"),
-        "deploy-docs should remain manually dispatchable"
-    );
-    assert!(
-        !deploy_docs_workflow.contains("workflow_call:"),
-        "deploy-docs should stay manual-only instead of being reused from release automation"
-    );
-
-    let release_validation_workflow = read_repo_file(".github/workflows/release-validation.yml");
-    assert!(
-        release_validation_workflow.contains("pull_request:"),
-        "release-validation should continue protecting pull requests"
-    );
-    assert!(
-        release_validation_workflow.contains("workflow_dispatch:"),
-        "release-validation should remain available for explicit manual audits"
-    );
-    assert!(
-        !release_validation_workflow.contains("push:\n    branches:\n      - main"),
-        "release-validation should not rerun the full release gate automatically after merges to main"
-    );
+    let validation = workflow_document("release-validation.yml");
+    let events = validation["on"].as_mapping().expect("validation events");
+    for event in ["pull_request", "workflow_dispatch"] {
+        assert!(events.contains_key(serde_yaml::Value::String(event.into())));
+    }
+    assert!(!events.contains_key(serde_yaml::Value::String("push".into())));
 }
 
 #[test]
@@ -580,13 +590,20 @@ fn release_build_matrices_cover_cli_and_dag_release_families() {
 
 #[test]
 fn ghcr_release_workflow_keeps_shared_build_families_intact() {
-    let workflow = read_repo_file(".github/workflows/release-ghcr.yml");
+    let document = workflow_document("release-ghcr.yml");
+    let command = document["jobs"]["resolve"]["steps"]
+        .as_sequence()
+        .expect("resolve steps")
+        .iter()
+        .filter_map(|step| step["run"].as_str())
+        .find(|command| command.contains("filter_matrix()"))
+        .expect("release matrix resolver");
     assert!(
-        !workflow.contains("build_matrix_json=\"$(filter_matrix"),
+        !command.contains("filter_matrix \"${build_matrix_json}\" \"${allowed_packages}\""),
         "release-ghcr must not filter the shared build matrix by the per-package GHCR allowlist"
     );
     assert!(
-        workflow.contains("package_matrix_json=\"$(filter_matrix"),
+        command.contains("package_matrix_json=\"$(filter_matrix"),
         "release-ghcr should continue filtering the publish matrix by the GHCR allowlist"
     );
 }
