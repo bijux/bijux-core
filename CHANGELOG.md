@@ -18,6 +18,8 @@ This project adheres to [Semantic Versioning](https://semver.org) and the
 
 ### Changed
 
+- Resolve the patched rustls TLS dependency for RUSTSEC-2026-0285 ([#145](https://github.com/bijux/bijux-core/pull/145)).
+
 - Adopt trusted manual publication admission and accepted shared documentation policy ([#145](https://github.com/bijux/bijux-core/pull/145)).
 ## 0.4.1 – 2026-07-25
 
