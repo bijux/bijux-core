@@ -32,18 +32,29 @@ def _nav_pages(nav: object) -> set[str]:
 
 
 def _source_target(source_path: str, raw_target: str) -> tuple[str, str] | None:
+    if "\\" in raw_target or any(ord(char) < 32 or ord(char) == 127 for char in raw_target):
+        return None
     target = raw_target.strip().strip("<>")
-    parsed = urlsplit(target)
+    try:
+        parsed = urlsplit(target)
+    except ValueError:
+        return None
     if parsed.scheme or parsed.netloc or not parsed.path:
         return None
 
     path = unquote(parsed.path)
+    if "\\" in path or any(ord(char) < 32 or ord(char) == 127 for char in path):
+        return None
     if path.startswith("/"):
-        source_target = path.lstrip("/")
+        source_target = posixpath.normpath(path.lstrip("/"))
     else:
         source_target = posixpath.normpath(
             posixpath.join(posixpath.dirname(source_path), path)
         )
+
+    # Source routing may inspect only the repository's owned documentation tree.
+    if source_target == ".." or source_target.startswith("../"):
+        return None
 
     if path.endswith("/"):
         source_target = posixpath.join(source_target, "index.md")

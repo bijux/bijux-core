@@ -12,6 +12,7 @@ from .publication import (
 from .canonical_sources import capture_sources, validate_source_snapshots
 from .source_authority import admit_source
 from .verification import requires_parser, verify_projection
+from .docs_routing import documentation_destination
 
 __all__ = [
     "PublicationEntrypoint", "WorkflowExecutionPolicy", "validate_inventory", "validate_manifest", "validate_policy",
@@ -20,4 +21,5 @@ __all__ = [
     "requires_publication_projection", "validate_publication_calls",
     "project_dependency_pull_requests", "requires_dependency_projection", "validate_owned_execution",
     "capture_sources", "validate_source_snapshots", "admit_source", "requires_parser", "verify_projection",
+    "documentation_destination",
 ]

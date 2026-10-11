@@ -39,10 +39,6 @@ gh-security-install-rust-tools: ## Install Rust security tools that match the pi
 gh-test-install-rust-tools: ## Install cargo-nextest that matches the pinned CI toolchain
 	@cargo install --locked cargo-nextest --version "$(GH_TEST_CARGO_NEXTEST_VERSION)"
 
-gh-docs-install: install ## Install the documentation toolchain for GitHub Actions
-	@$(MAKE) --no-print-directory docs-install
-	@"$(MKDOCS_BIN)" --version
-
 docs-artifact-pages: ## Generate documentation pages that summarize release artifacts
 	@set -euo pipefail; \
 	pages_dir="$(GH_DOCS_PAGES_DIR)"; \
@@ -192,3 +188,5 @@ gh-release-wait-for-ci: ## Wait for the latest CI run on the release SHA to succ
 	GH_RELEASE_CI_LOOKBACK_SECONDS="$(GH_RELEASE_CI_LOOKBACK_SECONDS)" \
 	GH_RELEASE_CI_APPEARANCE_GRACE_SECONDS="$(GH_RELEASE_CI_APPEARANCE_GRACE_SECONDS)" \
 	python3 .github/scripts/wait_for_ci.py
+
+include makes/docs-publication.mk

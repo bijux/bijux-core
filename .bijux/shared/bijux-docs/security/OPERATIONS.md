@@ -16,8 +16,9 @@ rebuild after qualification or mark an uploaded artifact as verified live withou
 observing the intended public identity and journeys.
 
 A framework-enabled caller must capture clean source and the fetched tracked
-standard pin before building. Automatic framework activation is pending actual
-hosted profile/caller qualification. The actual renderer records `build-identity.json` around build/CSP,
+standard pin before building. Use the [isolated source-approved Linux publication
+runtime](runtime/README.md) and qualify the consumer's actual configured producer.
+The actual renderer records `build-identity.json` around build/CSP,
 then the mechanical verifier writes `site-verification.json`; `csp.json` records
 admitted executable policy inputs. Final admission requires all four receipts to
 identify the same bytes and rejects candidate-only verification. A setup action's

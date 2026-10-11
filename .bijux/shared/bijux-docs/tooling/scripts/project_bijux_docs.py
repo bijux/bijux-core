@@ -122,7 +122,9 @@ def published_bytes(context: dict, sha: str, source: str) -> bytes:
 def committed_prior_pin(repository: Path, context: dict, git) -> str | None:
     """Select prior ownership only from a regular committed consumer pin."""
     root = repository.resolve()
-    pin_relative = '.github/standards/bijux-std.sha'
+    pin_relative = '.github/standards/bijux-docs.sha'
+    if not (root / pin_relative).exists() and not (root / pin_relative).is_symlink():
+        pin_relative = '.github/standards/bijux-std.sha'
     pin = root / pin_relative
     if git(root, 'rev-parse', '--show-toplevel') != str(root):
         raise RuntimeError('Prior asset authority: explicit consumer repository root is required')
@@ -131,6 +133,11 @@ def committed_prior_pin(repository: Path, context: dict, git) -> str | None:
     if pin.read_text().strip() != context['sha']:
         raise RuntimeError('Prior asset authority: working standard pin differs from accepted source')
     committed = git(root, 'ls-tree', 'HEAD', '--', pin_relative)
+    if not committed and pin_relative == '.github/standards/bijux-docs.sha':
+        # Introducing the dedicated docs pointer preserves the previous runtime
+        # pointer as historical asset authority until the first docs pin is committed.
+        pin_relative = '.github/standards/bijux-std.sha'
+        committed = git(root, 'ls-tree', 'HEAD', '--', pin_relative)
     if not re.fullmatch(r'100644 blob [a-f0-9]{40}\t' + re.escape(pin_relative), committed):
         raise RuntimeError('Prior asset authority: committed regular standard pin is required')
     previous = git(root, 'show', 'HEAD:' + pin_relative)

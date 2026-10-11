@@ -8,7 +8,7 @@ from pathlib import Path
 from types import ModuleType
 
 
-MODULE_ORDER = ("source_loading", "schema", "yaml_io", "events", "refs", "dependency_prs", "publication",
+MODULE_ORDER = ("source_loading", "docs_routing", "schema", "yaml_io", "events", "refs", "dependency_prs", "publication",
                 "canonical_sources", "source_authority", "verification", "masterclass")
 
 

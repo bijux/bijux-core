@@ -354,8 +354,8 @@
       ],
       "property": "max-height",
       "values": [
-        "calc(100vh - var(--md-header-height, 3rem))",
-        "calc(100dvh - var(--md-header-height, 3rem))"
+        "calc(100vh - var(--md-header-height, 3rem) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))",
+        "calc(100dvh - var(--md-header-height, 3rem) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))"
       ],
       "owner": "bijux-std",
       "reason": "Ordered vh before dvh preserves fallback on engines without dynamic viewport units; same selector/at-rule/property/pair identity only."

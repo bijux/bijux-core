@@ -107,17 +107,17 @@
 
   body[data-bijux-drawer-ready="true"] .md-sidebar.md-sidebar--primary {
     position: fixed;
-    top: var(--md-header-height, 3rem);
-    bottom: 0;
+    top: calc(var(--md-header-height, 3rem) + env(safe-area-inset-top, 0px));
+    bottom: env(safe-area-inset-bottom, 0px);
     left: auto;
     right: auto;
-    inset-inline-start: 0;
-    inline-size: min(20rem, 92vw);
+    inset-inline-start: env(safe-area-inset-left, 0px);
+    inline-size: min(20rem, calc(92vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
     min-width: 0;
     max-width: 92vw;
     height: auto;
-    max-height: calc(100vh - var(--md-header-height, 3rem));
-    max-height: calc(100dvh - var(--md-header-height, 3rem));
+    max-height: calc(100vh - var(--md-header-height, 3rem) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    max-height: calc(100dvh - var(--md-header-height, 3rem) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     background: var(--md-default-bg-color);
     border-inline-end: 1px solid var(--bijux-border);
     overflow-y: auto;
@@ -127,7 +127,10 @@
   }
 
   body[dir="rtl"][data-bijux-drawer-ready="true"] .md-sidebar.md-sidebar--primary,
-  [dir="rtl"] body[data-bijux-drawer-ready="true"] .md-sidebar.md-sidebar--primary { transform: translateX(100%); }
+  [dir="rtl"] body[data-bijux-drawer-ready="true"] .md-sidebar.md-sidebar--primary {
+    inset-inline-start: env(safe-area-inset-right, 0px);
+    transform: translateX(100%);
+  }
   body[data-bijux-drawer-ready="true"] #__drawer:checked ~ .md-container .md-sidebar--primary,
   body[data-bijux-drawer-ready="true"] #__drawer:checked ~ .md-main .md-sidebar--primary {
     visibility: visible;

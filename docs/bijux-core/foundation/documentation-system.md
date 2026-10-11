@@ -4,7 +4,7 @@ audience: mixed
 type: explanation
 status: canonical
 owner: bijux-core-docs
-last_reviewed: 2026-07-23
+last_reviewed: 2026-10-11
 ---
 
 # Documentation And Evidence Authority
@@ -87,3 +87,23 @@ revision, selected inputs, terminal status, and applicable integrity or
 freshness control. Missing provenance narrows the conclusion to “a file
 exists.” Stale evidence remains useful for history, but not for deciding the
 current release.
+
+## Manual Documentation Publication
+
+Documentation publication runs through the IaC controller as a manual
+`deploy-docs` dispatch for the exact accepted `main` revision.
+`make gh-docs-install` installs the approved Linux Python 3.11.17 renderer and
+complete hash-locked `history` dependency recipe into
+`artifacts/docs/publication/python`. It does not bootstrap application or Rust
+packages. Ordinary documentation development keeps its existing toolchain.
+
+`make gh-docs-build` verifies the fetched accepted Std source and managed
+projection, captures the committed source identity, and renders
+`artifacts/docs/site` for `https://bijux.io/bijux-core/`. Source, renderer,
+reconstruction, security, route and search receipts must qualify before the
+publication manifest is accepted. `make gh-docs-verify` checks the same source
+and artifact bytes without rebuilding.
+
+A qualified local bundle, a successful Pages deployment and an externally
+reachable website are distinct results. Retain each result with its exact
+revision and workflow run.

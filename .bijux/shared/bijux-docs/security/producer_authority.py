@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import posixpath
 from types import ModuleType
 from urllib.parse import urljoin, urlsplit, unquote
 
@@ -61,8 +62,8 @@ def repository_files(root):
             continue
         metadata, name = record.split('\t', 1)
         mode, kind, blob = metadata.split()
-        require(mode in {'100644', '100755'} and kind == 'blob',
-                'Producer: symlink tracked source or nonregular committed source forbidden')
+        require(mode in {'100644', '100755', '120000'} and kind == 'blob',
+                'Producer: nonregular committed source forbidden')
         require(name not in committed, 'Producer: duplicate committed source path')
         committed[name] = (mode, blob)
 
@@ -83,14 +84,37 @@ def repository_files(root):
         require(not relative.is_absolute() and '..' not in relative.parts,
                 'Producer: confined tracked source required')
         path = root
-        for part in relative.parts:
+        for part in relative.parts[:-1]:
             path = path / part
-            require(not path.is_symlink(), 'Producer: symlink tracked source forbidden')
-        require(path.is_file(), 'Producer: regular tracked source required')
-        captured = path.read_bytes()
+            require(not path.is_symlink(), 'Producer: symlink tracked source parent forbidden')
+        path = path / relative.name
+        if mode == '120000':
+            # Bind the link blob as Git metadata; never follow it as renderer input.
+            # Actual configuration, hooks and source inputs retain regular-file checks.
+            require(path.is_symlink(), 'Producer: committed link differs from physical source')
+            captured = os.fsencode(os.readlink(path))
+            target = os.fsdecode(captured)
+            require(target and not Path(target).is_absolute() and not any(ord(c) < 32 for c in target),
+                    'Producer: confined committed link metadata required')
+            selected = posixpath.normpath(posixpath.join(relative.parent.as_posix(), target))
+            regular_target = selected in committed and committed[selected][0] in {'100644', '100755'}
+            directory_target = any(name.startswith(selected + '/') for name in committed)
+            require(not selected.startswith('../') and selected != '..' and (regular_target or directory_target),
+                    'Producer: committed link must select a regular committed owner or committed tree')
+            owner = root / selected
+            for parent in (owner, *owner.parents):
+                require(not parent.is_symlink(), 'Producer: committed link owner cannot traverse another link')
+                if parent == root:
+                    break
+            require(owner.is_file() if regular_target else owner.is_dir(),
+                    'Producer: committed link owner differs from its committed kind')
+            actual_mode = '120000'
+        else:
+            require(path.is_file() and not path.is_symlink(), 'Producer: regular tracked source required')
+            captured = path.read_bytes()
+            actual_mode = '100755' if path.stat().st_mode & 0o100 else '100644'
         header = ('blob ' + str(len(captured)) + '\0').encode()
         actual_blob = hashlib.new(object_format, header + captured).hexdigest()
-        actual_mode = '100755' if path.stat().st_mode & 0o100 else '100644'
         require(actual_blob == blob and actual_mode == mode,
                 'Producer: physical tracked source blob or mode differs from committed source: ' + name)
         result[name] = captured

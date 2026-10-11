@@ -210,6 +210,11 @@ previous lifetime before rebinding. Compact drawer modality owns temporary
 background inertness, focus containment, Escape/restoration, and close-on-resize;
 dispose restores previous values. Desktop navigation uses ordinary destination
 anchors. Material instant navigation and ordinary full loads both remain valid.
+The enhanced compact drawer reserves the browser's top, bottom and physical
+left/right safe-area insets around its single owning scroller. Its height follows
+the dynamic viewport, retaining the static viewport fallback. The controlled
+inset browser fixture qualifies those CSS declarations and usable hit targets;
+it does not simulate physical hardware notches or certify mobile browser chrome.
 An overflowing desktop site registry exposes named backward/forward actions
 with at least 44 px targets. They scroll the owning list without changing
 destinations; ordinary Tab reveals the complete focused link. Boundary actions

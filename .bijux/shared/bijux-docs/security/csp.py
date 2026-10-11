@@ -61,6 +61,42 @@ class Scripts(HTMLParser):
                 self.inline.append("".join(body))
 
 
+GLIGHTBOX_VERSION = "0.5.2"
+GLIGHTBOX_INPUTS = {
+    "mkdocs_glightbox/plugin.py": "73af686214eeed336168571637ed649385236c6b4fc2c55a6d65745eae930936",
+    "mkdocs_glightbox/glightbox/glightbox.min.js": "c67c59cdf980793b0216c9de9c6ebf688418838822af1e50b09439e3aa289ff3",
+    "mkdocs_glightbox/glightbox/glightbox.min.css": "6d3f62d4d17969f9c70e9438cf671004725019e868123f2ebc295a006f8d5d2d",
+}
+# This is the native, reviewed Material callback for the source-owned media options.
+# Other plugin options require separate source qualification rather than a broader CSP.
+GLIGHTBOX_SCRIPT = (
+    'const lightbox = GLightbox({"touchNavigation": true, "loop": false, '
+    '"zoomable": true, "draggable": true, "openEffect": "zoom", '
+    '"closeEffect": "zoom", "slideEffect": "slide"});\n'
+    'document$.subscribe(()=>{ lightbox.reload(); });\n'
+)
+
+
+def media_inputs() -> list[dict]:
+    """Bind the finite media callback to its actual installed producer and assets."""
+    try:
+        distribution = importlib.metadata.distribution("mkdocs-glightbox")
+    except importlib.metadata.PackageNotFoundError:
+        return []
+    if distribution.version != GLIGHTBOX_VERSION:
+        raise PolicyError("Glightbox version differs from the reviewed media callback")
+    records = []
+    for name, expected in GLIGHTBOX_INPUTS.items():
+        path = Path(distribution.locate_file(name))
+        if path.is_symlink() or not path.is_file():
+            raise PolicyError("Glightbox callback requires regular installed dependency inputs")
+        observed = hashlib.sha256(path.read_bytes()).hexdigest()
+        if observed != expected:
+            raise PolicyError("Glightbox producer or static asset differs from reviewed source")
+        records.append({"path": name, "sha256": observed})
+    return records
+
+
 def admitted_scripts(shared: Path, material_templates: Path) -> tuple[set[str], str]:
     """Trust exact canonical override bytes and static admitted dependency snippets."""
     from jinja2 import Environment
@@ -78,6 +114,8 @@ def admitted_scripts(shared: Path, material_templates: Path) -> tuple[set[str], 
         for body in SCRIPT.findall(path.read_text()):
             if "{{" not in body and "{%" not in body:
                 allowed.add(body)
+    if media_inputs():
+        allowed.add(GLIGHTBOX_SCRIPT)
     return allowed, normalized
 
 
@@ -85,8 +123,13 @@ def policy_inputs(shared: Path, material_templates: Path) -> dict:
     def records(root: Path, paths: list[Path]) -> list[dict]:
         return [{"path": p.relative_to(root).as_posix(), "sha256": hashlib.sha256(p.read_bytes()).hexdigest()}
                 for p in sorted(paths)]
-    return {"canonical": records(shared, [shared / "partials/javascripts/base.html", shared / "partials/javascripts/palette.html"]),
+    result = {"canonical": records(shared, [shared / "partials/javascripts/base.html", shared / "partials/javascripts/palette.html"]),
             "material_templates": records(material_templates, list((material_templates / "partials/javascripts").rglob("*.html")))}
+    media = media_inputs()
+    if media:
+        result["media_callback"] = {"distribution": "mkdocs-glightbox", "version": GLIGHTBOX_VERSION,
+                                    "files": media, "script_sha256": hashlib.sha256(GLIGHTBOX_SCRIPT.encode()).hexdigest()}
+    return result
 
 
 def embedded_module():

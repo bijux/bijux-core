@@ -14,9 +14,21 @@ verify_docs_authority() {
     exit 1
   fi
   local pin="${BIJUX_STD_REF:-}"
-  if [[ -z "${pin}" && -f "${repo_root}/.github/standards/bijux-std.sha" ]]; then
-    pin="$(tr -d '[:space:]' < "${repo_root}/.github/standards/bijux-std.sha")"
+  local pin_path="${repo_root}/.github/standards/bijux-std.sha"
+  if [[ -e "${repo_root}/.github/standards/bijux-docs.sha" || -L "${repo_root}/.github/standards/bijux-docs.sha" ]]; then
+    pin_path="${repo_root}/.github/standards/bijux-docs.sha"
   fi
+  if [[ -L "${pin_path}" || ! -f "${pin_path}" ]]; then
+    echo 'ERROR: docs authority requires a regular declared source pin' >&2
+    exit 1
+  fi
+  local declared_pin
+  declared_pin="$(tr -d '[:space:]' < "${pin_path}")"
+  if [[ -n "${pin}" && "${pin}" != "${declared_pin}" ]]; then
+    echo 'ERROR: docs source override differs from the declared source pin' >&2
+    exit 1
+  fi
+  pin="${declared_pin}"
   local authority_guard="${shared_root}/../bijux-checks/scripts/verify-accepted-source.sh"
   if [[ ! -f "${authority_guard}" ]]; then
     echo 'ERROR: accepted source guard is unavailable; refresh the admitted standard tooling first' >&2

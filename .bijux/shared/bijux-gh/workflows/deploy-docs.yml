@@ -23,7 +23,7 @@ jobs:
     if: ${{ github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && (github.ref == format('refs/heads/{0}', github.event.repository.default_branch) || startsWith(github.ref, 'refs/tags/v')) }}
     permissions:
       contents: read
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     outputs:
       site_available: ${{ steps.artifact.outputs.site_available }}
@@ -62,7 +62,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          accepted_ref="$(cat .github/standards/bijux-std.sha)"
+          accepted_ref="$(cat .github/standards/bijux-docs.sha)"
           if [[ "${#accepted_ref}" != 40 || "$accepted_ref" == *[!0-9a-f]* ]]; then
             echo "Documentation standards require a full lowercase commit SHA" >&2
             exit 1
@@ -159,7 +159,7 @@ jobs:
           build_command="$(discover_command "$(from_vars_or_default "$VARS_DOCS_BUILD_COMMAND" "${BIJUX_DOCS_BUILD_COMMAND:-}" "")" gh-docs-build docs-check docs series-docs-build)"
           verify_command="$(discover_command "$(from_vars_or_default "$VARS_DOCS_VERIFY_COMMAND" "${BIJUX_DOCS_VERIFY_COMMAND:-}" "")" gh-docs-verify docs-verify)"
 
-          python_version="$(from_vars_or_default "$VARS_DOCS_PYTHON_VERSION" "${BIJUX_DOCS_PYTHON_VERSION:-}" "3.11")"
+          python_version="$(from_vars_or_default "$VARS_DOCS_PYTHON_VERSION" "${BIJUX_DOCS_PYTHON_VERSION:-}" "3.11.17")"
           node_version="$(from_vars_or_default "$VARS_DOCS_NODE_VERSION" "${BIJUX_DOCS_NODE_VERSION:-}" "22")"
           rust_toolchain="$(from_vars_or_default "$VARS_DOCS_RUST_TOOLCHAIN" "${BIJUX_DOCS_RUST_TOOLCHAIN:-}" "stable")"
 
@@ -234,6 +234,7 @@ jobs:
         if: ${{ steps.config.outputs.setup_uv == 'true' }}
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
+          version: '0.11.17'
           enable-cache: true
           cache-dependency-glob: uv.lock
 
@@ -325,7 +326,7 @@ jobs:
     permissions:
       pages: write
       id-token: write
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment:
       name: github-pages

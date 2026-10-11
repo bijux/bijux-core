@@ -4,12 +4,14 @@ from __future__ import annotations
 import copy
 from pathlib import PurePosixPath
 from typing import Any, Literal, TypedDict
+from .docs_routing import validate_destination
 
 
 class PublicationEntrypoint(TypedDict, total=False):
     mode: Literal["canonical", "manual-only"]
     refs: Literal["canonical", "main-only"]
     controller: Literal["iac"]
+    destination: dict[str, str]
 
 
 class WorkflowExecutionPolicy(TypedDict, total=False):
@@ -108,7 +110,7 @@ def validate_policy(repository: dict, known_workflows: set[str]) -> WorkflowExec
         for identity, entry in publication.items():
             if identity not in known_workflows or identity not in allowlist:
                 raise ValueError(f"publication entrypoint {identity} is not an enabled managed workflow")
-            entry = require_closed_object(entry, {"mode", "refs", "controller"} if identity == "deploy-docs" else {"mode", "controller"}, identity)
+            entry = require_closed_object(entry, {"mode", "refs", "controller", "destination"} if identity == "deploy-docs" else {"mode", "controller"}, identity)
             _choice(entry.get("mode"), {"canonical", "manual-only"}, f"{identity}.mode")
             if "controller" in entry:
                 _choice(entry["controller"], {"iac"}, f"{identity}.controller")
@@ -118,6 +120,10 @@ def validate_policy(repository: dict, known_workflows: set[str]) -> WorkflowExec
                 _choice(entry["refs"], {"canonical", "main-only"}, f"{identity}.refs")
                 if entry["refs"] == "main-only" and entry["mode"] != "manual-only":
                     raise ValueError("main-only docs requires manual-only mode")
+            if "destination" in entry:
+                if entry.get("mode") != "manual-only" or entry.get("controller") != "iac" or entry.get("refs") != "main-only":
+                    raise ValueError("documentation destination requires manual IaC control on main")
+                validate_destination(name, entry["destination"])
     # Callers cannot accidentally rewrite the canonical configuration while projecting it.
     return copy.deepcopy(policy)
 

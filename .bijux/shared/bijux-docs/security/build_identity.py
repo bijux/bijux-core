@@ -126,8 +126,26 @@ def catalogue_derivation(root: Path, recipe: str, expected=None):
     return result
 
 
+STANDARD_PINS = {"runtime": ".github/standards/bijux-std.sha",
+                 "publication": ".github/standards/bijux-docs.sha"}
+
+
+def standard_pin_path(selector: str) -> str:
+    require(isinstance(selector, str) and selector in STANDARD_PINS, "Standard identity: explicit runtime or publication pin selector required")
+    return STANDARD_PINS[selector]
+
+
+def checkpoint_pin(checkpoint: dict) -> str:
+    record = checkpoint.get("standard_pin", {"selector": "runtime", "path": STANDARD_PINS["runtime"]})
+    require(isinstance(record, dict) and set(record) == {"selector", "path"},
+            "Standard identity: typed source-owned pin checkpoint required")
+    selected = standard_pin_path(record["selector"])
+    require(record["path"] == selected, "Standard identity: pin path differs from finite source-owned selector")
+    return selected
+
+
 def source_checkpoint(root: Path, source_sha: str, standard_root: str,
-                      site_url: str, site_dir: str, build_command: str, verify_command: str, config: str = "mkdocs.yml", source_recipe: str | None = None) -> dict:
+                      site_url: str, site_dir: str, build_command: str, verify_command: str, config: str = "mkdocs.yml", source_recipe: str | None = None, standard_pin: str = "runtime") -> dict:
     for key in ("BIJUX_STD_LOCAL_VERIFY", "BIJUX_STD_ALLOW_LOCAL_SOURCE"):
         require(os.environ.get(key, "0") != "1", "Publication identity: local verification bypass forbidden")
     boundary = publication()
@@ -137,8 +155,9 @@ def source_checkpoint(root: Path, source_sha: str, standard_root: str,
     config_path = regular(root, config)
     git(root, "ls-files", "--error-unmatch", config)
     owned_config = {"path": config, "sha256": digest(config_path.read_bytes())}
-    pin_path = regular(root, ".github/standards/bijux-std.sha")
-    git(root, "ls-files", "--error-unmatch", ".github/standards/bijux-std.sha")
+    pin_name = standard_pin_path(standard_pin)
+    pin_path = regular(root, pin_name)
+    git(root, "ls-files", "--error-unmatch", pin_name)
     pin = pin_path.read_text().strip()
     require(bool(SHA.fullmatch(pin)), "Standard identity: tracked exact accepted pin required")
     standard = boundary.site_directory(root, standard_root)
@@ -152,6 +171,7 @@ def source_checkpoint(root: Path, source_sha: str, standard_root: str,
     result = {"schema": 1, "scope": "clean-source-and-fetched-standard", "verification_only": False,
             "repository_source": source, "standard": authority,
             "standard_root": standard.relative_to(root).as_posix(),
+            "standard_pin": {"selector": standard_pin, "path": pin_name},
             "pin_sha256": digest(pin_path.read_bytes()), "shared_root": shared.relative_to(root).as_posix(),
             "site_url": site_url, "site_dir": site_dir, "config": owned_config,
             "build_command_sha256": digest(build_command.encode()),
@@ -172,7 +192,9 @@ def verify_source(root: Path, checkpoint: dict) -> None:
     require(isinstance(config, dict) and set(config) == {"path", "sha256"}, "Source identity: owner config checkpoint required")
     git(root, "ls-files", "--error-unmatch", config["path"])
     require(digest(regular(root, config["path"]).read_bytes()) == config["sha256"], "Source identity: owner config changed")
-    pin = regular(root, ".github/standards/bijux-std.sha")
+    pin_name = checkpoint_pin(checkpoint)
+    git(root, "ls-files", "--error-unmatch", pin_name)
+    pin = regular(root, pin_name)
     require(digest(pin.read_bytes()) == checkpoint["pin_sha256"], "Standard identity: accepted pin changed")
     require(pin.read_text().strip() == checkpoint["standard"]["sha"], "Standard identity: fetched source differs from tracked accepted pin")
     boundary = publication()
@@ -364,6 +386,7 @@ def main() -> int:
     capture = commands.add_parser("capture-source")
     for name in ("source-sha", "standard-root", "site-url", "site-dir", "build-command", "verify-command", "output"):
         capture.add_argument("--" + name, required=True)
+    capture.add_argument("--standard-pin", choices=sorted(STANDARD_PINS), default="runtime")
     capture.add_argument("--config", default="mkdocs.yml")
     capture.add_argument("--source-recipe", choices=["masterclass-catalogue"])
     prepare = commands.add_parser("begin")
@@ -378,7 +401,7 @@ def main() -> int:
     try:
         if args.command == "capture-source":
             result = source_checkpoint(root, args.source_sha, args.standard_root, args.site_url, args.site_dir,
-                                       args.build_command, args.verify_command, args.config, args.source_recipe)
+                                       args.build_command, args.verify_command, args.config, args.source_recipe, args.standard_pin)
             output = artifact(root, args.output)
         elif args.command == "begin":
             result = begin(root, args.config, args.site_dir, args.site_url, args.source_checkpoint, args.source_recipe)
