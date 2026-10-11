@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import ast
+import csv
 import hashlib
+import importlib.metadata
 import inspect
 import json
 import marshal
@@ -11,13 +13,25 @@ import subprocess
 import types
 import sysconfig
 import sys
+from urllib.parse import urlsplit
 
 HOOKS = {
     '4f04c4736adc9b9ff801bb2e2214e4bb622b8858aac16a9f6ae88b49ff2f7e84':'root-icons',
     'bda022ee3efa9393f03cda2d49684ba186d67714a362f4225890b8d4b15583d5':'source-assets-and-root-icons',
+    '3162000c64180ca575be718c03ecdfe90bc0f53240eb4101947356c863848906':'scientific-pdf-downloads',
+    'f714e9c71a7213f573007baf2f54aab1f5ec3375b7481bb48b64f2d06923a88b':'root-icons-and-custom-domain',
 }
 ICONS=('favicon.ico','apple-touch-icon.png','apple-touch-icon-precomposed.png')
-PLUGINS={'material/search','autorefs','redirects','git-revision-date-localized','material/social'}
+PLUGINS={'material/search','autorefs','redirects','git-revision-date-localized','material/social','material/tags','minify','glightbox'}
+EXTENSION_PLUGINS = {
+    'minify': ('mkdocs-minify-plugin', '0.8.0', 'mkdocs_minify_plugin'),
+    'glightbox': ('mkdocs-glightbox', '0.5.2', 'mkdocs_glightbox'),
+}
+PDF_VERIFIER = 'reports/exports/papers/verify.py'
+PDF_VERIFIER_SHA256 = {
+    '87a4e621c498572cbc6060b7be2b3ce0b296523245bddc0878bd6bcb5986e758',
+    'b6c60e27d9b53de7900017121c0d98b9bee4342aee252875cdbcda66a3f8c9a2',
+}
 
 
 class CapabilityError(ValueError):
@@ -45,6 +59,64 @@ def git(root,*args):
     return subprocess.check_output(['git','-C',str(root),*args],text=True).strip()
 
 
+def reviewed_hook_functions(hook, source, path):
+    """Bind every helper and the registered callback to reviewed executable source."""
+    expected=compile(source,str(path),'exec',dont_inherit=True)
+    declared={node.name for node in ast.parse(source).body if isinstance(node,(ast.FunctionDef,ast.AsyncFunctionDef))}
+    functions={item.co_name:item for item in expected.co_consts if isinstance(item,types.CodeType) and item.co_name in declared}
+    require(set(functions)==declared,'Producer capability: declared callback compilation differs')
+    require({name for name,value in vars(hook).items() if name.startswith('on_') and callable(value)}=={name for name in declared if name.startswith('on_')},'Producer capability: undeclared hook callback')
+    for name,code in functions.items():
+        actual=getattr(hook,name,None)
+        require(inspect.isfunction(actual) and actual.__code__==code and actual.__globals__ is vars(hook),
+                'Producer capability: loaded callback differs from reviewed source')
+
+
+def scientific_downloads(hook, root, path, source):
+    """Preserve the reviewed finite PDF exports and all of their source inputs."""
+    import runpy
+    from pathlib import PurePosixPath
+    from mkdocs.config.defaults import MkDocsConfig
+    from mkdocs.structure.files import File, Files
+    require(path == root/'configs/docs/science_downloads.py'
+            and hook.ROOT == root and hook.MANIFEST == 'reports/exports/site-downloads.json'
+            and hook.DECKS == ('big-picture','developer','scientific-evidence'),
+            'Producer capability: scientific download owner or constants changed')
+    require(hook.csv is csv and hook.hashlib is hashlib and hook.json is json
+            and hook.Path is Path and hook.PurePosixPath is PurePosixPath and hook.runpy is runpy
+            and hook.MkDocsConfig is MkDocsConfig and hook.File is File and hook.Files is Files,
+            'Producer capability: scientific download dependency binding changed')
+    require(digest(regular(root, root/PDF_VERIFIER)) in PDF_VERIFIER_SHA256,
+            'Producer capability: scientific export verifier differs from reviewed source')
+    # The original callback performs this same exact population and byte validation
+    # before creating native MkDocs files; the admission independently freezes it.
+    frozen=hook.download_bytes(root)
+    require(isinstance(frozen,dict) and len(frozen)==12,
+            'Producer capability: scientific download population differs')
+    manifest=json.loads(regular(root,root/hook.MANIFEST))
+    deck_lock=json.loads(regular(root,root/'presentation/source-lock.json'))
+    paper_manifest=json.loads(regular(root,root/'reports/exports/papers/manifest.json'))
+    names={hook.MANIFEST,PDF_VERIFIER,'presentation/source-lock.json',
+           'reports/exports/papers/manifest.json','reports/exports/papers/visual-review.json',
+           'reports/science/paper-accounts.csv',paper_manifest['inventory']}
+    names.update(manifest['inputs'])
+    names.update(deck_lock['sources'])
+    names.update(paper_manifest['producer_sha256'])
+    for row in manifest['files']:
+        names.update((row['path'],row['canonical_source']))
+    for row in paper_manifest['papers']:
+        names.add(row['canonical_report'])
+    inputs=[]
+    for name in sorted(names):
+        require(isinstance(name,str) and bool(name) and not PurePosixPath(name).is_absolute()
+                and all(part not in {'','.','..'} for part in name.split('/')) and '\\' not in name,
+                'Producer capability: canonical scientific source path required')
+        inputs.append({'path':name,'sha256':digest(regular(root,root/name))})
+    return {'source':path.relative_to(root).as_posix(),'source_sha256':digest(source),
+            'recipe':'scientific-pdf-downloads','inputs':inputs,
+            'outputs':{name:digest(value) for name,value in sorted(frozen.items())}}
+
+
 def hooks(configuration,root,*,publication=False):
     records=[]
     for hook in configuration.hooks.values():
@@ -53,17 +125,11 @@ def hooks(configuration,root,*,publication=False):
         require(recipe is not None,'Producer capability: hook needs a reviewed source recipe')
         if publication:
             git(root,'ls-files','--error-unmatch',path.relative_to(root).as_posix())
+        reviewed_hook_functions(hook,source,path)
+        if recipe=='scientific-pdf-downloads':
+            records.append(scientific_downloads(hook,root,path,source))
+            continue
         require(tuple(hook.ROOT_ICON_FILENAMES)==ICONS,'Producer capability: loaded icon contract changed')
-        # Recompile rather than trust a file hash attached to a replaced callback.
-        expected=compile(source,str(path),'exec',dont_inherit=True)
-        declared={node.name for node in ast.parse(source).body if isinstance(node,(ast.FunctionDef,ast.AsyncFunctionDef))}
-        functions={item.co_name:item for item in expected.co_consts if isinstance(item,types.CodeType) and item.co_name in declared}
-        require(set(functions)==declared,'Producer capability: declared callback compilation differs')
-        require({name for name,value in vars(hook).items() if name.startswith('on_') and callable(value)}=={name for name in declared if name.startswith('on_')},'Producer capability: undeclared hook callback')
-        for name,code in functions.items():
-            actual=getattr(hook,name,None)
-            require(inspect.isfunction(actual) and actual.__code__==code,
-                    'Producer capability: loaded callback differs from reviewed source')
         docs=Path(configuration.docs_dir).absolute();assets=docs/'assets'
         if recipe=='source-assets-and-root-icons':
             require(hook.REPO_ROOT==root and hook.SHARED_ASSET_SOURCE_DIR==root/'docs/assets',
@@ -85,6 +151,16 @@ def hooks(configuration,root,*,publication=False):
             value=regular(root,assets/'site-icons'/icon)
             inputs.append({'path':(assets/'site-icons'/icon).relative_to(root).as_posix(),'sha256':digest(value)})
             outputs[icon]=digest(value)
+        if recipe=='root-icons-and-custom-domain':
+            import shutil
+            require(hook.REPO_ROOT==root and hook.Path is Path and hook.shutil is shutil,
+                    'Producer capability: custom domain callback owner or dependency changed')
+            value=regular(root,root/'CNAME')
+            require(value==((urlsplit(configuration.site_url).hostname or '')+'\n').encode()
+                    and len(value)<=254 and b'/' not in value and b':' not in value,
+                    'Producer capability: custom domain differs from production URL')
+            inputs.append({'path':'CNAME','sha256':digest(value)})
+            outputs['CNAME']=digest(value)
         records.append({'source':path.relative_to(root).as_posix(),'source_sha256':digest(source),
                         'recipe':recipe,'inputs':sorted(inputs,key=lambda item:item['path']),'outputs':outputs})
     return records
@@ -161,6 +237,13 @@ def preflight(configuration,root,*,publication=False,catalogue=None):
                 'Producer capability: exact producer-owned catalogue plugin required')
         declared_catalogue = {'bijux/catalogue-sources'}
     require(set(configuration.plugins)<=PLUGINS|declared_hooks|declared_catalogue,'Producer capability: plugin requires a reviewed adapter')
+    for name,(distribution,version,module_name) in EXTENSION_PLUGINS.items():
+        plugin=configuration.plugins.get(name)
+        if plugin is None:continue
+        require(importlib.metadata.version(distribution)==version,
+                'Producer capability: extension plugin needs exact reviewed version: '+name)
+        require(type(plugin).__module__.split('.')[0]==module_name,
+                'Producer capability: extension plugin source owner differs: '+name)
     social=configuration.plugins.get('material/social')
     if social is not None:
         require(social.config.get('enabled') is False,'Producer capability: active social generation requires its own reviewed producer')

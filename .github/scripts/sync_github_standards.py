@@ -49,6 +49,7 @@ def resolve_std_repo() -> Path:
 
 STD_REPO = resolve_std_repo()
 PIN_PATH = ".github/standards/bijux-std.sha"
+DOCS_PIN_PATH = ".github/standards/bijux-docs.sha"
 MANIFEST_PATH = STD_REPO / ".github/standards/repo-config.manifest.json"
 
 DEFAULT_REPOS = [
@@ -79,6 +80,7 @@ BASE_FILE_MAPPINGS: list[tuple[str, str]] = [
     (".github/scripts/workflow_execution/__init__.py", ".github/scripts/workflow_execution/__init__.py"),
     (".github/scripts/workflow_execution/source_loading.py", ".github/scripts/workflow_execution/source_loading.py"),
     (".github/scripts/workflow_execution/schema.py", ".github/scripts/workflow_execution/schema.py"),
+    (".github/scripts/workflow_execution/docs_routing.py", ".github/scripts/workflow_execution/docs_routing.py"),
     (".github/scripts/workflow_execution/yaml_io.py", ".github/scripts/workflow_execution/yaml_io.py"),
     (".github/scripts/workflow_execution/events.py", ".github/scripts/workflow_execution/events.py"),
     (".github/scripts/workflow_execution/refs.py", ".github/scripts/workflow_execution/refs.py"),
@@ -383,10 +385,17 @@ def copy_shared_files(target_repo: str) -> None:
     sync_repo_files(target_repo, manifest)
 
 
+def write_docs_pin(repo_name: str, std_sha: str) -> None:
+    pin_file = resolve_repository_checkout(repo_name) / DOCS_PIN_PATH
+    pin_file.parent.mkdir(parents=True, exist_ok=True)
+    pin_file.write_text(f"{std_sha}\n", encoding="utf-8")
+
+
 def write_std_pin(repo_name: str, std_sha: str) -> None:
     pin_file = resolve_repository_checkout(repo_name) / PIN_PATH
     pin_file.parent.mkdir(parents=True, exist_ok=True)
     pin_file.write_text(f"{std_sha}\n", encoding="utf-8")
+    write_docs_pin(repo_name, std_sha)
 
 
 def has_changes(repo_name: str) -> bool:

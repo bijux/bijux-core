@@ -54,20 +54,21 @@ do not protect directly opened SVG documents, and XML parsers require explicit
 [entity and resource considerations](https://docs.python.org/3/library/xml.html#xml-vulnerabilities).
 
 Publication requires a clean source checkpoint, the tracked exact
-`.github/standards/bijux-std.sha` and a clean checkout independently fetched from
+`.github/standards/bijux-docs.sha` publication pointer and a clean checkout independently fetched from
 the official GitHub origin into `artifacts/`. The consumed shared documentation
 must match that fetched tree; ignored extra standard inputs cannot inherit its
 commit identity. Local-source bypasses and candidate-only receipts cannot publish.
 
 The source-derived reconstruction framework is optional. Its source-owned profile
-registry currently admits the retained Darwin environments for verification only;
-no Linux publication profile is approved. Enable `DOCS_PUBLICATION_FRAMEWORK=1`
-only with an explicitly selected accepted shared directory and actual renderer.
-Candidate builds can produce attributable receipts under the retained verification
-profiles; a clean source checkpoint cannot promote them to publication. Approve
-hosted runtime/startup/native/plugin/callback closure through a reviewed source
-change before enabling publication for a caller. Renderer observation reports
-never create admission by themselves.
+registry admits retained Darwin environments for verification only and exact
+source-owned Linux publication environments described in [runtime/README.md](runtime/README.md).
+Enable `DOCS_PUBLICATION_FRAMEWORK=1` only with an explicitly selected accepted shared
+directory and actual renderer. Candidate builds can produce attributable receipts;
+a clean source checkpoint cannot promote a verification-only profile to publication.
+The isolated publication installer requires the approved physical interpreter,
+startup, native package and source closure. Actual consumer plugins, callbacks,
+source history and output still require independent producer reconstruction.
+Renderer observation reports never create admission by themselves.
 
 Reviewed producer adapters preserve actual redirects, revision-date configuration,
 registered callbacks and the two observed source asset/root icon recipes. Unknown
@@ -237,7 +238,7 @@ python3 .bijux/shared/bijux-docs/security/publication.py config \
   --site-dir artifacts/docs/site --verify-command 'make gh-docs-verify'
 python3 .bijux/shared/bijux-docs/security/build_identity.py capture-source \
   --source-sha "$BIJUX_SOURCE_SHA" \
-  --standard-root artifacts/website-security/accepted-standard \
+  --standard-root artifacts/website-security/accepted-standard --standard-pin publication \
   --site-dir artifacts/docs/site --site-url https://bijux.io/bijux-core/ \
   --build-command 'make docs-check' --verify-command 'make gh-docs-verify' \
   --output artifacts/website-security/source-identity.json
@@ -260,8 +261,9 @@ python3 .bijux/shared/bijux-docs/security/publication.py verify \
 Prepare `accepted-standard` at the tracked pin before capture; capture fetches that
 exact object again and checks clean HEAD/origin/tree. Framework caller wiring must
 provide this checkpoint explicitly; the ordinary shared workflow currently owns
-event/ref, exact output and consumer verifier mechanics. Automatic framework
-activation remains pending actual hosted profile and caller qualification.
+event/ref, exact output and consumer verifier mechanics. Source-owned publication
+recipes require explicit caller selection and actual qualification; ordinary local
+builds do not gain publication authority through automatic environment discovery.
 Custom builders must produce the same renderer/CSP/verifier receipts using their
 actual configuration and interpreter. A multi-generator consumer must also retain
 its generator-specific inputs/toolchain evidence; the shared renderer receipt does

@@ -117,7 +117,7 @@
       "source": "bijux-docs/styles/07-utilities.css"
     },
     "docs/assets/styles/08-responsive.css": {
-      "sha256": "e4958d971e8521b03755a1c9d3651901a6219323d546ddc4a6a2e52f2092a2a0",
+      "sha256": "f2e45cf95c1b8964369631a72759edc445320a49c9818c6e89ef5b16296ca949",
       "source": "bijux-docs/styles/08-responsive.css"
     },
     "docs/assets/styles/extra.css": {
@@ -177,6 +177,6 @@
   "source": {
     "mode": "accepted-github",
     "origin": "https://github.com/bijux/bijux-std.git",
-    "sha": "0f6d33d8865c0d9faada419d7c11646e13c99616"
+    "sha": "848221a07e1b207d6a06179cec8db956b71041da"
   }
 }
