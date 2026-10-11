@@ -1,0 +1,27 @@
+{# Material's scoped preference API must survive denied storage and malformed data. #}
+<script>
+var __md_scope = new URL({{ (config.extra.scope | d(base_url)) | tojson }}, location);
+var __md_hash = value => [...value].reduce((hash, character) => (hash << 5) - hash + character.charCodeAt(0), 0);
+var __bijux_memory = new Map();
+var __md_get = (key, storage, scope = __md_scope) => {
+  try {
+    const name = scope.pathname + "." + key;
+    let raw = __bijux_memory.get(name);
+    try { raw = (storage || window.localStorage).getItem(name); } catch (_) {}
+    if (!raw || raw.length > 16384) return null;
+    const value = JSON.parse(raw);
+    if (key === "__palette" && (!value || !Number.isInteger(value.index) || value.index < 0 || value.index > 31 || !value.color)) return null;
+    return value;
+  } catch (_) { return null; }
+};
+var __md_set = (key, value, storage, scope = __md_scope) => {
+  try {
+    const name = scope.pathname + "." + key;
+    const raw = JSON.stringify(value);
+    if (raw.length > 16384) return;
+    if (__bijux_memory.size >= 32 && !__bijux_memory.has(name)) __bijux_memory.delete(__bijux_memory.keys().next().value);
+    __bijux_memory.set(name, raw);
+    try { (storage || window.localStorage).setItem(name, raw); } catch (_) {}
+  } catch (_) {}
+};
+</script>

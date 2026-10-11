@@ -200,22 +200,34 @@ if [[ "${should_use_self_repo_mode}" == "1" ]]; then
   exit 0
 fi
 
-if ! clone_from_ref "${resolved_ref}"; then
-  head_ref="$(git ls-remote --symref "${std_git_url}" HEAD 2>/dev/null | awk '/^ref:/ {print $2}' | sed 's#refs/heads/##')"
-  if [[ -n "${head_ref}" && "${head_ref}" != "${resolved_ref}" ]]; then
-    rm -rf "${tmp_dir}/bijux-std"
-    if clone_from_ref "${head_ref}"; then
-      echo "→ requested ref ${resolved_ref} unavailable; using remote HEAD branch ${head_ref}"
-      resolved_ref="${head_ref}"
-    else
-      echo "ERROR: unable to clone ${std_git_url} using ref ${resolved_ref} or HEAD ${head_ref}" >&2
-      exit 1
-    fi
-  else
-    echo "ERROR: unable to clone ${std_git_url} using ref ${resolved_ref}" >&2
-    exit 1
-  fi
+if [[ "${BIJUX_STD_ALLOW_LOCAL_SOURCE:-0}" != "1" ]]; then
+  case "${std_git_url}" in
+    https://github.com/bijux/bijux-std.git|git@github.com:bijux/bijux-std.git) ;;
+    *) echo "ERROR: accepted rollout requires bijux-std GitHub source; local verification must be explicit" >&2; exit 1 ;;
+  esac
 fi
+expected_sha=""
+if [[ "${resolved_ref}" =~ ^[a-f0-9]{40}$ ]]; then
+  expected_sha="${resolved_ref}"
+else
+  if [[ "${resolved_ref}" == refs/* ]]; then
+    remote_matches="$(git ls-remote "${std_git_url}" "${resolved_ref}" "${resolved_ref}^{}")"
+  else
+    remote_matches="$(git ls-remote "${std_git_url}" "refs/heads/${resolved_ref}" "refs/tags/${resolved_ref}" "refs/tags/${resolved_ref}^{}")"
+  fi
+  [[ -n "${remote_matches}" ]] || { echo "ERROR: requested standard ref is unavailable: ${resolved_ref}" >&2; exit 1; }
+  if [[ "$(printf '%s\n' "${remote_matches}" | awk '$2 !~ /\^\{\}$/ {n++} END {print n}')" != "1" ]]; then
+    echo "ERROR: ambiguous standard ref; use a full commit SHA" >&2; exit 1
+  fi
+  expected_sha="$(printf '%s\n' "${remote_matches}" | awk 'END {print $1}')"
+fi
+if ! clone_from_ref "${resolved_ref}"; then
+  echo "ERROR: unable to fetch exact requested standard ref ${resolved_ref}; no fallback is permitted" >&2
+  exit 1
+fi
+fetched_sha="$(git -C "${tmp_dir}/bijux-std" rev-parse HEAD)"
+[[ "${fetched_sha}" == "${expected_sha}" ]] || { echo "ERROR: requested and fetched standard SHA differ" >&2; exit 1; }
+BIJUX_STD_GIT_URL="${std_git_url}" bash "${script_dir}/scripts/verify-accepted-source.sh" "${tmp_dir}/bijux-std" "${fetched_sha}"
 
 while IFS= read -r remote_dir_rel; do
   src="${tmp_dir}/bijux-std/${remote_dir_rel}"
@@ -248,6 +260,74 @@ for remote_dir_rel in "${update_dirs[@]}"; do
   cp -R "${src}" "${stage}"
 done
 
+BIJUX_STD_GIT_URL="${std_git_url}" bash "${script_dir}/scripts/verify-accepted-source.sh" "${tmp_dir}/bijux-std" "${fetched_sha}"
+
+# Both installed and legacy managed trees may contain user work.
+assert_managed_pristine() {
+  local managed_rel="$1"
+  if git -C "${repo_root}" rev-parse --verify HEAD >/dev/null 2>&1 && [[ -n "$(git -C "${repo_root}" ls-files --others --exclude-standard -- "${managed_rel}")" ]]; then
+    echo "ERROR: preserve untracked managed input before refresh: ${managed_rel}" >&2; exit 1
+  fi
+  if ! git -C "${repo_root}" diff --quiet -- "${managed_rel}" || ! git -C "${repo_root}" diff --cached --quiet -- "${managed_rel}"; then
+    echo "ERROR: preserve local managed changes before refresh: ${managed_rel}" >&2; exit 1
+  fi
+}
+while IFS= read -r remote_dir_rel; do
+  local_dir_rel="$(resolve_local_rel "${remote_dir_rel}")"
+  assert_managed_pristine "${local_dir_rel}"
+  if [[ "${local_dir_rel}" != "${remote_dir_rel}" ]]; then
+    assert_managed_pristine "${remote_dir_rel}"
+  fi
+done <<<"${all_directories}"
+if ! git -C "${repo_root}" diff --quiet -- "${manifest_local_rel}" || ! git -C "${repo_root}" diff --cached --quiet -- "${manifest_local_rel}"; then
+  echo "ERROR: preserve local manifest changes before refresh" >&2; exit 1
+fi
+python3 - "${bijux_std_artifact_root}/source-provenance.json" "${std_git_url}" "${resolved_ref}" "${fetched_sha}" "${BIJUX_STD_ALLOW_LOCAL_SOURCE:-0}" "${BIJUX_STD_UPDATE_DRY_RUN:-0}" <<'PY_RECEIPT'
+import json,sys
+from pathlib import Path
+Path(sys.argv[1]).write_text(json.dumps(dict(result="planned",origin=sys.argv[2],requested_ref=sys.argv[3],resolved_sha=sys.argv[4],verification_only=sys.argv[5]=='1',dry_run=sys.argv[6]=='1'),indent=2)+'\n')
+PY_RECEIPT
+if [[ "${BIJUX_STD_UPDATE_DRY_RUN:-0}" == "1" ]]; then
+  for remote_dir_rel in "${update_dirs[@]}"; do
+    local_dir_rel="$(resolve_local_rel "${remote_dir_rel}")"
+    if [[ -d "${repo_root}/${local_dir_rel}" ]]; then
+      diff -ru "${repo_root}/${local_dir_rel}" "${staging_dir}/${local_dir_rel}" || [[ "$?" == "1" ]]
+    else
+      printf 'Add managed directory %s\n' "${local_dir_rel}"
+    fi
+  done
+  while IFS= read -r remote_dir_rel; do
+    local_dir_rel="$(resolve_local_rel "${remote_dir_rel}")"
+    if [[ -n "${BIJUX_STD_CAPABILITIES:-}" && "${in_bijux_std_repo}" == "0" ]] && ! grep -Fxq "${remote_dir_rel}" <<<"${selected_directories}" && [[ -d "${repo_root}/${local_dir_rel}" ]]; then
+      printf 'Remove unselected managed directory %s\n' "${local_dir_rel}"
+    fi
+    if [[ "${local_dir_rel}" != "${remote_dir_rel}" && -d "${repo_root}/${remote_dir_rel}" ]] && grep -Fxq "${remote_dir_rel}" <<<"${selected_directories}"; then
+      printf 'Remove legacy managed directory %s\n' "${remote_dir_rel}"
+    fi
+  done <<<"${all_directories}"
+  echo "Verified standard refresh plan; managed consumer paths were not changed"
+  exit 0
+fi
+recovery_dir="$(mktemp -d "${bijux_std_artifact_root}/recovery-source.XXXXXX")"
+cp "${manifest_path}" "${recovery_dir}/shared-dir-sha256.txt"
+while IFS= read -r remote_dir_rel; do
+  local_dir_rel="$(resolve_local_rel "${remote_dir_rel}")"
+  if [[ -d "${repo_root}/${local_dir_rel}" ]]; then
+    mkdir -p "${recovery_dir}/$(dirname "${local_dir_rel}")"
+    cp -R "${repo_root}/${local_dir_rel}" "${recovery_dir}/${local_dir_rel}"
+  fi
+  if [[ "${local_dir_rel}" != "${remote_dir_rel}" && -d "${repo_root}/${remote_dir_rel}" ]]; then
+    mkdir -p "${recovery_dir}/$(dirname "${remote_dir_rel}")"
+    cp -R "${repo_root}/${remote_dir_rel}" "${recovery_dir}/${remote_dir_rel}"
+  fi
+done <<<"${all_directories}"
+python3 - "${bijux_std_artifact_root}/source-provenance.json" "${recovery_dir}" "${repo_root}/.github/standards/bijux-std.sha" <<'PY_RECOVERY'
+import json,sys
+from pathlib import Path
+path=Path(sys.argv[1]);record=json.loads(path.read_text());pin=Path(sys.argv[3])
+record.update(recovery_directory=sys.argv[2],previous_standard_sha=pin.read_text().strip() if pin.is_file() else None)
+path.write_text(json.dumps(record,indent=2)+'\n')
+PY_RECOVERY
 for remote_dir_rel in "${update_dirs[@]}"; do
   local_dir_rel="$(resolve_local_rel "${remote_dir_rel}")"
   stage="${staging_dir}/${local_dir_rel}"
@@ -313,5 +393,11 @@ if (( ${#skipped_dirs[@]} > 0 )); then
   done
 fi
 
+python3 - "${bijux_std_artifact_root}/source-provenance.json" <<'PY_FINISH'
+import json,sys
+from pathlib import Path
+path=Path(sys.argv[1]);record=json.loads(path.read_text());record['result']='refreshed'
+path.write_text(json.dumps(record,indent=2)+'\n')
+PY_FINISH
 echo "→ refreshed ${manifest_rel}"
 echo "✔ bijux-std shared directories updated from ${std_git_url}@${resolved_ref}"

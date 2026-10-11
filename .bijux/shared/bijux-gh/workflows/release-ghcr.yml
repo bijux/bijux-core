@@ -22,6 +22,10 @@ on:
         description: "JSON array for package publication matrix"
         required: false
         type: string
+      push_latest:
+        description: "Also publish the latest package tag"
+        required: false
+        type: boolean
   workflow_call:
     inputs:
       release_tag:
@@ -78,6 +82,7 @@ jobs:
   resolve:
     name: resolve-release-ghcr-config
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     outputs:
       enabled: ${{ steps.config.outputs.enabled }}
       release_tag: ${{ steps.config.outputs.release_tag }}
@@ -236,7 +241,9 @@ jobs:
             exit 1
           fi
 
-          build_matrix_json="$(filter_matrix "${build_matrix_json}" "${allowed_packages}")"
+          # Build families may supply several publication packages; validate their
+          # shape without applying the publication package allowlist.
+          build_matrix_json="$(filter_matrix "${build_matrix_json}" "")"
           package_matrix_json="$(filter_matrix "${package_matrix_json}" "${allowed_packages}")"
 
           if [[ "${build_matrix_json}" == "[]" || "${package_matrix_json}" == "[]" ]]; then
@@ -278,6 +285,7 @@ jobs:
     uses: ./.github/workflows/release-artifacts.yml
     with:
       package_slug: ${{ matrix.package_slug }}
+      release_tag: ${{ needs.resolve.outputs.release_tag }}
       package_dir: ${{ matrix.package_dir }}
       artifacts_dir: ${{ matrix.artifacts_dir }}
       makefile_path: ${{ matrix.makefile_path || '' }}
@@ -290,6 +298,7 @@ jobs:
       - build
     if: ${{ needs.resolve.outputs.enabled == 'true' }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     permissions:
       contents: read
       packages: write
@@ -300,7 +309,7 @@ jobs:
 
     steps:
       - name: Download release artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: ${{ matrix.artifact_name || format('{0}{1}', matrix.package_slug, needs.resolve.outputs.artifact_suffix) }}
           path: .github/tmp/${{ matrix.package_slug }}-release

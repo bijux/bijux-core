@@ -60,8 +60,15 @@ fn sequence_contains(value: Option<&Value>, expected: &str) -> bool {
 }
 
 #[test]
-fn dependabot_pull_requests_do_not_allocate_workflow_runners() {
+fn owned_product_pull_requests_skip_unrequired_dependency_runs() {
     for (workflow_name, document) in workflow_documents() {
+        // Accepted shared controls provide required policy and producer evidence;
+        // repository-owned product jobs retain the narrower allocation policy.
+        if ["bijux-std.yml", "github-policy.yml", "pr-approval-policy.yml", "automerge-pr.yml"]
+            .contains(&workflow_name.as_str())
+        {
+            continue;
+        }
         let events = workflow_events(&document);
         let handles_pull_requests = ["pull_request", "pull_request_target", "pull_request_review"]
             .iter()
@@ -86,7 +93,7 @@ fn dependabot_pull_requests_do_not_allocate_workflow_runners() {
 }
 
 #[test]
-fn only_repository_policy_runs_automatically_after_merge() {
+fn only_repository_policy_and_standards_run_automatically_after_merge() {
     let mut main_push_workflows = Vec::new();
     let mut tag_push_workflows = Vec::new();
 
@@ -107,11 +114,12 @@ fn only_repository_policy_runs_automatically_after_merge() {
 
     assert_eq!(
         main_push_workflows,
-        vec!["github-policy.yml"],
-        "only the lightweight repository policy may run automatically after merge"
+        vec!["bijux-std.yml", "github-policy.yml"],
+        "only accepted policy and standards evidence may run automatically after merge"
     );
-    assert!(
-        tag_push_workflows.is_empty(),
-        "tag pushes must not trigger workflows automatically: {tag_push_workflows:?}"
+    assert_eq!(
+        tag_push_workflows,
+        vec!["github-policy.yml"],
+        "tag pushes may produce repository policy evidence but never product or publication jobs"
     );
 }

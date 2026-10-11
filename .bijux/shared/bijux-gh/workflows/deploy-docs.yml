@@ -9,8 +9,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: deploy-docs-${{ github.ref }}
@@ -22,6 +20,9 @@ env:
 jobs:
   build:
     name: Build docs site
+    if: ${{ github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && (github.ref == format('refs/heads/{0}', github.event.repository.default_branch) || startsWith(github.ref, 'refs/tags/v')) }}
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
@@ -32,6 +33,52 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate publication event and ref
+        shell: bash
+        env:
+          PUBLICATION_EVENT: ${{ github.event_name }}
+          PUBLICATION_REF: ${{ github.ref }}
+          PUBLICATION_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          case "$PUBLICATION_EVENT" in
+            push|release|workflow_dispatch|workflow_call) ;;
+            *) echo "Unsupported publication event" >&2; exit 1 ;;
+          esac
+          test -n "$PUBLICATION_DEFAULT_BRANCH"
+          # Numeric core/prerelease identifiers reject padding; build metadata permits it.
+          release_number='(0|[1-9][0-9]*)'
+          prerelease_identifier='(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)'
+          build_identifier='[0-9A-Za-z-]+'
+          release_pattern="^refs/tags/v${release_number}\.${release_number}\.${release_number}(-${prerelease_identifier}(\.${prerelease_identifier})*)?(\+${build_identifier}(\.${build_identifier})*)?$"
+          if [[ "$PUBLICATION_REF" != "refs/heads/$PUBLICATION_DEFAULT_BRANCH" && ! "$PUBLICATION_REF" =~ $release_pattern ]]; then
+            echo "Publication requires the repository default branch or a semantic version tag" >&2
+            exit 1
+          fi
+
+      - name: Admit accepted documentation standards
+        shell: bash
+        run: |
+          set -euo pipefail
+          accepted_ref="$(cat .github/standards/bijux-std.sha)"
+          if [[ "${#accepted_ref}" != 40 || "$accepted_ref" == *[!0-9a-f]* ]]; then
+            echo "Documentation standards require a full lowercase commit SHA" >&2
+            exit 1
+          fi
+          source_root="$PWD/artifacts/accepted-standard"
+          mkdir -p "$source_root"
+          git -C "$source_root" init --quiet
+          git -C "$source_root" remote add origin https://github.com/bijux/bijux-std.git
+          git -C "$source_root" fetch --quiet --depth 1 origin "$accepted_ref"
+          git -C "$source_root" checkout --quiet --detach FETCH_HEAD
+          if [[ "$(git -C "$source_root" rev-parse HEAD)" != "$accepted_ref" ]]; then
+            echo "Fetched documentation standards do not match the accepted pin" >&2
+            exit 1
+          fi
+          printf 'BIJUX_STD_ROOT=%s\n' "$source_root" >> "$GITHUB_ENV"
+          printf 'BIJUX_STD_REF=%s\n' "$accepted_ref" >> "$GITHUB_ENV"
 
       - name: Resolve docs deploy configuration
         id: config
@@ -154,13 +201,13 @@ jobs:
             exit 1
           fi
 
-          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
-            if [[ "${GITHUB_REF}" != "refs/heads/main" && "${GITHUB_REF}" != "refs/heads/master" && "${GITHUB_REF}" != refs/tags/v* ]]; then
-              echo "Manual dispatch would only build docs but skip deploy from ${GITHUB_REF}." >&2
-              echo "Dispatch deploy-docs from main/master or a v* tag when deployment is required." >&2
-              exit 1
-            fi
-          fi
+
+          test -n "${verify_command// }" || { echo "verification command: required before publication" >&2; exit 1; }
+          for value in "$site_url" "$site_dir" "$install_command" "$build_command" "$verify_command" "$python_version" "$node_version" "$rust_toolchain" "$setup_python" "$setup_uv" "$setup_node" "$setup_rust"; do
+            [[ "$value" != *$'\n'* && "$value" != *$'\r'* ]] || { echo "Control characters forbidden in deploy configuration" >&2; exit 1; }
+          done
+          [[ "$site_dir" =~ ^artifacts/[A-Za-z0-9._/-]+$ && "$site_dir" != *'/../'* && "$site_dir" != */.. && "$site_dir" != *'//'* ]] || exit 1
+          test "$site_url" = "$default_site_url" || { echo "Site URL must match repository production identity" >&2; exit 1; }
 
           {
             echo "site_url=${site_url}"
@@ -185,127 +232,85 @@ jobs:
 
       - name: Setup uv
         if: ${{ steps.config.outputs.setup_uv == 'true' }}
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: true
           cache-dependency-glob: uv.lock
 
       - name: Setup Node.js
         if: ${{ steps.config.outputs.setup_node == 'true' }}
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ steps.config.outputs.node_version }}
 
       - name: Install Rust toolchain
         if: ${{ steps.config.outputs.setup_rust == 'true' }}
-        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # v1
         with:
           toolchain: ${{ steps.config.outputs.rust_toolchain }}
 
       - name: Restore Rust cache
         if: ${{ steps.config.outputs.setup_rust == 'true' }}
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
 
       - name: Install docs toolchain
         if: ${{ steps.config.outputs.install_command != '' }}
         env:
           DOCS_BUILD_SITE_URL: ${{ steps.config.outputs.site_url }}
-        run: ${{ steps.config.outputs.install_command }}
+          DOCS_COMMAND: ${{ steps.config.outputs.install_command }}
+        shell: bash
+        run: bash --noprofile --norc -e -o pipefail -c "$DOCS_COMMAND"
 
       - name: Build docs site
         env:
           DOCS_BUILD_SITE_URL: ${{ steps.config.outputs.site_url }}
           SITE_URL: ${{ steps.config.outputs.site_url }}
-        run: ${{ steps.config.outputs.build_command }}
-
-      - name: Build docs site fallback
+          DOCS_COMMAND: ${{ steps.config.outputs.build_command }}
         shell: bash
         run: |
           set -euo pipefail
-
-          candidates=(
-            "${{ steps.config.outputs.site_dir }}"
-            "artifacts/tmp-site"
-            "artifacts/root/docs/build-site"
-            "artifacts/site/bijux-masterclass"
-            "artifacts/docs/site"
-            "artifacts/root/docs/site"
-          )
-
-          for dir in "${candidates[@]}"; do
-            if [[ -n "$dir" && -f "$dir/index.html" ]]; then
-              exit 0
-            fi
-          done
-
-          if [[ ! -f "mkdocs.yml" ]]; then
-            exit 0
-          fi
-
-          if make -prRn 2>/dev/null | awk -F':' '$1 == "docs" { found=1 } END { exit(found ? 0 : 1) }'; then
-            echo "No publishable docs artifact detected; running fallback make docs."
-            make docs
-            exit 0
-          fi
-
-          echo "Unable to build fallback docs site: 'docs' make target is unavailable." >&2
-          exit 1
+          bash --noprofile --norc -e -o pipefail -c "$DOCS_COMMAND"
 
       - name: Resolve docs artifact directory
         id: artifact
         shell: bash
+        env:
+          DOCS_SITE_DIR: ${{ steps.config.outputs.site_dir }}
         run: |
           set -euo pipefail
-
-          explicit="${{ steps.config.outputs.site_dir }}"
-          candidates=(
-            "$explicit"
-            "artifacts/tmp-site"
-            "artifacts/root/docs/build-site"
-            "artifacts/site/bijux-masterclass"
-            "artifacts/docs/site"
-            "artifacts/root/docs/site"
-          )
-
-          selected=""
-          for dir in "${candidates[@]}"; do
-            if [[ -n "$dir" && -d "$dir" && -f "$dir/index.html" ]]; then
-              selected="$dir"
-              break
-            fi
+          [[ "$DOCS_SITE_DIR" =~ ^artifacts/[A-Za-z0-9._/-]+$ && "$DOCS_SITE_DIR" != *'/../'* && "$DOCS_SITE_DIR" != */.. && "$DOCS_SITE_DIR" != *'//'* ]] || exit 1
+          current="."
+          IFS='/' read -r -a parts <<< "$DOCS_SITE_DIR"
+          for part in "${parts[@]}"; do
+            [[ "$part" != "." && "$part" != ".." && -n "$part" ]] || exit 1
+            current="$current/$part"
+            test ! -L "$current" || { echo "Symlink artifact path forbidden" >&2; exit 1; }
           done
-
-          if [[ -z "$selected" ]]; then
-            echo "Unable to resolve docs artifact directory. Checked:" >&2
-            for dir in "${candidates[@]}"; do
-              [[ -n "$dir" ]] && echo "  - $dir" >&2
-            done
-            echo "Set BIJUX_DOCS_SITE_DIR in repository variables or .github/docs-deploy.env." >&2
-            exit 1
-          fi
-
+          test -d "$DOCS_SITE_DIR" && test -f "$DOCS_SITE_DIR/index.html" || { echo "Configured documentation artifact is missing: $DOCS_SITE_DIR" >&2; exit 1; }
           echo "site_available=true" >> "$GITHUB_OUTPUT"
-          echo "site_dir=$selected" >> "$GITHUB_OUTPUT"
+          echo "site_dir=$DOCS_SITE_DIR" >> "$GITHUB_OUTPUT"
 
       - name: Verify docs site
-        if: ${{ steps.artifact.outputs.site_available == 'true' && steps.config.outputs.verify_command != '' }}
+        if: ${{ steps.artifact.outputs.site_available == 'true' }}
         env:
           DOCS_BUILD_SITE_URL: ${{ steps.config.outputs.site_url }}
           DOCS_SITE_DIR: ${{ steps.artifact.outputs.site_dir }}
-        run: ${{ steps.config.outputs.verify_command }}
+          DOCS_COMMAND: ${{ steps.config.outputs.verify_command }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash --noprofile --norc -e -o pipefail -c "$DOCS_COMMAND"
 
       - name: Validate Pages bundle
         if: ${{ steps.artifact.outputs.site_available == 'true' }}
         shell: bash
+        env:
+          DOCS_SITE_DIR: ${{ steps.artifact.outputs.site_dir }}
         run: |
           set -euo pipefail
-          site_dir="${{ steps.artifact.outputs.site_dir }}"
+          site_dir="$DOCS_SITE_DIR"
           test -d "${site_dir}"
           test -f "${site_dir}/index.html"
-
-      - name: Configure Pages
-        if: ${{ steps.artifact.outputs.site_available == 'true' }}
-        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
 
       - name: Upload Pages artifact
         if: ${{ steps.artifact.outputs.site_available == 'true' }}
@@ -316,13 +321,20 @@ jobs:
   deploy:
     name: Deploy docs site
     needs: build
-    if: ${{ needs.build.outputs.site_available == 'true' && (github.event_name == 'workflow_call' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')) }}
+    if: ${{ needs.build.outputs.site_available == 'true' && github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && (github.ref == format('refs/heads/{0}', github.event.repository.default_branch) || startsWith(github.ref, 'refs/tags/v')) }}
+    permissions:
+      pages: write
+      id-token: write
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
+      - name: Configure Pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
+
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5

@@ -1,0 +1,30 @@
+{# Resolve the admitted preference before the first frame; Material remains the palette owner. #}
+<script>
+(function () {
+  const options = [...document.querySelectorAll("input[name='__palette']")];
+  if (!options.length) return;
+  const themeKey = document.querySelector("[data-bijux-theme-key]")?.getAttribute("data-bijux-theme-key") || "bijux:theme";
+  let palette = __md_get("__palette");
+  try {
+    const raw = window.localStorage.getItem(themeKey);
+    const preference = raw && raw.length <= 2048 ? JSON.parse(raw) : null;
+    if (preference?.version === 2 && ["auto", "light", "dark"].includes(preference.mode)) {
+      const media = {auto: "(prefers-color-scheme)", light: "(prefers-color-scheme: light)", dark: "(prefers-color-scheme: dark)"}[preference.mode];
+      const index = options.findIndex(option => option.getAttribute("data-md-color-media") === media);
+      if (index >= 0) palette = {index, color: {media}};
+    }
+  } catch (_) {}
+  let index = palette?.index;
+  if (!Number.isInteger(index) || !options[index]) index = Math.max(0, options.findIndex(option => matchMedia(option.getAttribute("data-md-color-media") || "all").matches));
+  const selected = options[index];
+  const media = selected.getAttribute("data-md-color-media");
+  const effective = media === "(prefers-color-scheme)" ? options.find(option => option.getAttribute("data-md-color-media") === (matchMedia("(prefers-color-scheme: dark)").matches ? "(prefers-color-scheme: dark)" : "(prefers-color-scheme: light)")) || selected : selected;
+  const color = {};
+  for (const key of ["media", "scheme", "primary", "accent"]) {
+    const value = effective.getAttribute("data-md-color-" + key);
+    if (value) document.body.setAttribute("data-md-color-" + key, value);
+    color[key] = selected.getAttribute("data-md-color-" + key) || "";
+  }
+  __md_set("__palette", {index, color});
+})();
+</script>

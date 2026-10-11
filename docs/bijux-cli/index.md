@@ -4,7 +4,7 @@ audience: mixed
 type: index
 status: canonical
 owner: bijux-cli-docs
-last_reviewed: 2026-07-23
+last_reviewed: 2026-10-08
 ---
 
 # CLI Handbook
@@ -19,7 +19,9 @@ The runtime contract covers interactive and automated invocation, including
 the Python distribution’s path into the native command implementation.
 
 <div class="bijux-quicklinks">
-<a class="md-button md-button--primary" href="packages/bijux-cli.md">Open the runtime package</a>
+<a class="md-button md-button--primary" href="operations/installation-and-setup.md">Install and verify the CLI</a>
+<a class="md-button" href="interfaces/cli-surface.md">Explore commands</a>
+<a class="md-button" href="packages/bijux-cli.md">Inspect the runtime package</a>
 <a class="md-button" href="packages/bijux-cli-python.md">Open the Python bridge package</a>
 </div>
 
@@ -99,11 +101,11 @@ status rather than argv alone.
 
 | If you want to... | Open this page |
 | --- | --- |
-| understand what `bijux` promises at the command line | [Interfaces](interfaces/index.md) |
+| understand what `bijux` promises at the command line | [Command Surface](interfaces/cli-surface.md) |
 | understand how the runtime is assembled | [Architecture](architecture/index.md) |
-| install, diagnose, or operate the CLI locally | [Operations](operations/index.md) |
-| understand package roles and product scope | [Foundation](foundation/index.md) |
-| review test-backed limits, invariants, and acceptance standards | [Quality](quality/index.md) |
+| install, diagnose, or operate the CLI locally | [Installation and Setup](operations/installation-and-setup.md) |
+| understand package roles and product scope | [Capability Map](foundation/capability-map.md) |
+| review test-backed limits, invariants, and acceptance standards | [Known Limitations](quality/known-limitations.md) |
 
 ## Package Split
 

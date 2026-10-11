@@ -34,19 +34,19 @@ class NavigationParser(HTMLParser):
         site_path = attributes.get("data-bijux-site-path")
         if site_path is not None:
             self.site_paths.append(site_path)
-            if attributes.get("aria-current") == "page":
+            if attributes.get("aria-current") in {"page", "location"}:
                 self.site_active_count += 1
 
         detail_path = attributes.get("data-bijux-detail-path")
         if detail_path is not None:
             self.detail_paths.append(detail_path)
-            if attributes.get("aria-current") == "page":
+            if attributes.get("aria-current") in {"page", "location"}:
                 self.detail_active_count += 1
 
         course_path = attributes.get("data-bijux-course-path")
         if course_path is not None:
             self.course_paths.append(course_path)
-            if attributes.get("aria-current") == "page":
+            if attributes.get("aria-current") in {"page", "location"}:
                 self.course_active_count += 1
 
 

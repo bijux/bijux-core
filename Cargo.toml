@@ -27,7 +27,7 @@ anyhow = "1.0.100"
 bijux-cli = { version = "0.4.1", path = "crates/bijux-cli" }
 chrono = { version = "0.4.42", default-features = false, features = ["clock", "std"] }
 chrono-tz = "0.10.4"
-croner = "3.0.1"
+croner = "4.0.0"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = { version = "1.0.150", default-features = false, features = ["std"] }
 serde_yaml = "0.9.34"

@@ -2,7 +2,7 @@ define run_make_targets
 	@if [ -n "$(strip $(1))" ]; then \
 	  for target in $(1); do \
 	    echo "→ Running $$target"; \
-	    $(2) "$$target"; \
+	    $(2) "$$target" || exit $$?; \
 	  done; \
 	fi
 endef

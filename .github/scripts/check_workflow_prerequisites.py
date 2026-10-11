@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import json
 import os
-import time
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
@@ -11,8 +10,7 @@ from pathlib import Path
 
 
 API_VERSION = "2022-11-28"
-POLL_INTERVAL_SECONDS = 15
-POLL_TIMEOUT_SECONDS = 45 * 60
+WAITING_EXTERNAL_EXIT_CODE = 75
 
 
 @dataclass(frozen=True)
@@ -207,21 +205,17 @@ def main() -> None:
 
     event = _event_payload()
     head_sha = _current_head_sha(event)
-    deadline = time.time() + POLL_TIMEOUT_SECONDS
-
-    while True:
-        runs = _list_workflow_runs(head_sha)
-        ready, states = _all_prerequisites_ready(required, runs)
-        print(f"Workflow prerequisites for {head_sha}: {', '.join(states)}")
-        if ready:
-            print("All prerequisite workflows completed successfully.")
-            return
-        if time.time() >= deadline:
-            raise RuntimeError(
-                "Timed out waiting for prerequisite workflows: "
-                + ", ".join(workflow.identifier for workflow in required)
-            )
-        time.sleep(POLL_INTERVAL_SECONDS)
+    runs = _list_workflow_runs(head_sha)
+    ready, states = _all_prerequisites_ready(required, runs)
+    print(f"Workflow prerequisites for {head_sha}: {', '.join(states)}")
+    if ready:
+        print("All prerequisite workflows completed successfully.")
+        return
+    print(
+        "Workflow prerequisites are waiting_external; invoke this observation again "
+        "after the next workflow event."
+    )
+    raise SystemExit(WAITING_EXTERNAL_EXIT_CODE)
 
 
 if __name__ == "__main__":

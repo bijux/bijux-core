@@ -17,5 +17,5 @@
   --bijux-ribbon-fade: rgba(16, 33, 59, 0);
   --bijux-nav-indicator: linear-gradient(90deg, rgba(245, 158, 11, 0.95), rgba(45, 212, 191, 0.95));
   --bijux-nav-active-shadow: 0 14px 28px rgba(15, 23, 42, 0.18);
-  --bijux-focus-ring: rgba(15, 118, 110, 0.22);
+  --bijux-focus-ring: #075985;
 }

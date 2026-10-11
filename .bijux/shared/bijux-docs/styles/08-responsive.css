@@ -1,546 +1,179 @@
-/* Responsive behavior: all viewport and reduced-motion media-query rules. */
+/* Responsive composition follows Material's admitted drawer breakpoint. */
+.md-sidebar--primary .bijux-nav--mobile {
+  display: block;
+}
+
+.md-header__inner {
+  gap: 0.35rem;
+  min-block-size: 2.2rem;
+}
+
+.md-header__title {
+  min-inline-size: 0;
+}
+
+.bijux-header-tools {
+  flex: 0 0 auto;
+}
+
+.md-header__button,
+.bijux-header-tools .md-source {
+  min-inline-size: 2.2rem;
+  min-block-size: 2.2rem;
+}
+
+.bijux-header-tools .md-header__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem;
+}
+
+.bijux-site-tabs .md-tabs__list.bijux-tabs__list--site,
+.bijux-detail-tabs .bijux-tabs__list,
+.bijux-course-tabs .bijux-tabs__list {
+  min-block-size: 2.2rem;
+  padding-block: 0.15rem;
+}
+
+.bijux-site-tabs .md-tabs__link.bijux-tabs__link--site,
+.bijux-detail-tabs .bijux-tabs__link,
+.bijux-course-tabs .bijux-tabs__link {
+  min-block-size: 2rem;
+  padding-block: 0.3rem;
+}
+
 @media screen and (min-width: 76.25em) {
+  /* Native in-flow disclosures need an owning desktop hit surface. Material's
+     zero-height sticky shell otherwise leaves the visible tree outside its box. */
+  .md-sidebar.md-sidebar--primary:has([data-bijux-nav-variant="complete"]) {
+    height: auto;
+  }
+
   .md-grid {
     max-width: min(calc(100vw - 3rem), var(--bijux-shell-width));
   }
+  /* An owned visible desktop registry is the sole global-site presentation.
+     Native Material headers retain the complete sidebar registry. */
+  body:has(> header[data-bijux-drawer-target] .bijux-hub-strip:not([hidden]))
+    .md-sidebar--primary .bijux-site-registry { display: none; }
 
-  .md-header__title {
-    display: none;
+  /* The complete sidebar tree owns local document context at desktop widths.
+     Preserve contextual ribbons when the complete owned tree is unavailable. */
+  body:has(.md-sidebar--primary [data-bijux-nav-variant="complete"])
+    > header[data-bijux-drawer-target] :is(.bijux-site-tabs, .bijux-detail-tabs, .bijux-course-tabs) {
+    display: none !important;
+  }
+
+  .md-header__title { display: none; }
+  .md-header__button[data-bijux-header-control="drawer-toggle"],
+  .bijux-drawer-close { display: none; }
+}
+
+/* Native checkbox navigation becomes the sole local presentation while open.
+   Closed compact headers and native Material headers retain their own controls. */
+@media screen and (min-width: 48em) and (max-width: 76.2344em) {
+  body:has(#__drawer:checked):has(.md-sidebar--primary [data-bijux-nav-variant="complete"])
+    > header[data-bijux-drawer-target] :is(.bijux-site-tabs, .bijux-detail-tabs, .bijux-course-tabs) {
+    display: none !important;
   }
 }
 
 @media screen and (min-width: 90em) {
-  :root {
-    --bijux-shell-width: var(--bijux-shell-width-wide);
-  }
+  :root { --bijux-shell-width: var(--bijux-shell-width-wide); }
 }
 
 @media screen and (min-width: 110em) {
-  :root {
-    --bijux-shell-width: var(--bijux-shell-width-ultra);
-  }
+  :root { --bijux-shell-width: var(--bijux-shell-width-ultra); }
 }
 
-@media screen and (max-width: 100em) {
-  .bijux-header-tools .md-source__repository,
-  .bijux-header-tools .md-source__facts {
-    display: none;
-  }
+@media screen and (max-width: 76.2344em) {
+  .bijux-hub-strip,
+  .bijux-detail-tabs,
+  .bijux-course-tabs { display: none !important; }
 
-  .bijux-header-tools .md-source {
-    padding-inline: 0.8rem;
-  }
-}
-
-@media screen and (max-width: 60em) {
-  html {
-    scroll-padding-top: 4.8rem;
-  }
-
-  .md-typeset h1,
-  .md-typeset h2,
-  .md-typeset h3,
-  .md-typeset h4,
-  .md-typeset h5,
-  .md-typeset h6 {
-    scroll-margin-top: 4.8rem;
-  }
-
-  .md-header__inner {
-    gap: 0.45rem;
-    padding-block: 0.35rem;
-  }
-
-  .md-header__button.md-logo,
-  .md-header__button[for="__drawer"] {
+  [data-bijux-header-control="drawer-toggle"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     margin: 0;
   }
 
-  .bijux-header-tools {
-    flex: 1 1 auto;
-    justify-content: flex-end;
-    min-width: 0;
-  }
+  .md-header__inner { padding-block: 0.15rem; }
+  .md-header__button.md-logo { margin: 0; }
+  .bijux-header-tools { gap: 0.1rem; }
+  .bijux-header-tools .md-header__source { display: none; }
+  .md-header__topic[data-md-component="header-topic"] { display: none; }
 
-  .bijux-header-tools .md-search {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-
-  .bijux-header-tools {
-    gap: 0.35rem;
-  }
-
-  .bijux-header-tools .md-search__inner {
-    width: min(12rem, 100%);
-  }
-
-  .md-main__inner {
-    margin-top: 0.75rem;
-  }
-
-  .md-content__inner {
-    padding-inline: 0.15rem;
-  }
-
-  .bijux-map-frame iframe {
-    min-height: 64vh;
-  }
-}
-
-@media screen and (max-width: 47.9375em) {
-  html,
-  body {
-    overflow-x: clip;
-  }
-
-  html {
-    scroll-padding-top: 4.3rem;
-  }
-
-  .md-typeset h1,
-  .md-typeset h2,
-  .md-typeset h3,
-  .md-typeset h4,
-  .md-typeset h5,
-  .md-typeset h6 {
-    scroll-margin-top: 4.3rem;
-  }
-
-  [data-bijux-row-scope="desktop-normal"] {
-    display: none !important;
-  }
-
-  [data-bijux-header-control="drawer-toggle"] {
-    align-items: center;
-    display: inline-flex;
-    flex: 0 0 auto;
-    justify-content: center;
-    min-height: 2.5rem;
-    min-width: 2.5rem;
-    padding: 0.3rem;
-    position: relative;
-    z-index: 5;
-  }
-
-  [data-bijux-phone-compact="true"] [data-bijux-header-title="primary"] {
-    flex: 1 1 auto;
-    min-width: 0;
-    pointer-events: none;
-  }
-
-  [data-bijux-phone-compact="true"] .md-header__ellipsis {
-    overflow: hidden;
-  }
-
-  [data-bijux-phone-compact="true"] [data-bijux-phone-compact="hide"] {
-    display: none;
-  }
-
-  .bijux-hub-strip {
-    display: none !important;
-  }
-
-  .bijux-site-tabs,
-  .bijux-detail-tabs,
-  .bijux-course-tabs {
-    display: none !important;
-  }
-
-  .md-header__inner {
-    gap: 0.35rem;
-    padding-block: 0.28rem;
-  }
-
-  /*
-   * Keep phone header tools compact: icon-first (Apple-like) controls,
-   * with search panel rendered only when explicitly opened.
-   */
-  #__search:not(:checked) ~ .md-header .bijux-header-tools .md-search {
-    display: none;
-  }
-
-  #__search:checked ~ .md-header .bijux-header-tools .md-search {
-    display: block;
-  }
-
-  #__search:not(:checked) ~ .md-header .bijux-header-tools .md-search__inner,
-  #__search:not(:checked) ~ .md-header .bijux-header-tools .md-search__output {
-    display: none;
-  }
-
-  .md-main,
-  .md-main__inner,
-  .md-content {
-    max-width: 100vw;
-    overflow-x: clip;
-  }
-
-  .md-main__inner {
-    margin-top: 0.3rem;
-  }
-
-  .bijux-nav--mobile .md-nav__source {
-    display: none;
-  }
-
-  .md-sidebar--primary .bijux-nav--mobile {
-    display: block;
-  }
-
-  .bijux-mobile-local,
-  .bijux-mobile-hub,
-  .bijux-mobile-context {
-    display: block;
-  }
-
-  .bijux-mobile-local,
-  .bijux-mobile-hub {
-    margin-block: 0.28rem 0.36rem;
-  }
-
-  .bijux-nav--mobile [data-bijux-mobile-order^="1-"] {
-    margin-top: 0.16rem;
-  }
-
-  .bijux-nav--mobile [data-bijux-mobile-order$="-sites"] {
-    margin-top: 0.46rem;
-  }
-
-  .bijux-nav--mobile [data-bijux-mobile-order^="1-"],
-  .bijux-nav--mobile [data-bijux-mobile-order^="2-"],
-  .bijux-nav--mobile [data-bijux-mobile-order^="3-"],
-  .bijux-nav--mobile [data-bijux-mobile-order^="4-"] {
-    margin-block: 0.22rem 0.28rem;
-  }
-
-  .bijux-mobile-local__label,
-  .bijux-mobile-hub__label {
-    font-size: 0.6rem;
-    letter-spacing: 0.075em;
-    line-height: 1.12;
-    margin-bottom: 0.26rem;
-  }
-
-  .bijux-mobile-dynamic__header {
-    column-gap: 0.34rem;
-    grid-template-columns: 1.72rem 1fr 1.72rem;
-  }
-
-  .bijux-mobile-dynamic__control {
-    height: 1.48rem;
-    width: 1.48rem;
-  }
-
-  .bijux-mobile-hub__list {
-    display: block;
-    gap: 0;
-    grid-template-columns: 1fr;
-  }
-
-  .bijux-mobile-hub__link {
-    border-radius: 0;
-    font-size: 0.74rem;
-    min-height: 2.24rem;
-    padding: 0.34rem 0.1rem 0.34rem 0;
-  }
-
-  .bijux-mobile-hub__item--active .bijux-mobile-hub__link {
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--md-accent-fg-color) 52%, transparent);
-    font-weight: 700;
-  }
-
-  .bijux-nav--mobile > .md-nav__list,
-  .bijux-mobile-local > .md-nav__list,
-  .bijux-mobile-local .md-nav > .md-nav__list {
-    margin-block: 0.2rem 0;
-    padding-block: 0.12rem 0.22rem;
-  }
-
-  .bijux-mobile-local > .md-nav__list {
-    gap: 0.24rem;
-  }
-
-  .bijux-nav--mobile [data-bijux-mobile-order$="-sites"] .bijux-mobile-hub__list {
-    gap: 0;
-  }
-
-  .bijux-mobile-local > .md-nav__list > .md-nav__item > .md-nav__link,
-  .bijux-mobile-local > .md-nav__list > .md-nav__item > .md-nav__container > .md-nav__link {
-    font-size: 0.74rem;
-    line-height: 1.25;
-    overflow-wrap: anywhere;
-    padding-block: 0.4rem;
-    word-break: normal;
-  }
-
-  .bijux-nav--mobile [data-bijux-mobile-order^="4-"] > .md-nav__list > .md-nav__item > .md-nav__link,
-  .bijux-nav--mobile [data-bijux-mobile-order^="4-"] > .md-nav__list > .md-nav__item > .md-nav__container > .md-nav__link {
-    font-size: 0.7rem;
-  }
-
-  .bijux-nav--mobile .md-nav__item {
-    margin-block: 0.04rem;
-  }
-
-  .bijux-nav--mobile .md-nav__link {
-    padding-block: 0.32rem;
-  }
-
-  .md-sidebar--primary .bijux-nav--scoped {
-    display: none;
-  }
-
-  .md-sidebar--primary:has(.bijux-nav--mobile) {
-    display: block;
-  }
-
-  .md-sidebar--primary .bijux-nav--mobile[data-bijux-nav-empty="true"] {
-    display: block;
-  }
-
-  .md-sidebar--primary {
-    background:
-      radial-gradient(circle at top right, color-mix(in srgb, var(--bijux-panel) 32%, transparent), transparent 42%),
-      linear-gradient(180deg, color-mix(in srgb, var(--md-default-bg-color) 96%, var(--bijux-panel)), var(--md-default-bg-color));
-    border-inline-end: 1px solid color-mix(in srgb, var(--bijux-border) 72%, transparent);
-    box-shadow: 14px 0 32px rgba(15, 23, 42, 0.14);
+  body[data-bijux-drawer-ready="true"] .md-sidebar.md-sidebar--primary {
+    position: fixed;
+    top: var(--md-header-height, 3rem);
+    bottom: 0;
+    left: auto;
+    right: auto;
+    inset-inline-start: 0;
     inline-size: min(20rem, 92vw);
-    min-width: min(18rem, 90vw);
+    min-width: 0;
     max-width: 92vw;
-    max-height: calc(100vh - var(--md-header-height));
+    height: auto;
+    max-height: calc(100vh - var(--md-header-height, 3rem));
+    max-height: calc(100dvh - var(--md-header-height, 3rem));
+    background: var(--md-default-bg-color);
+    border-inline-end: 1px solid var(--bijux-border);
     overflow-y: auto;
     overscroll-behavior: contain;
-    scrollbar-gutter: stable;
+    visibility: hidden;
+    transform: translateX(-100%);
   }
 
-  /*
-   * Keep the phone drawer fully off-canvas when closed.
-   * Material's default closed offset is fixed-width and can leave a visible
-   * sliver after we widen the phone drawer.
-   */
-  #__drawer:not(:checked) ~ .md-container .md-sidebar--primary,
-  #__drawer:not(:checked) ~ .md-main .md-sidebar--primary {
-    left: calc(-1 * min(20rem, 92vw));
-    transform: translateX(0) !important;
-  }
-
-  #__drawer:checked ~ .md-container .md-sidebar--primary,
-  #__drawer:checked ~ .md-main .md-sidebar--primary {
-    left: 0;
-    transform: translateX(0) !important;
+  body[dir="rtl"][data-bijux-drawer-ready="true"] .md-sidebar.md-sidebar--primary,
+  [dir="rtl"] body[data-bijux-drawer-ready="true"] .md-sidebar.md-sidebar--primary { transform: translateX(100%); }
+  body[data-bijux-drawer-ready="true"] #__drawer:checked ~ .md-container .md-sidebar--primary,
+  body[data-bijux-drawer-ready="true"] #__drawer:checked ~ .md-main .md-sidebar--primary {
+    visibility: visible;
+    transform: translateX(0);
   }
 
   .md-sidebar--primary .md-sidebar__scrollwrap,
   .md-sidebar--primary .md-sidebar__inner {
-    -webkit-overflow-scrolling: touch;
-    overflow-y: auto;
+    position: static;
+    height: auto;
+    max-height: none;
+    overflow: visible;
   }
 
-  .md-sidebar--primary .md-sidebar__inner {
-    padding-bottom: 0.5rem;
-    padding-inline: 0.16rem;
-    padding-top: 0.24rem;
-  }
+  html { scroll-padding-top: 6rem; }
+  body[data-bijux-drawer-ready="true"][data-bijux-drawer-open="true"] { overflow: hidden; }
 }
 
-[data-bijux-viewport="phone"] .bijux-hub-strip,
-[data-bijux-viewport="phone"] .bijux-site-tabs,
-[data-bijux-viewport="phone"] .bijux-detail-tabs,
-[data-bijux-viewport="phone"] .bijux-course-tabs {
-  display: none !important;
-}
-
-[data-bijux-viewport="phone"] [data-bijux-row-scope="desktop-normal"] {
-  display: none !important;
-}
-
-[data-bijux-viewport="phone"] [data-bijux-phone-compact="hide"] {
-  display: none;
-}
-
-[data-bijux-viewport="phone"] .md-sidebar--primary .bijux-nav--mobile {
-  display: block;
-}
-
-[data-bijux-viewport="phone"] .md-sidebar--primary .bijux-nav--scoped {
-  display: none;
-}
-
-[data-bijux-viewport="phone"] .md-sidebar--primary {
-  display: block;
-  inline-size: min(20rem, 92vw);
-  min-width: min(18rem, 90vw);
-  max-width: 92vw;
-  max-height: calc(100vh - var(--md-header-height));
-  -webkit-overflow-scrolling: touch;
-  overflow-y: auto;
-  scrollbar-gutter: stable;
-}
-
-[data-bijux-viewport="phone"] #__drawer:not(:checked) ~ .md-container .md-sidebar--primary,
-[data-bijux-viewport="phone"] #__drawer:not(:checked) ~ .md-main .md-sidebar--primary {
-  left: calc(-1 * min(20rem, 92vw));
-  transform: translateX(0) !important;
-}
-
-[data-bijux-viewport="phone"] #__drawer:checked ~ .md-container .md-sidebar--primary,
-[data-bijux-viewport="phone"] #__drawer:checked ~ .md-main .md-sidebar--primary {
-  left: 0;
-  transform: translateX(0) !important;
-}
-
-@media screen and (min-width: 48em) and (max-width: 76.2344em) {
-  .md-header__inner {
-    gap: 0.38rem;
-    padding-block: 0.28rem;
+@media screen and (max-width: 47.9375em) {
+  .bijux-site-tabs { display: none !important; }
+  .md-header__inner { gap: 0.15rem; }
+  .md-header__title { margin-inline: 0.2rem; flex: 1; }
+  .md-header__ellipsis { overflow: hidden; }
+  .md-header__topic { position: static; }
+  /* Own spacing above Material's direction-specific title margins. Intrinsic
+     text and tool sizes may wrap instead of losing the site identity. */
+  .md-header[data-bijux-header-contract] .md-header__inner { flex-wrap: wrap; }
+  .md-header[data-bijux-header-contract] .md-header__title {
+    margin-inline: 0.1rem;
+    flex: 1 1 min-content;
+    min-inline-size: min-content;
+    height: auto;
+    line-height: 1.5;
   }
-
-  [data-bijux-phone-compact="true"] .md-header__inner {
-    gap: 0.4rem;
-    padding-block: 0.32rem;
+  .md-header[data-bijux-header-contract] .md-header__ellipsis {
+    height: auto;
+    overflow: visible;
   }
-
-  [data-bijux-phone-compact="true"] [data-bijux-header-title="primary"] {
-    min-width: 0;
+  .md-header[data-bijux-header-contract] [data-bijux-header-topic="site"] .md-ellipsis {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    overflow: visible;
   }
-
-  .bijux-hub-strip {
-    display: block;
-  }
-
-  .bijux-hub-strip .bijux-tabs__list--hub {
-    gap: 0.24rem 0.3rem;
-    padding-block: 0.24rem;
-  }
-
-  .bijux-hub-strip .bijux-tabs__link--hub {
-    font-size: 0.66rem;
-    min-height: 2rem;
-    padding: 0.3rem 0.56rem;
-  }
-
-  .bijux-site-tabs,
-  .bijux-detail-tabs {
-    display: block;
-  }
-
-  .bijux-course-tabs {
-    display: none;
-  }
-
-  .bijux-site-tabs,
-  .bijux-detail-tabs {
-    backdrop-filter: blur(10px);
-    border-top-width: 0;
-  }
-
-  .bijux-detail-select-wrap[data-bijux-compact-control="normal-tablet"] {
-    align-items: center;
-    display: grid;
-    gap: 0.32rem;
-    grid-template-columns: 1fr;
-    padding: 0.4rem 0;
-  }
-
-  .bijux-site-tabs .bijux-tabs__list,
-  .bijux-detail-tabs .bijux-tabs__list {
-    -webkit-overflow-scrolling: touch;
-    padding-block: 0.32rem;
-    scroll-padding-inline: var(--md-default-spacing);
-  }
-
-  .bijux-site-tabs .bijux-tabs__link,
-  .bijux-detail-tabs .bijux-tabs__link {
-    font-size: 0.7rem;
-    min-height: 2.1rem;
-    padding: 0.34rem 0.66rem;
-  }
-
-  .bijux-detail-select-wrap[data-bijux-compact-control="normal-tablet"] .bijux-detail-select {
-    font-size: 0.78rem;
-    min-height: 2.3rem;
-    padding: 0.42rem 0.68rem;
-  }
-
-  .md-main__inner {
-    margin-top: 0.54rem;
-  }
-
-  [data-md-component="header"][data-bijux-detail-visible="true"] .bijux-site-tabs .md-tabs__list.bijux-tabs__list--site {
-    transform: none;
-  }
-
-  .bijux-hub-strip::before,
-  .bijux-hub-strip::after,
-  .bijux-site-tabs .md-grid::before,
-  .bijux-site-tabs .md-grid::after,
-  .bijux-detail-tabs .md-grid::before,
-  .bijux-detail-tabs .md-grid::after {
-    width: 0.9rem;
-  }
-
-  .bijux-nav--mobile .md-nav__source {
-    display: none;
-  }
-
-  .md-sidebar--primary .bijux-nav--mobile {
-    display: none;
-  }
-
-  .bijux-mobile-local,
-  .bijux-mobile-hub,
-  .bijux-mobile-context {
-    display: none;
-  }
-
-  .md-sidebar--primary .bijux-nav--scoped {
-    display: block;
-  }
-
-  .md-sidebar--primary:has(.bijux-nav--mobile) {
-    display: block;
-  }
-
-  .md-sidebar--primary .bijux-nav--mobile[data-bijux-nav-empty="true"] {
-    display: none;
-  }
-}
-
-[data-bijux-viewport="normal"] .md-sidebar--primary .bijux-nav--mobile {
-  display: none;
-}
-
-[data-bijux-viewport="normal"] .bijux-mobile-local,
-[data-bijux-viewport="normal"] .bijux-mobile-hub,
-[data-bijux-viewport="normal"] .bijux-mobile-context {
-  display: none;
-}
-
-[data-bijux-viewport="normal"] .md-sidebar--primary .bijux-nav--scoped {
-  display: block;
-}
-
-[data-bijux-viewport="normal"] .md-main__inner:has(.md-sidebar--primary .bijux-nav--scoped[data-bijux-nav-empty="true"]),
-[data-bijux-viewport="desktop"] .md-main__inner:has(.md-sidebar--primary .bijux-nav--scoped[data-bijux-nav-empty="true"]),
-[data-bijux-viewport="wide"] .md-main__inner:has(.md-sidebar--primary .bijux-nav--scoped[data-bijux-nav-empty="true"]) {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-[data-bijux-viewport="normal"] .md-main__inner:has(.md-sidebar--primary .bijux-nav--scoped[data-bijux-nav-empty="true"]) .md-sidebar--primary,
-[data-bijux-viewport="desktop"] .md-main__inner:has(.md-sidebar--primary .bijux-nav--scoped[data-bijux-nav-empty="true"]) .md-sidebar--primary,
-[data-bijux-viewport="wide"] .md-main__inner:has(.md-sidebar--primary .bijux-nav--scoped[data-bijux-nav-empty="true"]) .md-sidebar--primary {
-  display: none;
-}
-
-[data-bijux-viewport="normal"] .md-main__inner:has(.md-sidebar--primary .bijux-nav--scoped[data-bijux-nav-empty="true"]) .md-content,
-[data-bijux-viewport="normal"] .md-main__inner:has(.md-sidebar--primary .bijux-nav--scoped[data-bijux-nav-empty="true"]) .md-content > .md-content__inner,
-[data-bijux-viewport="desktop"] .md-main__inner:has(.md-sidebar--primary .bijux-nav--scoped[data-bijux-nav-empty="true"]) .md-content,
-[data-bijux-viewport="desktop"] .md-main__inner:has(.md-sidebar--primary .bijux-nav--scoped[data-bijux-nav-empty="true"]) .md-content > .md-content__inner,
-[data-bijux-viewport="wide"] .md-main__inner:has(.md-sidebar--primary .bijux-nav--scoped[data-bijux-nav-empty="true"]) .md-content,
-[data-bijux-viewport="wide"] .md-main__inner:has(.md-sidebar--primary .bijux-nav--scoped[data-bijux-nav-empty="true"]) .md-content > .md-content__inner {
-  margin-left: 0;
-  max-width: 100%;
+  .bijux-header-tools { margin-inline-start: 0; }
+  .bijux-header-tools .md-search__inner { width: 100%; }
+  html { scroll-padding-top: 4rem; }
 }
 
 @media screen and (max-width: 44.9375em) {
@@ -646,16 +279,17 @@
   }
 
   .md-typeset table:not([class]) {
-    display: block;
+    display: table;
     font-size: 0.8rem;
-    overflow-x: auto;
+    overflow-x: visible;
     white-space: normal;
-    width: 100%;
+    width: auto;
   }
 
   .md-typeset table:not([class]) th,
   .md-typeset table:not([class]) td {
-    min-width: 10.5rem;
+    min-inline-size: min(10.5rem, calc(100vw - 4rem));
+    overflow-wrap: anywhere;
     white-space: normal;
   }
 
@@ -710,5 +344,117 @@
   .bijux-detail-tabs .bijux-tabs__link:hover,
   .bijux-detail-tabs .bijux-tabs__item--active .bijux-tabs__link {
     transform: none;
+  }
+}
+
+/* Preserve useful content height: identity, site sections, one contextual ribbon. */
+.bijux-hub-strip .bijux-tabs__list { padding-block: 0.15rem; }
+.bijux-hub-strip .bijux-tabs__link { min-block-size: 2.2rem; }
+.bijux-site-tabs .md-tabs__item.bijux-tabs__item { height: auto; padding-inline: 0.25rem; }
+.bijux-site-tabs .md-tabs__link.bijux-tabs__link--site { margin-block: 0; }
+
+/* Larger text must preserve all primary controls within a narrow masthead. */
+@media (max-width: 47.9375em) {
+  .bijux-header-tools .md-header__button,
+  .md-header__button[data-bijux-header-control] {
+    box-sizing: border-box;
+    min-inline-size: 44px;
+    min-block-size: 44px;
+    inline-size: clamp(44px, 2.2rem, 56px);
+    padding: 4px;
+  }
+  .bijux-header-tools .md-header__button svg,
+  .md-header__button[data-bijux-header-control] svg {
+    max-inline-size: 100%;
+    max-block-size: 100%;
+  }
+}
+
+/* The admitted Material checkbox keeps its native Space activation without scripts. */
+.bijux-native-drawer-label { display: none; }
+
+body:has(> header[data-bijux-drawer-target]):not([data-bijux-drawer-ready="true"]) [data-bijux-header-control="drawer-toggle"],
+body:has(> header[data-bijux-drawer-target]):not([data-bijux-drawer-ready="true"]) [data-bijux-header-control="search-toggle"],
+body:has(> header[data-bijux-drawer-target]):not([data-bijux-drawer-ready="true"]) [data-bijux-control-close],
+body:has(> header[data-bijux-drawer-target]):not([data-bijux-drawer-ready="true"]) .md-overlay { display: none; }
+
+@media screen and (max-width: 76.2344em) {
+  /* Keep the native 44px target and its 5px outer focus extent on the
+     opaque header surface while allowing enlarged content to grow. */
+  body:has(> header[data-bijux-drawer-target]):not([data-bijux-drawer-ready="true"]) > header .md-header__inner {
+    min-block-size: 54px;
+    padding-block: 5px;
+    align-items: flex-start;
+  }
+
+  /* Native labels stay beside their fixed-size checkbox; an intrinsically
+     wider identity can take another row instead of a narrow word column. */
+  body:has(> header[data-bijux-drawer-target]):not([data-bijux-drawer-ready="true"]) > header .md-header__title {
+    flex-basis: auto;
+  }
+
+  body:has(> header[data-bijux-drawer-target]):not([data-bijux-drawer-ready="true"]) #__drawer {
+    display: block;
+    position: fixed;
+    inset-block-start: 5px;
+    inset-inline-start: 6px;
+    inline-size: 44px;
+    block-size: 44px;
+    margin: 0;
+    opacity: 1;
+    visibility: visible;
+    z-index: 7;
+    accent-color: var(--md-accent-fg-color);
+  }
+
+  body:has(> header[data-bijux-drawer-target]):not([data-bijux-drawer-ready="true"]) #__drawer:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 3px;
+  }
+
+  body:has(> header[data-bijux-drawer-target]):not([data-bijux-drawer-ready="true"]) .bijux-native-drawer-label {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: 44px;
+    padding-inline-start: 50px;
+    padding-inline-end: 0.3rem;
+    font-size: 0.64rem;
+    font-weight: 700;
+    cursor: pointer;
+    flex: 0 0 auto;
+  }
+}
+
+/* Native fallback remains in document flow until the owned drawer is ready. */
+@media screen and (max-width: 76.2344em) {
+  body:has(> header[data-bijux-drawer-target]):not([data-bijux-drawer-ready="true"]) .md-sidebar.md-sidebar--primary {
+    display: none;
+    position: static;
+    inset: auto;
+    inline-size: 100%;
+    min-width: 0;
+    max-width: 100%;
+    height: auto;
+    max-height: none;
+    margin: 0;
+    visibility: visible;
+    transform: none;
+    overflow: visible;
+    background: var(--md-default-bg-color);
+  }
+  body:has(> header[data-bijux-drawer-target]):not([data-bijux-drawer-ready="true"]) #__drawer:checked ~ .md-container .md-sidebar--primary,
+  body:has(> header[data-bijux-drawer-target]):not([data-bijux-drawer-ready="true"]) #__drawer:checked ~ .md-main .md-sidebar--primary {
+    display: block;
+    transform: none;
+    box-shadow: none;
+  }
+  body:has(> header[data-bijux-drawer-target]):not([data-bijux-drawer-ready="true"]) .md-main__inner { display: block; }
+
+}
+
+/* Native header focus uses system foreground when forced colors are active. */
+@media (forced-colors: active) {
+  body:has(> header[data-bijux-drawer-target]):not([data-bijux-drawer-ready="true"]) #__drawer:focus-visible {
+    outline-color: CanvasText;
   }
 }

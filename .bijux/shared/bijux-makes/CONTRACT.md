@@ -69,6 +69,40 @@ The separate `bijux-docs` standard owns the shared visual shell, assets, and she
 validation. Repositories connect those concerns through `DOCS_PREPARE_TARGETS`
 and `DOCS_SOURCE_CHECK_TARGETS`.
 
+A managed `.bijux/docs-projection.json` record at the project root or beside
+`DOCS_CONFIG` selects the `bijux-material` renderer profile. The latter boundary
+covers a configured externally checked-out site. The marker paths are internal,
+derived from the actual project/configuration roots, and cannot be overridden as
+an admission waiver. A generic documentation caller without that ownership record
+must explicitly configure `DOCS_RENDERER_PROFILE := native` or
+`DOCS_RENDERER_PROFILE := bijux-material`; the default is unconfigured. Native
+preserves the caller's `DOCS_RUN`, flags, configuration and custom runner, but it
+cannot bypass an existing managed Bijux documentation ownership record.
+
+`bijux-material` uses `DOCS_PYTHON_RUN` (default `python3`) both to check the
+accepted Material compiler and to invoke `-m mkdocs`. A configured launcher may
+include its own environment/provider prefix, but `DOCS_RUN` must equal that same
+launcher followed by `-m mkdocs`. A different console script or guessed Python
+interpreter is rejected before preparation or output cleanup. The default
+`DOCS_MATERIAL_COMPILER` comes from the same shared root as the Make component.
+Missing compiler, generated runtime drift, or installed Material outside exact
+admission fails closed. This is renderer admission, not source ownership or
+product plugin validation; configured source guards and strict builds still run.
+
+`docs`, `docs-check`, and `docs-serve` complete `docs-require` before invoking
+configured preparation targets. `docs-check` then runs source-check targets.
+After either configured stage, the prepared renderer is admitted again before
+cleanup/rendering. This catches newly projected managed ownership and changed
+runtime assets, including changes made by a source-check hook. Recursive targets preserve Make flags while
+ensuring `make -j` cannot prepare or clean first. Explicit `docs-clean` remains
+an intentional artifact removal command independent of renderer availability.
+
+The optional Rust component consumes this same documentation capability; it does
+not add an independent renderer. A Rust-only repository has no documentation
+requirement unless it enables the `docs` component. Product-owned historical
+Core/GNSS/Hub wrappers and the Python Make profile are separate producer paths:
+this module does not silently rewrite or qualify their execution.
+
 ## Pinned Gates
 
 `scripts/run_pinned_gate.sh` launches an allowed Make target from an immutable,

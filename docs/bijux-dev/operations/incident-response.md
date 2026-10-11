@@ -4,7 +4,7 @@ audience: maintainers
 type: operations
 status: canonical
 owner: bijux-dev-docs
-last_reviewed: 2026-07-23
+last_reviewed: 2026-10-08
 ---
 
 # Incident Response
@@ -96,7 +96,7 @@ Keep the original evidence read-only. A useful snapshot identifies:
 
 Local diagnostic output belongs under `artifacts/`. Do not commit confidential
 incident evidence. Use the private channel in the root
-[`SECURITY.md`](../../../SECURITY.md) when exploit details, credentials,
+[`SECURITY.md`](https://github.com/bijux/bijux-core/blob/main/SECURITY.md) when exploit details, credentials,
 private data, or an unpatched vulnerability are involved.
 
 ## Establish Scope

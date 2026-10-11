@@ -28,6 +28,7 @@ jobs:
   pr-approval:
     name: policy / pr approval
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Enforce owner approval policy

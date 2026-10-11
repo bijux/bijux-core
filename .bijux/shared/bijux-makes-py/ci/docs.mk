@@ -1,3 +1,8 @@
+DOCS_PUBLICATION_FRAMEWORK ?= 0
+# Selection is exported data; only the canonical producer validates ownership.
+DOCS_INTERACTIVE_REPORT_OWNER ?=
+export DOCS_INTERACTIVE_REPORT_OWNER
+DOCS_PUBLICATION_RENDERER ?= $(BIJUX_DOCS_SHARED_DIR)/security/render_publication.py
 DOCS_PYTHON                  ?= $(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),python3.11)
 DOCS_SITE_DIR                ?= $(PROJECT_ARTIFACTS_DIR)/docs/site
 DOCS_BUILD_SITE_DIR          ?= $(DOCS_SITE_DIR)
@@ -11,7 +16,7 @@ DOCS_CHECK_CONFIG_FILE       ?= $(DOCS_EFFECTIVE_CONFIG)
 DOCS_SERVE_CONFIG_FILE       ?= $(DOCS_EFFECTIVE_CONFIG)
 DOCS_SHARED_ASSETS_DIR       ?= $(PROJECT_DIR)/docs/assets
 DOCS_DEV_ADDR                ?= 127.0.0.1:8001
-DOCS_SITE_URL                ?= http://127.0.0.1:8000/
+DOCS_SITE_URL                ?= $(SITE_URL)
 DOCS_BUILD_SITE_URL          ?= $(DOCS_SITE_URL)
 DOCS_CHECK_SITE_URL          ?= $(DOCS_SITE_URL)
 DOCS_SERVE_SITE_URL          ?= $(DOCS_SITE_URL)
@@ -44,6 +49,37 @@ DOCS_BASE_CONFIG_FILE        ?= $(MKDOCS_CFG)
 DOCS_SHARED_CONFIG_FILE      ?=
 DOCS_RENDERED_DOCS_DIR       ?= $(PROJECT_DIR)/docs
 DOCS_CONFIG_CLI              ?=
+DOCS_MATERIAL_COMPILER       ?= $(PROJECT_DIR)/.bijux/shared/bijux-docs/tooling/material/build_runtime.py
+
+DOCS_SOURCE_VERIFIER ?= $(PROJECT_DIR)/.bijux/shared/bijux-docs/tooling/scripts/verify_bijux_docs_site.sh
+
+define assert_docs_interactive_report_dispatch
+	@if [ -n "$$DOCS_INTERACTIVE_REPORT_OWNER" ]; then \
+	  test "$(1)" != "serve" || { echo "ERROR: interactive reports require source-owned docs or docs-check" >&2; exit 1; }; \
+	  test "$(DOCS_PUBLICATION_FRAMEWORK)" = "1" || { echo "ERROR: interactive report selection requires DOCS_PUBLICATION_FRAMEWORK=1" >&2; exit 1; }; \
+	fi
+endef
+
+# Refuse source selection before consumer cleanup or preparation can erase an
+# existing site. The actual producer independently repeats this source check.
+define assert_docs_report_source
+	@if [ "$(DOCS_PUBLICATION_FRAMEWORK)" = "1" ]; then \
+	  set --; \
+	  if [ -n "$$DOCS_INTERACTIVE_REPORT_OWNER" ]; then set -- --interactive-report-owner "$$DOCS_INTERACTIVE_REPORT_OWNER"; fi; \
+	  $(DOCS_ENV) $(1) ENABLE_SOCIAL_CARDS="$(DOCS_ENABLE_SOCIAL_CARDS)" env -u SITE_URL $(if $(strip $(2)),SITE_URL="$(2)") "$(DOCS_PYTHON)" "$(DOCS_PUBLICATION_RENDERER)" --preflight --config "$(patsubst $(PROJECT_DIR)/%,%,$(3))" --site-dir "$(patsubst $(PROJECT_DIR)/%,%,$(4))" --site-url "$(2)" "$$@"; \
+	fi
+endef
+
+define assert_docs_source_authority
+	@test -f "$(DOCS_SOURCE_VERIFIER)" || { echo "ERROR: missing accepted documentation source verifier" >&2; exit 1; }
+	@DOCS_PYTHON="$(DOCS_PYTHON)" bash "$(DOCS_SOURCE_VERIFIER)" --source-only
+endef
+
+# The same interpreter that renders CSS/templates/worker must admit the owned runtime.
+define assert_docs_material_runtime
+	@test -f "$(DOCS_MATERIAL_COMPILER)" || { echo "ERROR: missing accepted Material runtime compiler: $(DOCS_MATERIAL_COMPILER)" >&2; exit 1; }
+	@PYTHONDONTWRITEBYTECODE=1 $(DOCS_ENV) $(1) "$(DOCS_PYTHON)" "$(DOCS_MATERIAL_COMPILER)" --check
+endef
 
 ifeq ($(shell uname -s),Darwin)
   DOCS_BREW_PREFIX   := $(shell command -v brew >/dev/null 2>&1 && brew --prefix)
@@ -62,21 +98,31 @@ endif
 
 include $(abspath $(dir $(lastword $(MAKEFILE_LIST))))/util.mk
 
-.PHONY: docs docs-serve docs-serve-run docs-deploy docs-check docs-clean docs-hygiene docs-prepare-source docs-assert-serve-port docs-render-serve-config
+.PHONY: docs docs-serve docs-serve-run docs-deploy docs-check docs-clean docs-hygiene docs-prepare-source docs-assert-serve-port docs-render-serve-config docs-assert-public-url
 
 docs:
+	$(call assert_docs_interactive_report_dispatch,build)
+	@if [ "$(DOCS_PUBLICATION_FRAMEWORK)" = "1" ]; then test "$(strip $(DOCS_BUILD_FLAGS))" = "--strict" || { echo "ERROR: publication producer requires exact --strict render flags" >&2; exit 1; }; fi
+	@$(MAKE) docs-assert-public-url
 	$(call run_make_targets,$(DOCS_BUILD_BOOTSTRAP_TARGETS),$(MAKE))
 	$(call run_make_targets,$(DOCS_BUILD_GUARD_TARGETS),$(MAKE))
+	$(call assert_docs_source_authority)
+	$(call assert_docs_material_runtime,$(DOCS_BUILD_ENV))
+	$(call assert_docs_report_source,$(DOCS_BUILD_ENV),$(DOCS_BUILD_SITE_URL),$(DOCS_BUILD_CONFIG_FILE),$(DOCS_BUILD_SITE_DIR))
 	$(call clean_paths,$(DOCS_BUILD_PRE_CLEAN_PATHS))
 	$(call run_make_targets,$(DOCS_BUILD_PREPARE_TARGETS),$(MAKE))
 	@echo "→ Building documentation"
 	@mkdir -p "$(DOCS_CACHE_DIR)"
-	@XDG_CACHE_HOME="$(DOCS_CACHE_DIR)" $(DOCS_ENV) $(DOCS_BUILD_ENV) ENABLE_SOCIAL_CARDS="$(DOCS_ENABLE_SOCIAL_CARDS)" SITE_URL="$(DOCS_BUILD_SITE_URL)" \
-	  "$(DOCS_PYTHON)" -m mkdocs build $(DOCS_BUILD_FLAGS) --config-file "$(DOCS_BUILD_CONFIG_FILE)" --site-dir "$(DOCS_BUILD_SITE_DIR)"
+	@if [ "$(DOCS_PUBLICATION_FRAMEWORK)" = "1" ]; then \
+	    set --; \
+	    if [ -n "$$DOCS_INTERACTIVE_REPORT_OWNER" ]; then set -- --interactive-report-owner "$$DOCS_INTERACTIVE_REPORT_OWNER"; fi; \
+	    XDG_CACHE_HOME="$(DOCS_CACHE_DIR)" $(DOCS_ENV) $(DOCS_BUILD_ENV) ENABLE_SOCIAL_CARDS="$(DOCS_ENABLE_SOCIAL_CARDS)" env -u SITE_URL $(if $(strip $(DOCS_BUILD_SITE_URL)),SITE_URL="$(DOCS_BUILD_SITE_URL)") "$(DOCS_PYTHON)" "$(DOCS_PUBLICATION_RENDERER)" --config "$(patsubst $(PROJECT_DIR)/%,%,$(DOCS_BUILD_CONFIG_FILE))" --site-dir "$(patsubst $(PROJECT_DIR)/%,%,$(DOCS_BUILD_SITE_DIR))" --site-url "$(DOCS_BUILD_SITE_URL)" "$$@"; \
+	  else XDG_CACHE_HOME="$(DOCS_CACHE_DIR)" $(DOCS_ENV) $(DOCS_BUILD_ENV) ENABLE_SOCIAL_CARDS="$(DOCS_ENABLE_SOCIAL_CARDS)" env -u SITE_URL $(if $(strip $(DOCS_BUILD_SITE_URL)),SITE_URL="$(DOCS_BUILD_SITE_URL)") "$(DOCS_PYTHON)" -m mkdocs build $(DOCS_BUILD_FLAGS) --config-file "$(DOCS_BUILD_CONFIG_FILE)" --site-dir "$(DOCS_BUILD_SITE_DIR)"; fi
 	@$(MAKE) docs-hygiene
 	@echo "✔ Docs built → $(DOCS_BUILD_SITE_DIR)"
 
 docs-serve:
+	$(call assert_docs_interactive_report_dispatch,serve)
 	@mkdir -p "$(DOCS_CACHE_DIR)"; \
 	status_file="$(DOCS_SERVE_STATUS_FILE)"; \
 	lock_dir="$(DOCS_SERVE_LOCK_DIR)"; \
@@ -99,7 +145,10 @@ docs-serve:
 	$(MAKE) docs-serve-run
 
 docs-serve-run:
+	$(call assert_docs_interactive_report_dispatch,serve)
 	$(call run_make_targets,$(DOCS_SERVE_BOOTSTRAP_TARGETS),$(MAKE))
+	$(call assert_docs_source_authority)
+	$(call assert_docs_material_runtime,$(DOCS_SERVE_ENV))
 	$(call clean_paths,$(DOCS_SERVE_PRE_CLEAN_PATHS))
 	$(call run_make_targets,$(DOCS_SERVE_PREPARE_TARGETS),$(MAKE))
 	@echo "→ Serving documentation on http://$(DOCS_DEV_ADDR)/"
@@ -111,23 +160,27 @@ docs-serve-run:
 	  "$(DOCS_PYTHON)" -m mkdocs serve $(DOCS_SERVE_FLAGS) --config-file "$$config_file" --dev-addr "$(DOCS_DEV_ADDR)"
 
 docs-deploy:
-	$(call run_make_targets,$(DOCS_BUILD_BOOTSTRAP_TARGETS),$(MAKE))
-	$(call clean_paths,$(DOCS_BUILD_PRE_CLEAN_PATHS))
-	$(call run_make_targets,$(DOCS_BUILD_PREPARE_TARGETS),$(MAKE))
-	@echo "→ Deploying documentation"
-	@mkdir -p "$(DOCS_CACHE_DIR)"
-	@XDG_CACHE_HOME="$(DOCS_CACHE_DIR)" $(DOCS_ENV) $(DOCS_BUILD_ENV) ENABLE_SOCIAL_CARDS="$(DOCS_ENABLE_SOCIAL_CARDS)" SITE_URL="$(DOCS_BUILD_SITE_URL)" \
-	  "$(DOCS_PYTHON)" -m mkdocs gh-deploy $(DOCS_BUILD_FLAGS) $(DOCS_DEPLOY_FLAGS) --config-file "$(DOCS_BUILD_CONFIG_FILE)" --site-dir "$(DOCS_BUILD_SITE_DIR)"
+	@echo "ERROR: publish the exact qualified artifact through the reviewed GitHub Pages workflow; see PRODUCTION-VERIFICATION.md" >&2
+	@exit 1
 
 docs-check:
+	$(call assert_docs_interactive_report_dispatch,check)
+	@if [ "$(DOCS_PUBLICATION_FRAMEWORK)" = "1" ]; then test "$(strip $(DOCS_BUILD_FLAGS))" = "--strict" || { echo "ERROR: publication producer requires exact --strict render flags" >&2; exit 1; }; fi
+	@$(MAKE) docs-assert-public-url
 	$(call run_make_targets,$(DOCS_CHECK_BOOTSTRAP_TARGETS),$(MAKE))
 	$(call run_make_targets,$(DOCS_CHECK_GUARD_TARGETS),$(MAKE))
+	$(call assert_docs_source_authority)
+	$(call assert_docs_material_runtime,$(DOCS_CHECK_ENV))
+	$(call assert_docs_report_source,$(DOCS_CHECK_ENV),$(DOCS_CHECK_SITE_URL),$(DOCS_CHECK_CONFIG_FILE),$(DOCS_CHECK_SITE_DIR))
 	$(call clean_paths,$(DOCS_CHECK_PRE_CLEAN_PATHS))
 	$(call run_make_targets,$(DOCS_CHECK_PREPARE_TARGETS),$(MAKE))
 	@echo "→ Checking documentation build integrity"
 	@mkdir -p "$(DOCS_CACHE_DIR)"
-	@XDG_CACHE_HOME="$(DOCS_CACHE_DIR)" $(DOCS_ENV) $(DOCS_CHECK_ENV) ENABLE_SOCIAL_CARDS="$(DOCS_ENABLE_SOCIAL_CARDS)" SITE_URL="$(DOCS_CHECK_SITE_URL)" \
-	  "$(DOCS_PYTHON)" -m mkdocs build $(DOCS_BUILD_FLAGS) --quiet --config-file "$(DOCS_CHECK_CONFIG_FILE)" --site-dir "$(DOCS_CHECK_SITE_DIR)"
+	@if [ "$(DOCS_PUBLICATION_FRAMEWORK)" = "1" ]; then \
+	    set --; \
+	    if [ -n "$$DOCS_INTERACTIVE_REPORT_OWNER" ]; then set -- --interactive-report-owner "$$DOCS_INTERACTIVE_REPORT_OWNER"; fi; \
+	    XDG_CACHE_HOME="$(DOCS_CACHE_DIR)" $(DOCS_ENV) $(DOCS_CHECK_ENV) ENABLE_SOCIAL_CARDS="$(DOCS_ENABLE_SOCIAL_CARDS)" env -u SITE_URL $(if $(strip $(DOCS_CHECK_SITE_URL)),SITE_URL="$(DOCS_CHECK_SITE_URL)") "$(DOCS_PYTHON)" "$(DOCS_PUBLICATION_RENDERER)" --config "$(patsubst $(PROJECT_DIR)/%,%,$(DOCS_CHECK_CONFIG_FILE))" --site-dir "$(patsubst $(PROJECT_DIR)/%,%,$(DOCS_CHECK_SITE_DIR))" --site-url "$(DOCS_CHECK_SITE_URL)" "$$@"; \
+	  else XDG_CACHE_HOME="$(DOCS_CACHE_DIR)" $(DOCS_ENV) $(DOCS_CHECK_ENV) ENABLE_SOCIAL_CARDS="$(DOCS_ENABLE_SOCIAL_CARDS)" env -u SITE_URL $(if $(strip $(DOCS_CHECK_SITE_URL)),SITE_URL="$(DOCS_CHECK_SITE_URL)") "$(DOCS_PYTHON)" -m mkdocs build $(DOCS_BUILD_FLAGS) --quiet --config-file "$(DOCS_CHECK_CONFIG_FILE)" --site-dir "$(DOCS_CHECK_SITE_DIR)"; fi
 	@$(MAKE) docs-hygiene
 	@echo "✔ Docs check passed"
 
@@ -212,7 +265,19 @@ docs-render-serve-config:
 ##@ Docs
 docs:         ## Build the documentation site
 docs-serve:   ## Serve docs locally from DOCS_DEV_ADDR
-docs-deploy:  ## Deploy docs with mkdocs gh-deploy
+docs-deploy:  ## Explain the reviewed artifact publication boundary
 docs-check:   ## Validate docs build without persisting root pollution
 docs-clean:   ## Remove generated docs artifacts
 docs-hygiene: ## Fail if forbidden root docs outputs exist
+
+ifeq ($(strip $(DOCS_PUBLICATION_FRAMEWORK)),1)
+  ifeq ($(strip $(BIJUX_DOCS_SHARED_DIR)),)
+    $(error BIJUX_DOCS_SHARED_DIR must identify the accepted shared documentation source for publication qualification)
+  endif
+endif
+
+# An empty override leaves the canonical default with the authored MkDocs config.
+DOCS_PUBLIC_URL_VALIDATOR ?= $(firstword $(wildcard $(PROJECT_DIR)/.bijux/shared/bijux-docs/tooling/quality/validate_production_url.py $(PROJECT_DIR)/shared/bijux-docs/tooling/quality/validate_production_url.py))
+docs-assert-public-url:
+	@test -n "$(DOCS_PUBLIC_URL_VALIDATOR)" -a -f "$(DOCS_PUBLIC_URL_VALIDATOR)" || { echo "ERROR: canonical production URL validator is unavailable" >&2; exit 1; }
+	@PYTHONDONTWRITEBYTECODE=1 "$(DOCS_PYTHON)" "$(DOCS_PUBLIC_URL_VALIDATOR)" --allow-empty "$(DOCS_BUILD_SITE_URL)" "$(DOCS_CHECK_SITE_URL)"

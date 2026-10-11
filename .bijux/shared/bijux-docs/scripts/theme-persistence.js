@@ -11,7 +11,8 @@
 
   function safeGetGlobalTheme(themeKey) {
     try {
-      return localStorage.getItem(themeKey);
+      const raw = localStorage.getItem(themeKey);
+      return raw && raw.length <= 2048 ? raw : null;
     } catch (error) {
       return null;
     }
@@ -155,7 +156,7 @@
     }
   }
 
-  function writeMaterialPalette(option) {
+  function writeMaterialPalette(option, index) {
     const color = optionSignature(option);
     if (!color.scheme) {
       color.scheme = "default";
@@ -168,7 +169,8 @@
     }
 
     if (typeof window.__md_set === "function") {
-      window.__md_set(MD_PALETTE_KEY, { color });
+      // Material restores its native palette by indexing the current option list.
+      try { window.__md_set(MD_PALETTE_KEY, { index, color }); } catch (_) {}
     }
   }
 
@@ -190,23 +192,56 @@
     };
   }
 
-  function restoreScrollPosition(position) {
-    if (!position) {
-      return;
-    }
-    window.scrollTo(position.x, position.y);
+  let scrollReservation;
+  let scrollGeneration = 0;
+
+  function releaseScrollReservation() {
+    scrollGeneration += 1;
+    scrollReservation = undefined;
   }
 
-  function applyOption(themeKey, option, persistGlobal) {
-    if (!option) {
+  for (const type of ["pointerdown", "touchstart", "wheel", "keydown"]) {
+    window.addEventListener(type, (event) => {
+      if (event.isTrusted) releaseScrollReservation();
+    }, { capture: true, passive: true });
+  }
+  window.addEventListener("pagehide", releaseScrollReservation);
+
+  function reserveScrollPosition(position) {
+    releaseScrollReservation();
+    if (!position) return undefined;
+    scrollReservation = {
+      position,
+      generation: scrollGeneration,
+      href: location.href,
+      owner: document.querySelector(".md-content__inner") || document.body,
+    };
+    return scrollReservation;
+  }
+
+  function restoreScrollPosition(reservation) {
+    if (!reservation || reservation !== scrollReservation ||
+        reservation.generation !== scrollGeneration ||
+        reservation.href !== location.href ||
+        reservation.owner !== (document.querySelector(".md-content__inner") || document.body)) {
+      return;
+    }
+    window.scrollTo(reservation.position.x, reservation.position.y);
+  }
+
+  function applyOption(themeKey, option, persistGlobal, preserveScroll = true) {
+    const index = paletteOptions().indexOf(option);
+    if (index < 0) {
       return false;
     }
 
-    const scrollBeforeThemeChange = captureScrollPosition();
+    const scrollBeforeThemeChange = preserveScroll ? captureScrollPosition() : null;
+    const reservation = reserveScrollPosition(scrollBeforeThemeChange);
 
     option.checked = true;
-    applyThemeAttributes(option);
-    writeMaterialPalette(option);
+    const effective = modeFromOption(option) === "auto" ? optionByMode(window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light") || option : option;
+    applyThemeAttributes(effective);
+    writeMaterialPalette(option, index);
 
     if (persistGlobal) {
       persistThemeChoice(themeKey, option);
@@ -222,11 +257,15 @@
       })
     );
 
-    // Keep the user anchored to the same viewport position while the page
-    // restyles and any theme listeners (for example Mermaid) rerender.
-    restoreScrollPosition(scrollBeforeThemeChange);
-    requestAnimationFrame(() => restoreScrollPosition(scrollBeforeThemeChange));
-    setTimeout(() => restoreScrollPosition(scrollBeforeThemeChange), 80);
+    // Explicit palette changes keep the reader anchored while subscribers restyle.
+    // Startup preference application leaves native and diagram history restoration
+    // in control instead of reclaiming an earlier position in a delayed callback.
+    if (scrollBeforeThemeChange) {
+      // Only this document and choice retain ownership; later reader input wins.
+      restoreScrollPosition(reservation);
+      requestAnimationFrame(() => restoreScrollPosition(reservation));
+      setTimeout(() => restoreScrollPosition(reservation), 80);
+    }
 
     return true;
   }
@@ -251,18 +290,18 @@
   }
 
   function parseStoredChoice(rawValue) {
-    if (!rawValue) {
+    if (!rawValue || rawValue.length > 2048) {
       return null;
     }
 
     try {
       const parsed = JSON.parse(rawValue);
-      if (!parsed || typeof parsed !== "object") {
+      if (!parsed || typeof parsed !== "object" || parsed.version !== 2 || !["auto", "light", "dark"].includes(parsed.mode)) {
         return null;
       }
       return parsed;
     } catch (error) {
-      return { version: 1, scheme: rawValue };
+      return ["slate", "default"].includes(rawValue) ? { version: 1, scheme: rawValue } : null;
     }
   }
 
@@ -273,7 +312,7 @@
       if (savedChoice.signature) {
         const signedOption = findOptionBySignature(savedChoice.signature);
         if (signedOption) {
-          applyOption(themeKey, signedOption, false);
+          applyOption(themeKey, signedOption, false, false);
           return;
         }
       }
@@ -281,7 +320,7 @@
       if (savedChoice.mode) {
         const modeOption = optionByMode(savedChoice.mode);
         if (modeOption) {
-          applyOption(themeKey, modeOption, false);
+          applyOption(themeKey, modeOption, false, false);
           return;
         }
       }
@@ -290,7 +329,7 @@
         const legacyMode = savedChoice.scheme === "slate" ? "dark" : "light";
         const legacyOption = optionByMode(legacyMode);
         if (legacyOption) {
-          applyOption(themeKey, legacyOption, false);
+          applyOption(themeKey, legacyOption, false, false);
           return;
         }
       }
@@ -329,6 +368,49 @@
     }
   }
 
+  function upgradeNativePaletteControls() {
+    for (const label of document.querySelectorAll("[data-md-component='palette'] label.md-header__button[for]")) {
+      const target = label.getAttribute("for");
+      const option = paletteOptions().find(candidate => candidate.id === target);
+      const palette = label.closest("[data-md-component='palette']");
+      if (!option || !palette.contains(option)) continue;
+
+      // Keep the native radio's next sibling and target identity: Material owns visibility.
+      const button = document.createElement("button");
+      for (const attribute of label.attributes) {
+        if (!["role", "tabindex"].includes(attribute.name)) button.setAttribute(attribute.name, attribute.value);
+      }
+      button.type = "button";
+      button.setAttribute("aria-controls", target);
+      if (!button.hasAttribute("aria-label")) button.setAttribute("aria-label", label.getAttribute("title") || label.textContent.trim());
+      button.replaceChildren(...label.childNodes);
+      button.addEventListener("keydown", event => {
+        // Material's form Enter handler focuses a hidden radio; native buttons activate themselves.
+        if (event.key === "Enter") event.stopPropagation();
+      });
+      let pointerHadFocus = false;
+      button.addEventListener("pointerdown", () => {
+        pointerHadFocus = document.activeElement === button;
+      });
+      button.addEventListener("pointercancel", () => { pointerHadFocus = false; });
+      button.addEventListener("click", event => {
+        // Some engines blur native buttons during pointer activation; retain only this control's focus.
+        const retainedPointerFocus = event.detail > 0 && pointerHadFocus && document.activeElement === document.body;
+        pointerHadFocus = false;
+        const current = paletteOptions().find(candidate => candidate.id === target);
+        if (!current || !palette.contains(current)) return;
+        const hadFocus = document.activeElement === button || retainedPointerFocus;
+        current.checked = true;
+        current.dispatchEvent(new Event("change", { bubbles: true }));
+        if (hadFocus && button.hidden) {
+          const successor = [...palette.querySelectorAll("button.md-header__button[for]")].find(candidate => !candidate.hidden);
+          successor?.focus({ preventScroll: true });
+        }
+      });
+      label.replaceWith(button);
+    }
+  }
+
   function bindThemeToggle(themeKey) {
     for (const button of document.querySelectorAll("[data-bijux-theme-toggle]")) {
       if (button.dataset.bijuxThemeToggleBound === "true") {
@@ -342,8 +424,8 @@
         if (!targetOption) {
           return;
         }
-        applyOption(themeKey, targetOption, true);
-        refreshThemeToggleButtons();
+        targetOption.checked = true;
+        targetOption.dispatchEvent(new Event("change", { bubbles: true }));
       });
     }
   }
@@ -365,9 +447,11 @@
 
       if (savedChoice.signature) {
         const signedOption = findOptionBySignature(savedChoice.signature);
-        applyOption(themeKey, signedOption, false);
-        refreshThemeToggleButtons();
-        return;
+        if (signedOption) {
+          applyOption(themeKey, signedOption, false);
+          refreshThemeToggleButtons();
+          return;
+        }
       }
 
       if (savedChoice.mode) {
@@ -379,13 +463,17 @@
   }
 
   function init() {
+    releaseScrollReservation();
     const themeKey = resolveThemeKey();
     bindPaletteChanges(themeKey);
+    upgradeNativePaletteControls();
     bindThemeToggle(themeKey);
     initializeGlobalTheme(themeKey);
     bindCrossTabSync(themeKey);
     refreshThemeToggleButtons();
   }
 
-  document$.subscribe(init);
+  if (window.document$ && typeof window.document$.subscribe === "function") window.document$.subscribe(init);
+  else if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init, { once: true });
+  else init();
 })();

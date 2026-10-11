@@ -1,0 +1,364 @@
+{
+  "schema": 1,
+  "token_vocabulary": "style-tokens.json",
+  "import_graph": {
+    "entry": "extra.css",
+    "mode": "ordered-domain-leaves",
+    "owner": "bijux-std",
+    "reason": "The canonical entry imports each owned domain sheet once in styles order. Domain sheets are leaves: undeclared imports could load unreviewed priorities or resources and bypass the declaration inventory. Consumer extra_css extensions retain separate authored ownership."
+  },
+  "layer_strategy": {
+    "mode": "unlayered",
+    "owner": "bijux-std",
+    "reason": "Admitted Material and shared rules are unlayered. Normal shared footer declarations rely on their canonical later load order; placing them in a layer demotes them below unlayered Material rules. Layer blocks and order declarations require a separate reviewed architecture with native precedence evidence."
+  },
+  "styles": [
+    "00-tokens.css",
+    "01-theme.css",
+    "02-layout.css",
+    "03-header.css",
+    "04-nav.css",
+    "05-content.css",
+    "06-components.css",
+    "07-utilities.css",
+    "08-responsive.css"
+  ],
+  "important_exceptions": [
+    {
+      "file": "01-theme.css",
+      "conditions": [],
+      "selectors": [
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .node rect",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .node circle",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .node ellipse",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .node polygon",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .node path",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .classBox",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .stateGroup rect",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .stateGroup path",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg rect.basic",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg rect.label-container"
+      ],
+      "property": "fill",
+      "value": "#122b3c!important",
+      "owner": "bijux-std",
+      "reason": "Existing shared dark Mermaid paint over dynamically emitted diagram SVG rules. Exact necessity and diagram-class contrast coverage remain reviewed rendered scope, not proven by static inventory.",
+      "necessity": "existing_preserved_rendered_review_pending"
+    },
+    {
+      "file": "01-theme.css",
+      "conditions": [],
+      "selectors": [
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .node rect",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .node circle",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .node ellipse",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .node polygon",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .node path",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .classBox",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .stateGroup rect",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .stateGroup path",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg rect.basic",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg rect.label-container"
+      ],
+      "property": "stroke",
+      "value": "#6fc7c2!important",
+      "owner": "bijux-std",
+      "reason": "Existing shared dark Mermaid paint over dynamically emitted diagram SVG rules. Exact necessity and diagram-class contrast coverage remain reviewed rendered scope, not proven by static inventory.",
+      "necessity": "existing_preserved_rendered_review_pending"
+    },
+    {
+      "file": "01-theme.css",
+      "conditions": [],
+      "selectors": [
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .cluster rect"
+      ],
+      "property": "fill",
+      "value": "#0f2536!important",
+      "owner": "bijux-std",
+      "reason": "Existing shared dark Mermaid paint over dynamically emitted diagram SVG rules. Exact necessity and diagram-class contrast coverage remain reviewed rendered scope, not proven by static inventory.",
+      "necessity": "existing_preserved_rendered_review_pending"
+    },
+    {
+      "file": "01-theme.css",
+      "conditions": [],
+      "selectors": [
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .cluster rect"
+      ],
+      "property": "stroke",
+      "value": "#4ba8a2!important",
+      "owner": "bijux-std",
+      "reason": "Existing shared dark Mermaid paint over dynamically emitted diagram SVG rules. Exact necessity and diagram-class contrast coverage remain reviewed rendered scope, not proven by static inventory.",
+      "necessity": "existing_preserved_rendered_review_pending"
+    },
+    {
+      "file": "01-theme.css",
+      "conditions": [],
+      "selectors": [
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .flowchart-link",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .edgePath .path",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .path",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .marker",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .marker path",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg line",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg polyline"
+      ],
+      "property": "stroke",
+      "value": "#a9c8d4!important",
+      "owner": "bijux-std",
+      "reason": "Existing shared dark Mermaid paint over dynamically emitted diagram SVG rules. Exact necessity and diagram-class contrast coverage remain reviewed rendered scope, not proven by static inventory.",
+      "necessity": "existing_preserved_rendered_review_pending"
+    },
+    {
+      "file": "01-theme.css",
+      "conditions": [],
+      "selectors": [
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg text",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg tspan",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .label",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .label text",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .nodeLabel",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg span.nodeLabel",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .edgeLabel",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .edgeLabel p",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .cluster-label text",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .classTitle",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .state-title",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg foreignObject div",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg foreignObject span"
+      ],
+      "property": "color",
+      "value": "#eaf2fa!important",
+      "owner": "bijux-std",
+      "reason": "Existing shared dark Mermaid paint over dynamically emitted diagram SVG rules. Exact necessity and diagram-class contrast coverage remain reviewed rendered scope, not proven by static inventory.",
+      "necessity": "existing_preserved_rendered_review_pending"
+    },
+    {
+      "file": "01-theme.css",
+      "conditions": [],
+      "selectors": [
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg text",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg tspan",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .label",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .label text",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .nodeLabel",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg span.nodeLabel",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .edgeLabel",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .edgeLabel p",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .cluster-label text",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .classTitle",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .state-title",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg foreignObject div",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg foreignObject span"
+      ],
+      "property": "fill",
+      "value": "#eaf2fa!important",
+      "owner": "bijux-std",
+      "reason": "Existing shared dark Mermaid paint over dynamically emitted diagram SVG rules. Exact necessity and diagram-class contrast coverage remain reviewed rendered scope, not proven by static inventory.",
+      "necessity": "existing_preserved_rendered_review_pending"
+    },
+    {
+      "file": "01-theme.css",
+      "conditions": [],
+      "selectors": [
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .edgeLabel rect",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .labelBkg",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .relationshipLabelBox"
+      ],
+      "property": "fill",
+      "value": "#102334!important",
+      "owner": "bijux-std",
+      "reason": "Existing shared dark Mermaid paint over dynamically emitted diagram SVG rules. Exact necessity and diagram-class contrast coverage remain reviewed rendered scope, not proven by static inventory.",
+      "necessity": "existing_preserved_rendered_review_pending"
+    },
+    {
+      "file": "01-theme.css",
+      "conditions": [],
+      "selectors": [
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .edgeLabel rect",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .labelBkg",
+        "[data-md-color-scheme=\"slate\"] .md-typeset .mermaid svg .relationshipLabelBox"
+      ],
+      "property": "opacity",
+      "value": "1!important",
+      "owner": "bijux-std",
+      "reason": "Existing shared dark Mermaid paint over dynamically emitted diagram SVG rules. Exact necessity and diagram-class contrast coverage remain reviewed rendered scope, not proven by static inventory.",
+      "necessity": "existing_preserved_rendered_review_pending"
+    },
+    {
+      "file": "07-utilities.css",
+      "conditions": [],
+      "selectors": [
+        "[hidden]:not([hidden=\"until-found\"])"
+      ],
+      "property": "display",
+      "value": "none!important",
+      "owner": "bijux-std",
+      "reason": "Preserve accepted authored hidden/until-found distinction and offscreen accessible label geometry under competing component displays.",
+      "necessity": "preserve_closed_invariant"
+    },
+    {
+      "file": "07-utilities.css",
+      "conditions": [],
+      "selectors": [
+        ".md-visually-hidden"
+      ],
+      "property": "position",
+      "value": "absolute!important",
+      "owner": "bijux-std",
+      "reason": "Preserve accepted authored hidden/until-found distinction and offscreen accessible label geometry under competing component displays.",
+      "necessity": "preserve_closed_invariant"
+    },
+    {
+      "file": "08-responsive.css",
+      "conditions": [
+        "@media screen and (min-width: 76.25em)"
+      ],
+      "selectors": [
+        "body:has(.md-sidebar--primary [data-bijux-nav-variant=\"complete\"])>header[data-bijux-drawer-target] :is(.bijux-site-tabs, .bijux-detail-tabs, .bijux-course-tabs)"
+      ],
+      "property": "display",
+      "value": "none!important",
+      "owner": "bijux-std",
+      "reason": "Keep a single authored interactive presentation under Material viewport mode and complete-tree readiness; retain existing qualified fallback/hidden behaviors.",
+      "necessity": "preserve_existing_rendered_navigation"
+    },
+    {
+      "file": "08-responsive.css",
+      "conditions": [
+        "@media screen and (min-width: 48em) and (max-width: 76.2344em)"
+      ],
+      "selectors": [
+        "body:has(#__drawer:checked):has(.md-sidebar--primary [data-bijux-nav-variant=\"complete\"])>header[data-bijux-drawer-target] :is(.bijux-site-tabs, .bijux-detail-tabs, .bijux-course-tabs)"
+      ],
+      "property": "display",
+      "value": "none!important",
+      "owner": "bijux-std",
+      "reason": "Keep a single authored interactive presentation under Material viewport mode and complete-tree readiness; retain existing qualified fallback/hidden behaviors.",
+      "necessity": "preserve_existing_rendered_navigation"
+    },
+    {
+      "file": "08-responsive.css",
+      "conditions": [
+        "@media screen and (max-width: 76.2344em)"
+      ],
+      "selectors": [
+        ".bijux-hub-strip",
+        ".bijux-detail-tabs",
+        ".bijux-course-tabs"
+      ],
+      "property": "display",
+      "value": "none!important",
+      "owner": "bijux-std",
+      "reason": "Keep a single authored interactive presentation under Material viewport mode and complete-tree readiness; retain existing qualified fallback/hidden behaviors.",
+      "necessity": "preserve_existing_rendered_navigation"
+    },
+    {
+      "file": "08-responsive.css",
+      "conditions": [
+        "@media screen and (max-width: 47.9375em)"
+      ],
+      "selectors": [
+        ".bijux-site-tabs"
+      ],
+      "property": "display",
+      "value": "none!important",
+      "owner": "bijux-std",
+      "reason": "Keep a single authored interactive presentation under Material viewport mode and complete-tree readiness; retain existing qualified fallback/hidden behaviors.",
+      "necessity": "preserve_existing_rendered_navigation"
+    },
+    {
+      "file": "08-responsive.css",
+      "conditions": [
+        "@media (prefers-reduced-motion: reduce)"
+      ],
+      "selectors": [
+        "*",
+        "*::before",
+        "*::after"
+      ],
+      "property": "animation-duration",
+      "value": "0.01ms!important",
+      "owner": "bijux-std",
+      "reason": "Reader reduced-motion preference must outrank component animation declarations and preserve state without motion.",
+      "necessity": "declared_semantic_intent_platform_review_pending"
+    },
+    {
+      "file": "08-responsive.css",
+      "conditions": [
+        "@media (prefers-reduced-motion: reduce)"
+      ],
+      "selectors": [
+        "*",
+        "*::before",
+        "*::after"
+      ],
+      "property": "animation-iteration-count",
+      "value": "1!important",
+      "owner": "bijux-std",
+      "reason": "Reader reduced-motion preference must outrank component animation declarations and preserve state without motion.",
+      "necessity": "declared_semantic_intent_platform_review_pending"
+    },
+    {
+      "file": "08-responsive.css",
+      "conditions": [
+        "@media (prefers-reduced-motion: reduce)"
+      ],
+      "selectors": [
+        "*",
+        "*::before",
+        "*::after"
+      ],
+      "property": "transition-duration",
+      "value": "0.01ms!important",
+      "owner": "bijux-std",
+      "reason": "Reader reduced-motion preference must outrank component animation declarations and preserve state without motion.",
+      "necessity": "declared_semantic_intent_platform_review_pending"
+    }
+  ],
+  "duplicate_fallbacks": [
+    {
+      "file": "03-header.css",
+      "conditions": [],
+      "selectors": [
+        "[data-md-toggle=\"search\"]~.md-header .md-search__overlay"
+      ],
+      "property": "height",
+      "values": [
+        "100vh",
+        "100dvh"
+      ],
+      "owner": "bijux-std",
+      "reason": "Ordered vh before dvh preserves fallback on engines without dynamic viewport units; same selector/at-rule/property/pair identity only."
+    },
+    {
+      "file": "03-header.css",
+      "conditions": [],
+      "selectors": [
+        "[data-md-toggle=\"search\"]:checked~.md-header .md-search__overlay"
+      ],
+      "property": "height",
+      "values": [
+        "100vh",
+        "100dvh"
+      ],
+      "owner": "bijux-std",
+      "reason": "Ordered vh before dvh preserves fallback on engines without dynamic viewport units; same selector/at-rule/property/pair identity only."
+    },
+    {
+      "file": "08-responsive.css",
+      "conditions": [
+        "@media screen and (max-width: 76.2344em)"
+      ],
+      "selectors": [
+        "body[data-bijux-drawer-ready=\"true\"] .md-sidebar.md-sidebar--primary"
+      ],
+      "property": "max-height",
+      "values": [
+        "calc(100vh - var(--md-header-height, 3rem))",
+        "calc(100dvh - var(--md-header-height, 3rem))"
+      ],
+      "owner": "bijux-std",
+      "reason": "Ordered vh before dvh preserves fallback on engines without dynamic viewport units; same selector/at-rule/property/pair identity only."
+    }
+  ]
+}

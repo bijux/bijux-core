@@ -57,7 +57,8 @@ build-package: build-tools
 	@if [ -z "$(PACKAGE_DIR)" ]; then echo "✘ PACKAGE_DIR is required"; exit 1; fi
 	@if [ "$(BUILD_REQUIRE_PYPROJECT)" = "1" ] && [ ! -f "$(abspath $(PACKAGE_DIR))/pyproject.toml" ]; then echo "✘ pyproject.toml not found in $(PACKAGE_DIR)"; exit 1; fi
 	$(call run_make_targets,$(BUILD_PRE_TARGETS),$(BUILD_SELF_MAKE))
-	@package_slug="$(if $(strip $(PACKAGE_NAME)),$(PACKAGE_NAME),$(notdir $(PACKAGE_DIR)))"; \
+	@set -e; \
+	package_slug="$(if $(strip $(PACKAGE_NAME)),$(PACKAGE_NAME),$(notdir $(PACKAGE_DIR)))"; \
 	out_dir="$(BUILD_DIR_ABS)"; \
 	if [ "$(BUILD_PER_PACKAGE_DIRS)" = "1" ]; then out_dir="$(BUILD_DIR_ABS)/$$package_slug"; fi; \
 	mkdir -p "$$out_dir"; \
