@@ -50,6 +50,11 @@
       "id": "codecov",
       "source": "shared/bijux-gh/workflows/codecov.yml",
       "consumer_runtime": ".github/workflows/codecov.yml"
+    },
+    {
+      "id": "dependency-notice",
+      "source": "shared/bijux-gh/workflows/dependency-notice.yml",
+      "consumer_runtime": ".github/workflows/dependency-notice.yml"
     }
   ]
 }

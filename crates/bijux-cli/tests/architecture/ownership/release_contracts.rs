@@ -343,11 +343,10 @@ fn managed_release_toolchains_match_workspace_rust_version() {
         );
     }
 
-    let ci_workflow = read_repo_file(".github/workflows/ci.yml");
-    let unquoted = format!("RUST_TOOLCHAIN_VERSION: {exact_toolchain}");
-    let quoted = format!("RUST_TOOLCHAIN_VERSION: \"{exact_toolchain}\"");
-    assert!(
-        ci_workflow.contains(&unquoted) || ci_workflow.contains(&quoted),
+    let ci_workflow = workflow_document("ci.yml");
+    assert_eq!(
+        ci_workflow["env"]["RUST_TOOLCHAIN_VERSION"].as_str(),
+        Some(exact_toolchain.as_str()),
         ".github/workflows/ci.yml must keep RUST_TOOLCHAIN_VERSION aligned with the workspace rust-version"
     );
 }
