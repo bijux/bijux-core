@@ -44,7 +44,15 @@ def admit_source(source: Path, target: Path, repository: str, sha: str, *, candi
         raise ValueError("accepted workflow source has modified or untracked inputs")
     pin = target / PIN_PATH
     git(target, "ls-files", "--error-unmatch", PIN_PATH)
-    if pin.is_symlink() or pin.read_text().strip() != sha:
+    bounded = repository == 'bijux-masterclass' and (target / '.github/standards/dependency-notification-source.json').exists()
+    if bounded:
+        from .masterclass import read_authority
+        git(target, "ls-files", "--error-unmatch", '.github/standards/dependency-notification-source.json')
+        authority = read_authority(target)
+        expected_pin = authority['execution_policy_sha']
+    else:
+        expected_pin = pin.read_text().strip()
+    if pin.is_symlink() or expected_pin != sha:
         raise ValueError("accepted workflow source differs from the product full source pin")
     environment = os.environ.copy()
     environment.pop("BIJUX_STD_ALLOW_LOCAL_SOURCE", None)
@@ -54,6 +62,6 @@ def admit_source(source: Path, target: Path, repository: str, sha: str, *, candi
                        env=environment, check=True, capture_output=True, text=True)
     except subprocess.CalledProcessError as error:
         raise RuntimeError(f"independent accepted-source verification failed: {error.stderr.strip()}") from error
-    if pin.read_text().strip() != sha:
+    if (read_authority(target) != authority if bounded else pin.read_text().strip() != sha):
         raise ValueError("product source pin changed during independent source verification")
     return {"mode": "accepted-GitHub-source", "sha": sha, "origin": origin}

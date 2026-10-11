@@ -15,7 +15,9 @@ class PublicationEntrypoint(TypedDict, total=False):
 class WorkflowExecutionPolicy(TypedDict, total=False):
     schema: int
     automatic_runs: Literal["canonical", "repository-policy-only"]
-    dependency_pull_requests: Literal["canonical", "skip-managed-jobs"]
+    dependency_pull_requests: Literal["canonical", "skip-managed-jobs", "notification-only"]
+    dependency_merge: Literal["canonical", "owner-consolidation"]
+    main_verification: Literal["existing-events", "accepted-pull-request"]
     publication_entrypoints: dict[str, PublicationEntrypoint]
 
 
@@ -75,23 +77,30 @@ def validate_policy(repository: dict, known_workflows: set[str]) -> WorkflowExec
         return None
     name = repository.get("name")
     policy = require_closed_object(repository["workflow_execution_policy"], {
-        "schema", "automatic_runs", "dependency_pull_requests", "publication_entrypoints",
+        "schema", "automatic_runs", "dependency_pull_requests", "dependency_merge", "main_verification", "publication_entrypoints",
     }, f"{name}.workflow_execution_policy")
     if type(policy.get("schema")) is not int or policy["schema"] != 1:
         raise ValueError(f"{name}.workflow_execution_policy.schema must be integer 1")
     for key, choices in [
         ("automatic_runs", {"canonical", "repository-policy-only"}),
-        ("dependency_pull_requests", {"canonical", "skip-managed-jobs"}),
+        ("dependency_pull_requests", {"canonical", "skip-managed-jobs", "notification-only"}),
+        ("dependency_merge", {"canonical", "owner-consolidation"}),
+        ("main_verification", {"existing-events", "accepted-pull-request"}),
     ]:
         if key in policy:
             _choice(policy[key], choices, f"{name}.{key}")
-            if name == "bijux-std" and policy[key] != "canonical":
+            if name == "bijux-std" and key in {"automatic_runs", "dependency_pull_requests"} and policy[key] not in {"canonical", "notification-only"}:
                 raise ValueError("bijux-std must retain its mandatory workflow qualification")
     allowlist = repository.get("workflow_allowlist", [])
     if not isinstance(allowlist, list) or any(not isinstance(item, str) for item in allowlist):
         raise ValueError("workflow_allowlist must be an array of managed workflow names")
     if len(set(allowlist)) != len(allowlist) or set(allowlist) - known_workflows:
         raise ValueError("workflow_allowlist must contain distinct canonical inventory names")
+    if policy.get("dependency_pull_requests") == "notification-only":
+        if policy.get("dependency_merge") != "owner-consolidation" or "dependency-notice" not in allowlist:
+            raise ValueError("notification-only requires owner-consolidation and enabled dependency-notice")
+    elif policy.get("dependency_merge") == "owner-consolidation":
+        raise ValueError("owner-consolidation requires notification-only dependency admission")
     if policy.get("automatic_runs") == "repository-policy-only" and "github-policy" not in allowlist:
         raise ValueError("repository-policy-only requires enabled canonical github-policy")
     if "publication_entrypoints" in policy:

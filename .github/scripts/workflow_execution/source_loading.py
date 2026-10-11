@@ -9,7 +9,7 @@ from types import ModuleType
 
 
 MODULE_ORDER = ("source_loading", "schema", "yaml_io", "events", "refs", "dependency_prs", "publication",
-                "canonical_sources", "source_authority", "verification")
+                "canonical_sources", "source_authority", "verification", "masterclass")
 
 
 def load_script(path: Path, name: str) -> ModuleType:

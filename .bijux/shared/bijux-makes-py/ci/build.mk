@@ -67,7 +67,10 @@ build-package: build-tools
 	$(BUILD_PYTHON) -m build --wheel --sdist --outdir "$$out_dir" "$(abspath $(PACKAGE_DIR))"; \
 	if [ "$(BUILD_CHECK_DISTS)" = "1" ]; then \
 	  echo "→ Validating distributions with twine"; \
-	  $(TWINE) check "$$out_dir"/*.whl "$$out_dir"/*.tar.gz 2>&1 | tee "$$out_dir/twine-check.log"; \
+	  check_status=0; \
+	  $(TWINE) check "$$out_dir"/*.whl "$$out_dir"/*.tar.gz > "$$out_dir/twine-check.log" 2>&1 || check_status=$$?; \
+	  cat "$$out_dir/twine-check.log"; \
+	  if [ "$$check_status" -ne 0 ]; then exit "$$check_status"; fi; \
 	else \
 	  echo "→ Skipping twine check (BUILD_CHECK_DISTS=$(BUILD_CHECK_DISTS))"; \
 	fi; \
@@ -92,7 +95,10 @@ build-wheel: build-tools
 
 build-check:
 	@if find "$(BUILD_DIR_ABS)" \( -name '*.whl' -o -name '*.tar.gz' \) -print -quit | grep -q .; then \
-	  find "$(BUILD_DIR_ABS)" \( -name '*.whl' -o -name '*.tar.gz' \) -print0 | xargs -0 "$(BUILD_PYTHON)" -m twine check 2>&1 | tee "$(BUILD_DIR_ABS)/twine-check.log"; \
+	  check_status=0; \
+	  find "$(BUILD_DIR_ABS)" \( -name '*.whl' -o -name '*.tar.gz' \) -exec "$(BUILD_PYTHON)" -m twine check {} + > "$(BUILD_DIR_ABS)/twine-check.log" 2>&1 || check_status=$$?; \
+	  cat "$(BUILD_DIR_ABS)/twine-check.log" || exit $$?; \
+	  exit "$$check_status"; \
 	else \
 	  echo "✘ No artifacts in $(BUILD_DIR_ABS) to check"; exit 1; \
 	fi

@@ -136,13 +136,11 @@ jobs:
           printf 'BIJUX_WORKFLOW_SOURCE_SHA=%s\n' "${source_sha}" >> "${GITHUB_ENV}"
 
       - name: Provision selected workflow parser
-        if: steps.workflow_source.outputs.requires_parser == 'true'
         uses: ruby/setup-ruby@e81a8fa391b11a595c1b7ed84177cc0fe02faf83
         with:
           ruby-version: '3.3.12'
 
       - name: Admit selected workflow parser runtime
-        if: steps.workflow_source.outputs.requires_parser == 'true'
         shell: bash
         run: |
           set -euo pipefail

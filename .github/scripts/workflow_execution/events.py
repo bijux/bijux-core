@@ -11,10 +11,10 @@ _SUPPORTED_EVENTS = frozenset({
 
 
 def requires_event_projection(policy: WorkflowExecutionPolicy | None) -> bool:
-    return policy is not None and policy.get("automatic_runs") == "repository-policy-only"
+    return policy is not None and (policy.get("automatic_runs") == "repository-policy-only" or policy.get("main_verification") == "accepted-pull-request")
 
 
-def normalize_workflow_events(workflow_id: str, document: dict) -> dict:
+def normalize_workflow_events(workflow_id: str, document: dict, *, allow_auxiliary: bool = False) -> dict:
     if not isinstance(document, dict) or not isinstance(document.get("jobs"), dict):
         raise ValueError(f"{workflow_id} must be a workflow object with jobs")
     events = document.get("on")
@@ -26,9 +26,14 @@ def normalize_workflow_events(workflow_id: str, document: dict) -> dict:
         events = dict.fromkeys(events)
     if not isinstance(events, dict) or not events or any(not isinstance(event, str) for event in events):
         raise ValueError(f"{workflow_id} requires a nonempty structural event declaration")
-    if set(events) - _SUPPORTED_EVENTS:
+    supported = _SUPPORTED_EVENTS | ({"schedule", "workflow_run"} if allow_auxiliary else set())
+    if set(events) - supported:
         raise ValueError(f"{workflow_id} has unsupported automatic workflow events")
-    if any(value is not None and not isinstance(value, dict) for value in events.values()):
+    if any(value is not None and not isinstance(value, dict)
+           and not (allow_auxiliary and event == "schedule" and isinstance(value, list)
+                    and all(isinstance(entry, dict) and set(entry) == {"cron"}
+                            and isinstance(entry["cron"], str) for entry in value))
+           for event, value in events.items()):
         raise ValueError(f"{workflow_id} event configuration must be an object or null")
     return copy.deepcopy(events)
 
@@ -38,9 +43,17 @@ def project_automatic_events(
 ) -> dict:
     """Restrict explicit consumer automatic runs without altering shared check ownership."""
     projected = copy.deepcopy(document)
-    if policy is None or policy.get("automatic_runs", "canonical") == "canonical":
+    if not requires_event_projection(policy):
         return projected
-    events = normalize_workflow_events(workflow_id, document)
+    events = normalize_workflow_events(workflow_id, document, allow_auxiliary=policy.get("main_verification") == "accepted-pull-request")
+    if policy.get("main_verification") == "accepted-pull-request":
+        # Verification belongs to the admitted human PR; publication and bookkeeping
+        # keep their separately owned entrypoints. No push is a substitute for a PR.
+        events.pop("push", None)
+        if not events:
+            raise ValueError(f"{workflow_id} would lose every verification entrypoint")
+        projected["on"] = events
+        return projected
     if workflow_id == "bijux-std" and not {"pull_request", "merge_group", "workflow_dispatch"}.issubset(events):
         raise ValueError("standard runtime must retain PR, merge_group and manual qualification")
     events = copy.deepcopy(events)

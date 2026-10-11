@@ -87,6 +87,7 @@ BASE_FILE_MAPPINGS: list[tuple[str, str]] = [
     (".github/scripts/workflow_execution/canonical_sources.py", ".github/scripts/workflow_execution/canonical_sources.py"),
     (".github/scripts/workflow_execution/source_authority.py", ".github/scripts/workflow_execution/source_authority.py"),
     (".github/scripts/workflow_execution/verification.py", ".github/scripts/workflow_execution/verification.py"),
+    (".github/scripts/workflow_execution/masterclass.py", ".github/scripts/workflow_execution/masterclass.py"),
     (".github/scripts/build_repo_manifest.py", ".github/scripts/build_repo_manifest.py"),
     (".github/scripts/check_pinned_actions.py", ".github/scripts/check_pinned_actions.py"),
     (".github/scripts/check_protected_github_changes.py", ".github/scripts/check_protected_github_changes.py"),
@@ -189,6 +190,18 @@ def refresh_shared_checksums(repo_dir: Path) -> None:
             raise FileNotFoundError(f"Missing managed file: {relative_path}")
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         refreshed.append(f"{digest}  {relative_path}")
+    # Newly enabled canonical runtimes must enter checksum coverage during refresh,
+    # rather than relying on the previous manifest's finite path list.
+    existing_paths = {line.split(maxsplit=1)[1] for line in refreshed}
+    manifest = load_manifest()
+    canonical_paths = {destination for _, destination in BASE_FILE_MAPPINGS
+                       if destination != ".github/bijux-std-shared.sha256"}
+    for workflow in inventory_entries(manifest):
+        canonical_paths.update({workflow["consumer_runtime"], ".bijux/" + workflow["source"]})
+    for relative_path in sorted(canonical_paths):
+        path = repo_dir / relative_path
+        if relative_path not in existing_paths and path.is_file():
+            refreshed.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {relative_path}")
     checksum_file.write_text("\n".join(refreshed) + "\n", encoding="utf-8")
 
 
@@ -238,11 +251,17 @@ def prepare_runtime_workflows(repo_config: dict[str, Any], manifest: dict[str, A
         projected = WORKFLOW_EXECUTION.project_publication_entrypoints(identity, projected, policy)
         projected = WORKFLOW_EXECUTION.project_dependency_pull_requests(identity, projected, policy)
         documents[destination] = projected
-        prepared[destination] = renderer.render_yaml_document(projected, preserve_scalar_types=True).encode("utf-8")
+        if name == "bijux-std" and source == ".github/workflows/bijux-std.yml" and projected == document:
+            # The owning workflow is authored source. Preserve its readable source
+            # and comments only after structural admission proves projection identity.
+            prepared[destination] = (STD_REPO / source).read_bytes()
+        else:
+            prepared[destination] = renderer.render_yaml_document(projected, preserve_scalar_types=True).encode("utf-8")
     # Wrapper qualification precedes even the first raw canonical copy.
     wrappers = renderer.prepare_workflow_wrappers(repo_config, policy)
     documents.update({f".github/workflows/{name}.yml": definition for name, definition in wrappers.items()})
-    if WORKFLOW_EXECUTION.requires_publication_projection(policy):
+    owned_documents = {}
+    if WORKFLOW_EXECUTION.requires_publication_projection(policy) or WORKFLOW_EXECUTION.requires_dependency_projection(policy):
         target = resolve_repository_checkout(name)
         owned = {destination for _, destination in BASE_FILE_MAPPINGS}
         owned.update(entry["consumer_runtime"] for entry in inventory_entries(manifest))
@@ -253,7 +272,9 @@ def prepare_runtime_workflows(repo_config: dict[str, Any], manifest: dict[str, A
                 relative = path.relative_to(target).as_posix()
                 if path.suffix in {".yml", ".yaml"} and relative not in owned:
                     documents[relative] = WORKFLOW_EXECUTION.parse_workflow(path.read_bytes(), relative)
+                    owned_documents[relative] = documents[relative]
     WORKFLOW_EXECUTION.validate_publication_calls(documents, policy)
+    WORKFLOW_EXECUTION.validate_owned_execution(owned_documents, policy)
     if policy.get("publication_entrypoints") == {} and not (WORKFLOW_EXECUTION.requires_event_projection(policy) or WORKFLOW_EXECUTION.requires_dependency_projection(policy)):
         # An explicitly publisher-free repository still admits authored callers.
         # Its unmodified canonical workflows retain their source bytes.

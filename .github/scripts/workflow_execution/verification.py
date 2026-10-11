@@ -60,6 +60,9 @@ def verify_projection(source_root: Path, target: Path, repository: str) -> dict:
     """Compare source-derived bytes; local checksum rebinding cannot make a match."""
     source_root, target = source_root.resolve(), target.resolve()
     validate_source_snapshots(source_root)
+    if repository == 'bijux-masterclass' and (target / '.github/standards/dependency-notification-source.json').exists():
+        from .masterclass import verify_masterclass
+        return verify_masterclass(source_root, target)
     expected, absent = expected_projection(source_root, target, repository)
     failures = []
     verified = {}

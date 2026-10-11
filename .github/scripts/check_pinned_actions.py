@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Admit immutable workflow job and step references through canonical YAML parsing."""
 from __future__ import annotations
 
 import re
@@ -6,8 +7,11 @@ import sys
 import json
 from pathlib import Path
 
-USE_PATTERN = re.compile(r"^\s*-\s*uses:\s*([^\s#]+)")
-PINNED_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+@[0-9a-f]{40}$")
+from workflow_execution.yaml_io import parse_workflow
+
+PINNED_PATTERN = re.compile(
+    r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*@[0-9a-f]{40}"
+)
 
 
 def manifest_managed_paths(manifest_path: Path) -> list[str]:
@@ -82,19 +86,33 @@ def main() -> int:
         violations.append(f"missing path: {missing}")
 
     for path in workflow_files:
-        for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
-            match = USE_PATTERN.match(line)
-            if not match:
-                continue
-
-            reference = match.group(1)
-            if reference.startswith("./"):
-                continue
-            if reference.startswith("docker://"):
-                continue
-            if PINNED_PATTERN.match(reference):
-                continue
-            violations.append(f"{path}:{line_number}: unpinned action reference '{reference}'")
+        try:
+            document = parse_workflow(path.read_bytes(), str(path))
+            for job_name, job in document["jobs"].items():
+                if not isinstance(job, dict):
+                    raise ValueError(f"job {job_name!r} must be a mapping")
+                references = []
+                if "uses" in job:
+                    references.append((f"jobs.{job_name}.uses", job["uses"]))
+                steps = job.get("steps", [])
+                if not isinstance(steps, list):
+                    raise ValueError(f"job {job_name!r} steps must be a sequence")
+                for index, step in enumerate(steps):
+                    if not isinstance(step, dict):
+                        raise ValueError(f"job {job_name!r} step {index} must be a mapping")
+                    if "uses" in step:
+                        references.append((f"jobs.{job_name}.steps[{index}].uses", step["uses"]))
+                for location, reference in references:
+                    if not isinstance(reference, str) or not reference:
+                        violations.append(f"{path}:{location}: action reference must be a nonempty string")
+                    elif reference.startswith("./") or reference.startswith("docker://"):
+                        continue
+                    elif not PINNED_PATTERN.fullmatch(reference) or any(
+                        part in {".", ".."} for part in reference.split("@", 1)[0].split("/")
+                    ):
+                        violations.append(f"{path}:{location}: unpinned action reference '{reference}'")
+        except (OSError, ValueError, RuntimeError) as error:
+            violations.append(f"{path}: {error}")
 
     if violations:
         print("Found unpinned action references:", file=sys.stderr)

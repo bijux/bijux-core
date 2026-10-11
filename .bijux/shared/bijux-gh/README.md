@@ -287,7 +287,11 @@ Each publisher first runs a read-only admission job before any job with publicat
 credentials. Configure the repository variable `BIJUX_PUBLICATION_ACTOR_ID` with
 the numeric ID of the dedicated controller App's bot account. Admission verifies
 the authenticated original and triggering actors, dispatch from `main`, the immutable `accepted_commit`,
-and the latest successful checks from the required GitHub Actions producer. The
+and the latest successful checks from the required GitHub Actions producer.
+For `accepted-pull-request` repositories, those checks must belong to the exact
+human PR head that is the second parent of current main; the associated merged
+PR, first parent, repository, owner approval, and unchanged main are validated.
+Dependency notice success or checks from an older PR are insufficient. The
 commit must still be current protected `main`; releases additionally require an
 existing `release_tag` resolving to that commit. Missing or unhealthy evidence
 rejects publication. PR-only approval evidence belongs to protected-main

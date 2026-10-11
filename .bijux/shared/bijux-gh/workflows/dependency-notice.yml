@@ -1,0 +1,32 @@
+# SSOT NOTICE: Consumer copies are generated from this canonical workflow.
+name: dependency owner notice
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  notice:
+    name: dependency / owner review notice
+    if: ${{ github.event.pull_request.user.login == 'dependabot[bot]' || (github.event.pull_request.user.login == 'github-actions[bot]' && github.event.pull_request.head.ref == 'automation/dependency-lock-refresh') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Explain owner-mediated dependency admission
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo '## Dependency proposal requires owner consolidation'
+            printf 'Proposal: %s\n\nHead: `%s`\n\n' "$PR_URL" "$PR_HEAD"
+            echo 'This successful notice confirms receipt only. Product, security and standards verification did not run.'
+            echo 'An owner must qualify the dependency changes locally and include them in a human-authored PR with all applicable verification and approval checks.'
+            echo 'Required verification contexts are intentionally absent for this proposal. Automatic merge is disabled.'
+          } >> "$GITHUB_STEP_SUMMARY"

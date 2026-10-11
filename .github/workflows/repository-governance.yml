@@ -30,8 +30,8 @@ env:
 
 jobs:
   canon:
-    name: ${{ matrix.name }}
-    if: ${{ github.event.pull_request.user.login != 'dependabot[bot]' }}
+    name: "${{ (github.event.pull_request.user.login == 'dependabot[bot]' || (github.event.pull_request.user.login == 'github-actions[bot]' && github.event.pull_request.head.ref == 'automation/dependency-lock-refresh')) && 'unverified dependency / ' || '' }}${{ matrix.name }}"
+    if: "${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (github.event.pull_request.user.login != 'dependabot[bot]') }}"
     runs-on: ${{ matrix.os }}
     timeout-minutes: ${{ matrix.timeout_minutes }}
     continue-on-error: ${{ matrix.soft_fail }}
@@ -250,8 +250,8 @@ jobs:
           if-no-files-found: warn
 
   release-proof:
-    name: Release Proof
-    if: ${{ github.event_name == 'workflow_dispatch' }}
+    name: "${{ (github.event.pull_request.user.login == 'dependabot[bot]' || (github.event.pull_request.user.login == 'github-actions[bot]' && github.event.pull_request.head.ref == 'automation/dependency-lock-refresh')) && 'unverified dependency / ' || '' }}Release Proof"
+    if: "${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (github.event_name == 'workflow_dispatch') }}"
     needs: canon
     runs-on: ubuntu-24.04
     timeout-minutes: 30
