@@ -1,3 +1,4 @@
+API_NODE_BOOTSTRAP_SOURCE       := $(abspath $(lastword $(MAKEFILE_LIST)))
 APP_DIR                         ?= src
 API_BASE_PATH                   ?= /v1
 API_APP                         ?= app
@@ -34,13 +35,12 @@ API_LINT_MISSING_MESSAGE        ?= ✘ No API schemas found under $(API_DIR)
 API_TEST_MISSING_MESSAGE        ?= $(API_LINT_MISSING_MESSAGE)
 API_DYNAMIC_PORT                ?= 0
 API_VALIDATE_IN_NODE_DIR        ?= 0
-API_NODE_BOOTSTRAP_MODE         ?= npm-install-fallback
-OPENAPI_GENERATOR_NPM_PACKAGE   ?= @openapitools/openapi-generator-cli@7.14.0
-OPENAPI_GENERATOR_FALLBACK_PACKAGE ?= @openapitools/openapi-generator-cli@latest
-REDOCLY_NPM_PACKAGE             ?= @redocly/cli
+API_NODE_BOOTSTRAP_MODE         ?= npm-ci-sandbox
+OPENAPI_GENERATOR_NPM_PACKAGE   ?= @openapitools/openapi-generator-cli@2.41.0
+REDOCLY_NPM_PACKAGE             ?= @redocly/cli@2.58.1
 OPENAPI_GENERATOR_JAR_VERSION   ?=
-NODE_REQUIRED                   ?= 20
-NODE_DIST_VERSION               ?= v20.18.0
+NODE_REQUIRED                   ?= 22
+NODE_DIST_VERSION               ?= v24.21.0
 API_NODE_PACKAGE_MANIFEST       ?= $(MONOREPO_ROOT)/configs/package.json
 API_NODE_PACKAGE_MANIFEST_ABS   := $(abspath $(API_NODE_PACKAGE_MANIFEST))
 API_NODE_LOCKFILE               ?= $(MONOREPO_ROOT)/configs/package-lock.json
@@ -239,29 +239,18 @@ api-stop:
 	  echo "→ No server.pid found (nothing to stop)"; \
 	fi
 
+ifeq ($(API_ENABLE_NODE_TOOLS),1)
 node_deps: $(API_NODE_READY_MARKER)
 
-$(API_NODE_READY_MARKER):
-	@if [ "$(API_ENABLE_NODE_TOOLS)" != "1" ]; then \
-	  echo "→ Node toolchain not required for $(PROJECT_SLUG)"; \
-	  exit 0; \
-	fi
+# The reviewed repository manifest and lock own the sandbox dependency graph.
+ifeq ($(API_NODE_BOOTSTRAP_MODE),npm-ci-sandbox)
+$(API_NODE_READY_MARKER): $(API_NODE_PACKAGE_MANIFEST_ABS) $(API_NODE_LOCKFILE_ABS)
+endif
+
+$(API_NODE_READY_MARKER): $(API_NODE_BOOTSTRAP_SOURCE)
+	@rm -f "$(API_NODE_READY_MARKER)"
 	@mkdir -p "$(API_NODE_DIR_ABS)" "$(API_NODE_DIR_ABS)/.npm-cache"
 	@case "$(API_NODE_BOOTSTRAP_MODE)" in \
-	  npm-install-fallback) \
-	    command -v npm >/dev/null || { echo "✘ npm not found"; exit 1; }; \
-	    echo "→ Bootstrapping Node toolchain in $(API_NODE_DIR_ABS)"; \
-	    cd "$(API_NODE_DIR_ABS)" && { test -f package.json || npm init -y >/dev/null; }; \
-	    PKG="$(OPENAPI_GENERATOR_NPM_PACKAGE)"; \
-	    if ! npm view "$$PKG" version >/dev/null 2>&1; then \
-	      echo "↪︎ Requested version not on npm; using $(OPENAPI_GENERATOR_FALLBACK_PACKAGE)"; \
-	      PKG="$(OPENAPI_GENERATOR_FALLBACK_PACKAGE)"; \
-	    fi; \
-	    cd "$(API_NODE_DIR_ABS)" && { \
-	      NPM_CONFIG_CACHE="$(API_NODE_DIR_ABS)/.npm-cache" \
-	      npm install --no-fund --no-audit --loglevel=info --save-dev --save-exact "$(REDOCLY_NPM_PACKAGE)" "$$PKG" > npm-install.log 2>&1 \
-	        || { echo "✘ npm install failed — see $(API_NODE_DIR_ABS)/npm-install.log"; tail -n 200 npm-install.log; exit 1; }; \
-	    } ;; \
 	  npm-ci-sandbox) \
 	    command -v npm >/dev/null || { echo "✘ npm not found"; exit 1; }; \
 	    test -f "$(API_NODE_PACKAGE_MANIFEST_ABS)" || { echo "✘ Missing $(API_NODE_PACKAGE_MANIFEST_ABS)"; exit 1; }; \
@@ -270,22 +259,15 @@ $(API_NODE_READY_MARKER):
 	    rm -rf "$(API_NODE_DIR_ABS)"/*; \
 	    cp "$(API_NODE_PACKAGE_MANIFEST_ABS)" "$(API_NODE_DIR_ABS)/package.json"; \
 	    cp "$(API_NODE_LOCKFILE_ABS)" "$(API_NODE_DIR_ABS)/package-lock.json"; \
-	    cd "$(API_NODE_DIR_ABS)" && NPM_CONFIG_CACHE="$(API_NODE_DIR_ABS)/.npm-cache" npm ci --no-fund --no-audit --loglevel=info > npm-ci.log 2>&1 \
+	    cd "$(API_NODE_DIR_ABS)" && NPM_CONFIG_CACHE="$(API_NODE_DIR_ABS)/.npm-cache" npm ci --engine-strict --no-fund --no-audit --loglevel=info > npm-ci.log 2>&1 \
 	      || { echo "✘ npm ci failed — see $(API_NODE_DIR_ABS)/npm-ci.log"; tail -n 200 "$(API_NODE_DIR_ABS)/npm-ci.log"; exit 1; } ;; \
 	  npm-install-pinned) \
 	    command -v npm >/dev/null || { echo "✘ npm not found"; exit 1; }; \
 	    echo "→ Installing pinned Node toolchain in $(API_NODE_DIR_ABS)"; \
 	    cd "$(API_NODE_DIR_ABS)" && { test -f package.json || npm init -y >/dev/null; }; \
-	    PKG="$(OPENAPI_GENERATOR_NPM_PACKAGE)"; \
-	    if [ -n "$(strip $(OPENAPI_GENERATOR_JAR_VERSION))" ]; then \
-	      PKG="$(OPENAPI_GENERATOR_NPM_PACKAGE)"; \
-	    elif ! npm view "$$PKG" version >/dev/null 2>&1; then \
-	      echo "↪︎ Requested version not on npm; using $(OPENAPI_GENERATOR_FALLBACK_PACKAGE)"; \
-	      PKG="$(OPENAPI_GENERATOR_FALLBACK_PACKAGE)"; \
-	    fi; \
 	    cd "$(API_NODE_DIR_ABS)" && { \
 	      NPM_CONFIG_CACHE="$(API_NODE_DIR_ABS)/.npm-cache" \
-	      npm install --no-fund --no-audit --loglevel=info --save-dev --save-exact "$(REDOCLY_NPM_PACKAGE)" "$$PKG" > npm-install.log 2>&1 \
+	      npm install --engine-strict --no-fund --no-audit --loglevel=info --save-dev --save-exact "$(REDOCLY_NPM_PACKAGE)" "$(OPENAPI_GENERATOR_NPM_PACKAGE)" > npm-install.log 2>&1 \
 	        || { echo "✘ npm install failed — see $(API_NODE_DIR_ABS)/npm-install.log"; tail -n 200 npm-install.log; exit 1; }; \
 	    }; \
 	    if [ -n "$(strip $(OPENAPI_GENERATOR_JAR_VERSION))" ]; then \
@@ -295,6 +277,10 @@ $(API_NODE_READY_MARKER):
 	  *) echo "✘ Unknown API_NODE_BOOTSTRAP_MODE: $(API_NODE_BOOTSTRAP_MODE)"; exit 1 ;; \
 	esac
 	@touch "$(API_NODE_READY_MARKER)"
+else
+node_deps:
+	@echo "→ Node toolchain not required for $(PROJECT_SLUG)"
+endif
 
 api-repro:
 	@if [ "$(API_ENABLE_REPRO)" != "1" ]; then \

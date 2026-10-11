@@ -903,7 +903,7 @@
                 "check_targets": {
                   "required": false,
                   "type": "string",
-                  "default": "[\"quality\", \"security\", \"docs\", \"api\", \"build\", \"sbom\"]"
+                  "default": "[\"quality\", \"security\", \"api\", \"build\", \"sbom\"]"
                 },
                 "api_toolchain_targets": {
                   "required": false,
@@ -1046,7 +1046,7 @@
                 "package_dir": "${{ matrix.package_dir }}",
                 "artifacts_dir": "${{ matrix.artifacts_dir }}",
                 "test_python_versions": "${{ matrix.test_python_versions || '[\"3.11\"]' }}",
-                "check_targets": "${{ matrix.check_targets || '[\"quality\", \"security\", \"docs\", \"api\", \"build\", \"sbom\"]' }}",
+                "check_targets": "${{ matrix.check_targets || '[\"quality\", \"security\", \"api\", \"build\", \"sbom\"]' }}",
                 "api_toolchain_targets": "${{ matrix.api_toolchain_targets || '[\"api\"]' }}",
                 "post_test_command": "${{ matrix.post_test_command || '' }}"
               }
@@ -2202,7 +2202,7 @@
                 "check_targets": {
                   "required": false,
                   "type": "string",
-                  "default": "[\"quality\", \"security\", \"docs\", \"api\", \"build\", \"sbom\"]"
+                  "default": "[\"quality\", \"security\", \"api\", \"build\", \"sbom\"]"
                 },
                 "api_toolchain_targets": {
                   "required": false,
@@ -2313,11 +2313,11 @@
                   "uses": "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1",
                   "if": "${{ contains(fromJson(inputs.api_toolchain_targets), matrix.target) }}",
                   "with": {
-                    "node-version": 20
+                    "node-version": "24.21.0"
                   }
                 },
                 {
-                  "uses": "actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95",
+                  "uses": "actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
                   "if": "${{ contains(fromJson(inputs.api_toolchain_targets), matrix.target) }}",
                   "with": {
                     "distribution": "temurin",
@@ -2515,7 +2515,7 @@
                 "package_dir": "${{ matrix.package_dir }}",
                 "artifacts_dir": "${{ matrix.artifacts_dir }}",
                 "test_python_versions": "${{ matrix.test_python_versions || '[\"3.11\"]' }}",
-                "check_targets": "${{ matrix.check_targets || '[\"quality\", \"security\", \"docs\", \"api\", \"build\", \"sbom\"]' }}",
+                "check_targets": "${{ matrix.check_targets || '[\"quality\", \"security\", \"api\", \"build\", \"sbom\"]' }}",
                 "api_toolchain_targets": "${{ matrix.api_toolchain_targets || '[\"api\", \"openapi-drift\"]' }}",
                 "post_test_command": "${{ matrix.post_test_command || '' }}"
               }
@@ -2745,7 +2745,7 @@
                 "check_targets": {
                   "required": false,
                   "type": "string",
-                  "default": "[\"quality\", \"security\", \"docs\", \"api\", \"build\", \"sbom\"]"
+                  "default": "[\"quality\", \"security\", \"api\", \"build\", \"sbom\"]"
                 },
                 "api_toolchain_targets": {
                   "required": false,
@@ -2856,11 +2856,11 @@
                   "uses": "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1",
                   "if": "${{ contains(fromJson(inputs.api_toolchain_targets), matrix.target) }}",
                   "with": {
-                    "node-version": 20
+                    "node-version": "24.21.0"
                   }
                 },
                 {
-                  "uses": "actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95",
+                  "uses": "actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
                   "if": "${{ contains(fromJson(inputs.api_toolchain_targets), matrix.target) }}",
                   "with": {
                     "distribution": "temurin",
@@ -3030,7 +3030,7 @@
                 "package_dir": "${{ matrix.package_dir }}",
                 "artifacts_dir": "${{ matrix.artifacts_dir }}",
                 "test_python_versions": "${{ matrix.test_python_versions || '[\"3.11\"]' }}",
-                "check_targets": "${{ matrix.check_targets || '[\"quality\", \"security\", \"docs\", \"api\", \"build\", \"sbom\"]' }}",
+                "check_targets": "${{ matrix.check_targets || '[\"quality\", \"security\", \"api\", \"build\", \"sbom\"]' }}",
                 "api_toolchain_targets": "${{ matrix.api_toolchain_targets || '[\"api\", \"openapi-drift\"]' }}",
                 "post_test_command": "${{ matrix.post_test_command || '' }}"
               }
@@ -3124,37 +3124,106 @@
               "package_slug": "agentic-proteins",
               "package_dir": "packages/agentic-proteins",
               "artifacts_dir": "artifacts/agentic-proteins",
-              "build_targets": "build sbom"
+              "build_targets": "build sbom",
+              "release_role": "compat"
             },
             {
-              "package_slug": "bijux-proteomics-foundation",
-              "package_dir": "packages/bijux-proteomics-foundation",
-              "artifacts_dir": "artifacts/bijux-proteomics-foundation",
-              "build_targets": "build sbom"
+              "package_slug": "bijux-proteomics",
+              "package_dir": "packages/bijux-proteomics",
+              "artifacts_dir": "artifacts/bijux-proteomics",
+              "build_targets": "build sbom",
+              "release_role": "compat"
             },
             {
               "package_slug": "bijux-proteomics-core",
               "package_dir": "packages/bijux-proteomics-core",
               "artifacts_dir": "artifacts/bijux-proteomics-core",
-              "build_targets": "build sbom"
+              "build_targets": "build sbom",
+              "release_role": "library"
+            },
+            {
+              "package_slug": "bijux-proteomics-foundation",
+              "package_dir": "packages/bijux-proteomics-foundation",
+              "artifacts_dir": "artifacts/bijux-proteomics-foundation",
+              "build_targets": "build sbom",
+              "release_role": "library"
             },
             {
               "package_slug": "bijux-proteomics-intelligence",
               "package_dir": "packages/bijux-proteomics-intelligence",
               "artifacts_dir": "artifacts/bijux-proteomics-intelligence",
-              "build_targets": "build sbom"
+              "build_targets": "build sbom",
+              "release_role": "library"
             },
             {
               "package_slug": "bijux-proteomics-knowledge",
               "package_dir": "packages/bijux-proteomics-knowledge",
               "artifacts_dir": "artifacts/bijux-proteomics-knowledge",
-              "build_targets": "build sbom"
+              "build_targets": "build sbom",
+              "release_role": "library"
             },
             {
               "package_slug": "bijux-proteomics-lab",
               "package_dir": "packages/bijux-proteomics-lab",
               "artifacts_dir": "artifacts/bijux-proteomics-lab",
-              "build_targets": "build sbom"
+              "build_targets": "build sbom",
+              "release_role": "library"
+            },
+            {
+              "package_slug": "bijux-proteomics-runtime",
+              "package_dir": "packages/bijux-proteomics-runtime",
+              "artifacts_dir": "artifacts/bijux-proteomics-runtime",
+              "build_targets": "build sbom",
+              "release_role": "runtime"
+            },
+            {
+              "package_slug": "proteomics",
+              "package_dir": "packages/proteomics",
+              "artifacts_dir": "artifacts/proteomics",
+              "build_targets": "build sbom",
+              "release_role": "compat"
+            },
+            {
+              "package_slug": "proteomics-core",
+              "package_dir": "packages/proteomics-core",
+              "artifacts_dir": "artifacts/proteomics-core",
+              "build_targets": "build sbom",
+              "release_role": "compat"
+            },
+            {
+              "package_slug": "proteomics-foundation",
+              "package_dir": "packages/proteomics-foundation",
+              "artifacts_dir": "artifacts/proteomics-foundation",
+              "build_targets": "build sbom",
+              "release_role": "compat"
+            },
+            {
+              "package_slug": "proteomics-intelligence",
+              "package_dir": "packages/proteomics-intelligence",
+              "artifacts_dir": "artifacts/proteomics-intelligence",
+              "build_targets": "build sbom",
+              "release_role": "compat"
+            },
+            {
+              "package_slug": "proteomics-knowledge",
+              "package_dir": "packages/proteomics-knowledge",
+              "artifacts_dir": "artifacts/proteomics-knowledge",
+              "build_targets": "build sbom",
+              "release_role": "compat"
+            },
+            {
+              "package_slug": "proteomics-lab",
+              "package_dir": "packages/proteomics-lab",
+              "artifacts_dir": "artifacts/proteomics-lab",
+              "build_targets": "build sbom",
+              "release_role": "compat"
+            },
+            {
+              "package_slug": "proteomics-runtime",
+              "package_dir": "packages/proteomics-runtime",
+              "artifacts_dir": "artifacts/proteomics-runtime",
+              "build_targets": "build sbom",
+              "release_role": "compat"
             }
           ]
         },
@@ -3168,22 +3237,64 @@
           "type": "json",
           "value": [
             {
-              "package_slug": "agentic-proteins"
+              "package_slug": "agentic-proteins",
+              "release_role": "compat"
             },
             {
-              "package_slug": "bijux-proteomics-foundation"
+              "package_slug": "bijux-proteomics",
+              "release_role": "compat"
             },
             {
-              "package_slug": "bijux-proteomics-core"
+              "package_slug": "bijux-proteomics-core",
+              "release_role": "library"
             },
             {
-              "package_slug": "bijux-proteomics-intelligence"
+              "package_slug": "bijux-proteomics-foundation",
+              "release_role": "library"
             },
             {
-              "package_slug": "bijux-proteomics-knowledge"
+              "package_slug": "bijux-proteomics-intelligence",
+              "release_role": "library"
             },
             {
-              "package_slug": "bijux-proteomics-lab"
+              "package_slug": "bijux-proteomics-knowledge",
+              "release_role": "library"
+            },
+            {
+              "package_slug": "bijux-proteomics-lab",
+              "release_role": "library"
+            },
+            {
+              "package_slug": "bijux-proteomics-runtime",
+              "release_role": "runtime"
+            },
+            {
+              "package_slug": "proteomics",
+              "release_role": "compat"
+            },
+            {
+              "package_slug": "proteomics-core",
+              "release_role": "compat"
+            },
+            {
+              "package_slug": "proteomics-foundation",
+              "release_role": "compat"
+            },
+            {
+              "package_slug": "proteomics-intelligence",
+              "release_role": "compat"
+            },
+            {
+              "package_slug": "proteomics-knowledge",
+              "release_role": "compat"
+            },
+            {
+              "package_slug": "proteomics-lab",
+              "release_role": "compat"
+            },
+            {
+              "package_slug": "proteomics-runtime",
+              "release_role": "compat"
             }
           ]
         },
@@ -3192,22 +3303,64 @@
           "type": "json",
           "value": [
             {
-              "package_slug": "agentic-proteins"
+              "package_slug": "agentic-proteins",
+              "release_role": "compat"
             },
             {
-              "package_slug": "bijux-proteomics-foundation"
+              "package_slug": "bijux-proteomics",
+              "release_role": "compat"
             },
             {
-              "package_slug": "bijux-proteomics-core"
+              "package_slug": "bijux-proteomics-core",
+              "release_role": "library"
             },
             {
-              "package_slug": "bijux-proteomics-intelligence"
+              "package_slug": "bijux-proteomics-foundation",
+              "release_role": "library"
             },
             {
-              "package_slug": "bijux-proteomics-knowledge"
+              "package_slug": "bijux-proteomics-intelligence",
+              "release_role": "library"
             },
             {
-              "package_slug": "bijux-proteomics-lab"
+              "package_slug": "bijux-proteomics-knowledge",
+              "release_role": "library"
+            },
+            {
+              "package_slug": "bijux-proteomics-lab",
+              "release_role": "library"
+            },
+            {
+              "package_slug": "bijux-proteomics-runtime",
+              "release_role": "runtime"
+            },
+            {
+              "package_slug": "proteomics",
+              "release_role": "compat"
+            },
+            {
+              "package_slug": "proteomics-core",
+              "release_role": "compat"
+            },
+            {
+              "package_slug": "proteomics-foundation",
+              "release_role": "compat"
+            },
+            {
+              "package_slug": "proteomics-intelligence",
+              "release_role": "compat"
+            },
+            {
+              "package_slug": "proteomics-knowledge",
+              "release_role": "compat"
+            },
+            {
+              "package_slug": "proteomics-lab",
+              "release_role": "compat"
+            },
+            {
+              "package_slug": "proteomics-runtime",
+              "release_role": "compat"
             }
           ]
         }
@@ -3363,7 +3516,7 @@
                 "check_targets": {
                   "required": false,
                   "type": "string",
-                  "default": "[\"quality\", \"security\", \"docs\", \"api\", \"build\", \"sbom\"]"
+                  "default": "[\"quality\", \"security\", \"api\", \"build\", \"sbom\"]"
                 },
                 "api_toolchain_targets": {
                   "required": false,
@@ -3474,11 +3627,11 @@
                   "uses": "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1",
                   "if": "${{ contains(fromJson(inputs.api_toolchain_targets), matrix.target) }}",
                   "with": {
-                    "node-version": 20
+                    "node-version": "24.21.0"
                   }
                 },
                 {
-                  "uses": "actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95",
+                  "uses": "actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
                   "if": "${{ contains(fromJson(inputs.api_toolchain_targets), matrix.target) }}",
                   "with": {
                     "distribution": "temurin",
@@ -3622,14 +3775,21 @@
                       "artifacts_dir": "artifacts/agentic-proteins"
                     },
                     {
-                      "package_slug": "bijux-proteomics-foundation",
-                      "package_dir": "packages/bijux-proteomics-foundation",
-                      "artifacts_dir": "artifacts/bijux-proteomics-foundation"
+                      "package_slug": "bijux-proteomics",
+                      "package_dir": "packages/bijux-proteomics",
+                      "artifacts_dir": "artifacts/bijux-proteomics",
+                      "check_targets": "[\"quality\", \"security\", \"build\", \"sbom\"]",
+                      "api_toolchain_targets": "[]"
                     },
                     {
                       "package_slug": "bijux-proteomics-core",
                       "package_dir": "packages/bijux-proteomics-core",
                       "artifacts_dir": "artifacts/bijux-proteomics-core"
+                    },
+                    {
+                      "package_slug": "bijux-proteomics-foundation",
+                      "package_dir": "packages/bijux-proteomics-foundation",
+                      "artifacts_dir": "artifacts/bijux-proteomics-foundation"
                     },
                     {
                       "package_slug": "bijux-proteomics-intelligence",
@@ -3647,10 +3807,65 @@
                       "artifacts_dir": "artifacts/bijux-proteomics-lab"
                     },
                     {
+                      "package_slug": "bijux-proteomics-runtime",
+                      "package_dir": "packages/bijux-proteomics-runtime",
+                      "artifacts_dir": "artifacts/bijux-proteomics-runtime"
+                    },
+                    {
+                      "package_slug": "proteomics",
+                      "package_dir": "packages/proteomics",
+                      "artifacts_dir": "artifacts/proteomics",
+                      "check_targets": "[\"quality\", \"security\", \"build\", \"sbom\"]",
+                      "api_toolchain_targets": "[]"
+                    },
+                    {
+                      "package_slug": "proteomics-core",
+                      "package_dir": "packages/proteomics-core",
+                      "artifacts_dir": "artifacts/proteomics-core",
+                      "check_targets": "[\"quality\", \"security\", \"build\", \"sbom\"]",
+                      "api_toolchain_targets": "[]"
+                    },
+                    {
+                      "package_slug": "proteomics-foundation",
+                      "package_dir": "packages/proteomics-foundation",
+                      "artifacts_dir": "artifacts/proteomics-foundation",
+                      "check_targets": "[\"quality\", \"security\", \"build\", \"sbom\"]",
+                      "api_toolchain_targets": "[]"
+                    },
+                    {
+                      "package_slug": "proteomics-intelligence",
+                      "package_dir": "packages/proteomics-intelligence",
+                      "artifacts_dir": "artifacts/proteomics-intelligence",
+                      "check_targets": "[\"quality\", \"security\", \"build\", \"sbom\"]",
+                      "api_toolchain_targets": "[]"
+                    },
+                    {
+                      "package_slug": "proteomics-knowledge",
+                      "package_dir": "packages/proteomics-knowledge",
+                      "artifacts_dir": "artifacts/proteomics-knowledge",
+                      "check_targets": "[\"quality\", \"security\", \"build\", \"sbom\"]",
+                      "api_toolchain_targets": "[]"
+                    },
+                    {
+                      "package_slug": "proteomics-lab",
+                      "package_dir": "packages/proteomics-lab",
+                      "artifacts_dir": "artifacts/proteomics-lab",
+                      "check_targets": "[\"quality\", \"security\", \"build\", \"sbom\"]",
+                      "api_toolchain_targets": "[]"
+                    },
+                    {
+                      "package_slug": "proteomics-runtime",
+                      "package_dir": "packages/proteomics-runtime",
+                      "artifacts_dir": "artifacts/proteomics-runtime",
+                      "check_targets": "[\"quality\", \"security\", \"build\", \"sbom\"]",
+                      "api_toolchain_targets": "[]"
+                    },
+                    {
                       "package_slug": "bijux-proteomics-dev",
                       "package_dir": "packages/bijux-proteomics-dev",
                       "artifacts_dir": "artifacts/bijux-proteomics-dev",
-                      "check_targets": "[\"quality\", \"security\", \"build\", \"sbom\"]"
+                      "check_targets": "[\"quality\", \"security\", \"build\", \"sbom\"]",
+                      "api_toolchain_targets": "[]"
                     }
                   ]
                 }
@@ -3661,7 +3876,7 @@
                 "package_dir": "${{ matrix.package_dir }}",
                 "artifacts_dir": "${{ matrix.artifacts_dir }}",
                 "test_python_versions": "${{ matrix.test_python_versions || '[\"3.11\"]' }}",
-                "check_targets": "${{ matrix.check_targets || '[\"quality\", \"security\", \"docs\", \"api\", \"build\", \"sbom\"]' }}",
+                "check_targets": "${{ matrix.check_targets || '[\"quality\", \"security\", \"api\", \"build\", \"sbom\"]' }}",
                 "api_toolchain_targets": "${{ matrix.api_toolchain_targets || '[\"api\"]' }}",
                 "post_test_command": "${{ matrix.post_test_command || '' }}"
               }

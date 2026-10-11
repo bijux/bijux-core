@@ -234,7 +234,7 @@ jobs:
               await github.graphql(
                 `mutation EnablePullRequestAutoMerge($pullRequestId: ID!) {
                   enablePullRequestAutoMerge(
-                    input: { pullRequestId: $pullRequestId, mergeMethod: SQUASH }
+                    input: { pullRequestId: $pullRequestId, mergeMethod: MERGE }
                   ) {
                     pullRequest {
                       number
