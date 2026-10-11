@@ -95,8 +95,30 @@ def reconstruction(shared: Path, renderer: dict, csp_report: dict):
     return source, policy, allowed, normalized
 
 
+def media_reconstruction(policy, renderer: dict, csp_report: dict) -> dict | None:
+    """Re-derive the finite callback from actual installed producer bytes."""
+    files = policy.media_inputs()
+    version = renderer.get("packages", {}).get("mkdocs-glightbox")
+    recorded = csp_report.get("policy_inputs", {}).get("media_callback")
+    if not files:
+        require(version is None and recorded is None,
+                "Script authority: media receipt lacks actual installed producer")
+        return None
+    require(version == policy.GLIGHTBOX_VERSION,
+            "Script authority: media renderer differs from reviewed dependency")
+    expected = {"distribution": "mkdocs-glightbox", "version": policy.GLIGHTBOX_VERSION,
+                "files": files, "script_sha256": digest(policy.GLIGHTBOX_SCRIPT.encode())}
+    require(recorded == expected, "Script authority: media fingerprint differs from reviewed producer")
+    return expected
+
+
 class InlineAttributes(HTMLParser):
     """Keep executable interpretation aligned with the reviewed classic snippets."""
+    def __init__(self, media_body: str | None = None):
+        super().__init__(convert_charrefs=False)
+        self.media_body = media_body
+        self.current = None
+
     def handle_starttag(self, tag, attrs):
         if tag != "script":
             return
@@ -104,14 +126,31 @@ class InlineAttributes(HTMLParser):
         require(len(values) == len(attrs), "Script authority: duplicate script attributes")
         if values.get("src") or values.get("type", "").lower() in {"application/json", "application/ld+json"}:
             return
+        if values == {"id": "init-glightbox"}:
+            require(self.media_body is not None, "Script authority: media attributes lack reviewed producer")
+            self.current = []
+            return
         require(set(values) <= {"type"} and values.get("type", "").lower() in {"", "text/javascript", "application/javascript"},
                 "Script authority: executable attributes differ from reviewed classic snippets")
+
+    def handle_data(self, data):
+        if self.current is not None:
+            self.current.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == "script" and self.current is not None:
+            require("".join(self.current) == self.media_body,
+                    "Script authority: media attributes differ from reviewed callback body")
+            self.current = None
 
 
 def verify_ordinary(site: Path, shared: Path, renderer: dict, csp_report: dict, redirect_hashes: dict | None = None, *, verified_readers=None) -> dict:
     """Redirect exclusions must come from independent declared-template verification."""
     redirect_hashes = redirect_hashes or {}
     source, policy, allowed, normalized = reconstruction(shared, renderer, csp_report)
+    media = media_reconstruction(policy, renderer, csp_report)
+    if media is not None:
+        allowed.add(policy.GLIGHTBOX_SCRIPT)
     capabilities, reports = {}, set()
     interactive_reports = None
     if verified_readers is not None:
@@ -147,7 +186,9 @@ def verify_ordinary(site: Path, shared: Path, renderer: dict, csp_report: dict, 
         insertion = '\n<meta http-equiv="Content-Security-Policy" content="' + policies[0] + '">'
         require(content.count(insertion) == 1, "Script authority: exact policy insertion required")
         raw = content.replace(insertion, "", 1)
-        InlineAttributes().feed(raw)
+        attributes = InlineAttributes(policy.GLIGHTBOX_SCRIPT if media is not None else None)
+        attributes.feed(raw)
+        require(attributes.current is None, "Script authority: unterminated media callback")
         scripts = policy.Scripts()
         scripts.feed(raw)
         require(scripts.current is None, "Script authority: unterminated script")
@@ -162,6 +203,8 @@ def verify_ordinary(site: Path, shared: Path, renderer: dict, csp_report: dict, 
         report.append(page)
     require(sorted(used) == csp_report.get("script_hashes"),
             "Script authority: receipt hashes differ from independently reconstructed bodies")
+    require(media == media_reconstruction(policy, renderer, csp_report),
+            "Script authority: media producer changed during reconstruction")
     require(source == source_bytes(shared), "Script authority: policy/source fingerprint changed during reconstruction")
     require(originals == {page.relative_to(site).as_posix(): page.read_bytes() for page in sorted(site.rglob("*.html"))},
             "Script authority: final HTML changed during reconstruction")

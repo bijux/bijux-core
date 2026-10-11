@@ -77,6 +77,14 @@ def main() -> int:
         if expected_sha and expected_sha != source_sha:
             raise ValueError("Publication checkout differs from the dispatched accepted source")
         environment = dict(os.environ, PYTHONDONTWRITEBYTECODE="1", PYTHONNOUSERSITE="1")
+        if options.command == "admit":
+            # Admission requires source checks around the exact route/search artifact.
+            # A renderer's successful build receipt alone does not attest that boundary.
+            environment.update(DOCS_PYTHON=sys.executable, DOCS_SITE_DIR=options.site_dir,
+                               DOCS_BUILD_SITE_URL=options.site_url, DOCS_SOURCE_IDENTITY=SOURCE,
+                               BIJUX_DOCS_SITE_REPORT=EVIDENCE + "site-verification.json")
+            subprocess.run(["bash", str(SHARED / "tooling/scripts/verify_bijux_docs_site.sh")],
+                           env=environment, check=True)
         subprocess.run([sys.executable, *arguments(options.command, options, source_sha)],
                        env=environment, check=True)
     except (ValueError, OSError, subprocess.CalledProcessError) as error:

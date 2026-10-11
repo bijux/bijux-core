@@ -23,6 +23,11 @@ GENERATOR = {
     'scripts/render_root_mkdocs.py': '05ce8d0ca82b005b91a92d167aecadd21f366a78c899b38d66e3c89ba674f11d',
     'scripts/sync_series_docs.py': '65f43a155a0a64ab492d9a2fa7bbfdfce0c44663f4f9ad04a8ce96a0c4834d06',
 }
+# Both exact entrypoints use the same reviewed pure catalogue plan. The course
+# staging helper is not executed by reconstruction; its source is still bound.
+GENERATOR_VARIANTS = {
+    'scripts/sync_series_docs.py': {'84221a438172349a5b7eb1291606045a3ab202636a3e0ad18d6f6a726c87940c'},
+}
 MODULES = {'scripts.catalogue.links': 'scripts/catalogue/links.py',
            'scripts.docs_nav': 'scripts/docs_nav.py',
            'scripts.catalogue.source_plan': 'scripts/catalogue/source_plan.py'}
@@ -71,10 +76,20 @@ def shared_module(path):
         sys.modules.pop(name, None)
 
 
+def generator_identity(originals):
+    observed = {}
+    for name, expected in GENERATOR.items():
+        require(name in originals, 'generator source differs from reviewed recipe')
+        fingerprint = digest(originals[name])
+        require(fingerprint in {expected, *GENERATOR_VARIANTS.get(name, set())},
+                'generator source differs from reviewed recipe')
+        observed[name] = fingerprint
+    return observed
+
+
 def captured_generator(root, originals):
     """Compile only the exact reviewed source set with fixed dependency routing."""
-    require(all(name in originals and digest(originals[name]) == expected
-                for name, expected in GENERATOR.items()), 'generator source differs from reviewed recipe')
+    generator_identity(originals)
     modules = {}
     registered = []
 
@@ -139,7 +154,7 @@ class CatalogueDerivation:
         self.record = {'schema': 1, 'recipe': RECIPE,
                        'owner': {'path': OWNER, 'sha256': digest(inputs[OWNER])},
                        'configuration': {'path': CONFIGURATION, 'sha256': digest(plan.configuration.content)},
-                       'generator': dict(GENERATOR), 'environment': dict(environment),
+                       'generator': generator_identity(inputs), 'environment': dict(environment),
                        'source_inputs_sha256': json_digest(dict(plan.source_hashes)),
                        'documents': len(self.map), 'document_map_sha256': json_digest(self.map),
                        'native_history_sha256': digest(history.encode())}

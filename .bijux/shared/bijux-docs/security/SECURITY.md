@@ -59,6 +59,11 @@ the official GitHub origin into `artifacts/`. The consumed shared documentation
 must match that fetched tree; ignored extra standard inputs cannot inherit its
 commit identity. Local-source bypasses and candidate-only receipts cannot publish.
 
+The shared publication builder runs the canonical site verifier before admission.
+It verifies source authority before and after route/search checks on the exact
+selected artifact, retaining the independently fetched standard identity in the
+verification receipt. A completed render alone cannot substitute for these checks.
+
 The source-derived reconstruction framework is optional. Its source-owned profile
 registry admits retained Darwin environments for verification only and exact
 source-owned Linux publication environments described in [runtime/README.md](runtime/README.md).
@@ -71,7 +76,11 @@ source history and output still require independent producer reconstruction.
 Renderer observation reports never create admission by themselves.
 
 Reviewed producer adapters preserve actual redirects, revision-date configuration,
-registered callbacks and the two observed source asset/root icon recipes. Unknown
+registered callbacks and finite source asset, icon, domain and scientific-download
+recipes. Core's contract recipe binds five tracked JSON files to their exact public
+copies and admits only the reviewed documentation-confined source-link callback.
+Changed dependency bindings, callback helpers, output bytes or contract population
+are refused. Unknown
 plugins/hooks, shadow imports, replaced callbacks, unlisted physical inputs and
 mismatched bytecode fail. Generated catalog Markdown outside the tracked source
 requires its own generator/source attribution; a build-date fallback proves

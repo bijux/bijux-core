@@ -16,6 +16,7 @@ import sys
 from urllib.parse import urlsplit
 
 HOOKS = {
+    'ca8006f2c2665aecc7f2566344f4ad926ea6a2279e7a7ff5d7ae35bbee256c93':'core-contract-assets',
     '4f04c4736adc9b9ff801bb2e2214e4bb622b8858aac16a9f6ae88b49ff2f7e84':'root-icons',
     'bda022ee3efa9393f03cda2d49684ba186d67714a362f4225890b8d4b15583d5':'source-assets-and-root-icons',
     '3162000c64180ca575be718c03ecdfe90bc0f53240eb4101947356c863848906':'scientific-pdf-downloads',
@@ -117,6 +118,51 @@ def scientific_downloads(hook, root, path, source):
             'outputs':{name:digest(value) for name,value in sorted(frozen.items())}}
 
 
+CORE_CONTRACT_ASSETS = (
+    'schemas/output-envelope-v1.schema.json',
+    'schemas/error-envelope-v1.schema.json',
+    'schemas/plugin-manifest-v2.schema.json',
+    'official_product_namespace_registry.json',
+    'product_mount_metadata_contract.json',
+)
+
+
+def core_contract_assets(hook, configuration, root, path, source, *, publication=False):
+    """Bind Core's curated source links and five native contract copies."""
+    import posixpath
+    import re
+    import shutil
+    from urllib.parse import unquote, urlsplit, urlunsplit
+    require(path == root/'docs/automation/publish_contract_assets.py'
+            and tuple(hook.CONTRACT_ASSETS) == CORE_CONTRACT_ASSETS
+            and Path(configuration.docs_dir).absolute() == root/'docs'
+            and configuration['repo_url'] == 'https://github.com/bijux/bijux-core',
+            'Producer capability: Core contract owner, source root or population changed')
+    require(hook.posixpath is posixpath and hook.re is re and hook.shutil is shutil
+            and hook.Path is Path and hook.unquote is unquote
+            and hook.urlsplit is urlsplit and hook.urlunsplit is urlunsplit,
+            'Producer capability: Core contract dependency binding changed')
+    require(isinstance(hook.MARKDOWN_LINK, re.Pattern)
+            and hook.MARKDOWN_LINK.pattern == r'(?<!!)(\[[^\]]+\]\()([^)]+)(\))'
+            and hook.MARKDOWN_LINK.flags == re.UNICODE
+            and isinstance(hook.HTML_LINK, re.Pattern)
+            and hook.HTML_LINK.pattern == r"""(href\s*=\s*["'])([^"']+)(["'])"""
+            and hook.HTML_LINK.flags == re.UNICODE | re.IGNORECASE,
+            'Producer capability: Core source-link recognition changed')
+    inputs, outputs = [], {}
+    for name in CORE_CONTRACT_ASSETS:
+        relative = 'contracts/' + name
+        value = regular(root, root/relative)
+        require(isinstance(json.loads(value), (dict, list)),
+                'Producer capability: Core contract must retain JSON document identity')
+        if publication:
+            git(root, 'ls-files', '--error-unmatch', relative)
+        inputs.append({'path': relative, 'sha256': digest(value)})
+        outputs[relative] = digest(value)
+    return {'source': path.relative_to(root).as_posix(), 'source_sha256': digest(source),
+            'recipe': 'core-contract-assets', 'inputs': inputs, 'outputs': outputs}
+
+
 def hooks(configuration,root,*,publication=False):
     records=[]
     for hook in configuration.hooks.values():
@@ -126,6 +172,9 @@ def hooks(configuration,root,*,publication=False):
         if publication:
             git(root,'ls-files','--error-unmatch',path.relative_to(root).as_posix())
         reviewed_hook_functions(hook,source,path)
+        if recipe=='core-contract-assets':
+            records.append(core_contract_assets(hook,configuration,root,path,source,publication=publication))
+            continue
         if recipe=='scientific-pdf-downloads':
             records.append(scientific_downloads(hook,root,path,source))
             continue
