@@ -243,7 +243,7 @@ jobs:
 
       - name: Upload lane artifacts
         if: ${{ always() && matrix.artifact_name != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.artifact_path }}
@@ -275,7 +275,7 @@ jobs:
         run: cargo run --locked -p bijux-dev --bin bijux-dev-dag -- repo release-evidence-report
 
       - name: Upload release proof reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-proof-report
           path: artifacts/reports
