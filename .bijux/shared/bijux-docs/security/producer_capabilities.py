@@ -215,6 +215,38 @@ def hooks(configuration,root,*,publication=False):
     return records
 
 
+def committed_document_history(root, paths, head):
+    """Require exact indexed and committed owners for native revision pages.
+
+    Every file in the selected committed tree has path history, including a
+    shallow boundary commit. Checking that exact tree and index avoids one Git
+    process per page without approximating path-limited merge simplification.
+    Staged, generated, unmerged or symlinked pages cannot acquire publication
+    history from unrelated reachable commits or build-date fallback.
+    """
+    indexed = {}
+    for record in git(root, 'ls-files', '--stage', '-z').split('\0'):
+        if not record:
+            continue
+        metadata, name = record.split('\t', 1)
+        mode, blob, stage = metadata.split()
+        require(stage == '0' and name not in indexed,
+                'Producer capability: unmerged or duplicate indexed source')
+        indexed[name] = (mode, blob)
+    committed = {}
+    for record in git(root, 'ls-tree', '-r', '-z', '--full-tree', head).split('\0'):
+        if not record:
+            continue
+        metadata, name = record.split('\t', 1)
+        mode, kind, blob = metadata.split()
+        if kind == 'blob' and mode in {'100644', '100755'}:
+            committed[name] = (mode, blob)
+    for path in paths:
+        require(path in committed and indexed.get(path) == committed[path],
+                'Producer capability: exact committed documentation source required; '
+                'missing source history cannot use build-time fallback for publication')
+
+
 def revision_history(configuration,root,*,publication=False,catalogue=None):
     plugin=configuration.plugins.get('git-revision-date-localized')
     if plugin is None:return None
@@ -235,11 +267,9 @@ def revision_history(configuration,root,*,publication=False,catalogue=None):
             require(git(root,'rev-parse','--is-shallow-repository') == 'false',
                     'Producer capability: catalogue publication needs complete native original history')
             documents = catalogue.sources.files(documents, configuration)
-        for document in documents.documentation_pages():
-            path=Path(document.abs_src_path).relative_to(root).as_posix()
-            git(root,'ls-files','--error-unmatch',path)
-            require(bool(git(root,'log','-1','--format=%H','HEAD','--',path)),
-                    'Producer capability: missing source history cannot use build-time fallback for publication')
+        paths = [Path(document.abs_src_path).relative_to(root).as_posix()
+                 for document in documents.documentation_pages()]
+        committed_document_history(root, paths, head)
     return {'head':head,'history_sha256':digest(history.encode()),'plugin_source_sha256':digest(file.read_bytes()),
             'source_config':dict(plugin.config),'fallback_preserved':True,'publication_history_verified':publication}
 

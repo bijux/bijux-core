@@ -10,6 +10,7 @@ from .integration import verify_composition
 from .planning import _descriptor_inputs, reviewed_providers
 from .rendering import ReaderSource
 from .resources import registration_data
+from .native_presentations import bootstrap, document_budget, sequence_data, sequence_recipe
 
 
 def configured_owner(configuration, *, selected=None, passive=None):
@@ -66,6 +67,9 @@ def _shape(descriptor):
                 fields.add('registration')
                 if not isinstance(resource.get('registration'), dict):
                     raise AdmissionError('interactive data resource requires its bounded registration recipe')
+            elif kind == 'native-sequence-data':
+                if not sequence_recipe(report):
+                    raise AdmissionError('plain native data requires its finite reviewed chart')
             elif kind not in {'reviewed-script', 'reviewed-style', 'image'}:
                 raise AdmissionError('interactive resource kind is not reviewed')
             if set(resource) != fields:
@@ -76,7 +80,8 @@ def _shape(descriptor):
             recipe = report.get('recipe')
             if (not isinstance(recipe, dict) or set(recipe) != {'template', 'expansions', 'slots'}
                 or not isinstance(recipe['expansions'], list) or len(recipe['expansions']) > 512
-                or not isinstance(recipe['slots'], dict) or not 1 <= len(recipe['slots']) <= 512):
+                or not isinstance(recipe['slots'], dict)
+                or not (1 <= len(recipe['slots']) <= 512 or sequence_recipe(report))):
                 raise AdmissionError('interactive renderer requires a finite source recipe')
             relative(recipe['template'])
             for expansion in recipe['expansions']:
@@ -158,15 +163,16 @@ class InteractiveReportSource(ReaderSource):
             if not isinstance(report, dict) or report.get('report_class') not in {'interactive', 'static-reader'}:
                 raise AdmissionError('interactive renderer requires an explicit report class')
             source = read_owned(self.repository, report['source']['path'])
-            if len(source) > 524288:
-                raise AdmissionError('interactive report exceeds its reviewed document budget')
+            document_budget(self.repository, report, source, self.site_url)
             document = validate_report(source.decode(), report, self.site_url)
-            for resource in report['resources'].values():
+            for resource_output, resource in report['resources'].items():
                 content = read_owned(self.repository, resource['source'])
                 if len(content) != resource['bytes']:
                     raise AdmissionError('interactive resource differs from its reviewed byte count')
                 if resource['kind'] == 'data-registration':
                     registration_data(content, resource['registration'], self.site_url, report['output'])
+                elif resource['kind'] == 'native-sequence-data':
+                    sequence_data(self.repository, report, resource_output, resource, content, self.site_url)
             if report_class(report) == 'static-reader':
                 continue
             fields = {'report_class', 'output', 'source', 'resources', 'reviewed_scripts', 'bootstrap_id',
@@ -182,10 +188,7 @@ class InteractiveReportSource(ReaderSource):
             report_recipe(self.repository, document, report, self.site_url, report['output'])
             bodies = executable_scripts(document)
             reviewed_providers(report, bodies)
-            bootstrap = [s for s in document.scripts if s['attrs'].get('id') == report['bootstrap_id']]
-            if (len(bootstrap) != 1 or bootstrap[0]['attrs'].get('type') != 'application/json'
-                or digest(canonical(json_data(bootstrap[0]['body']))) != report['bootstrap_sha256']):
-                raise AdmissionError('interactive bootstrap differs from committed ownership')
+            bootstrap(document, report)
         return descriptor
 
     def _verify(self, site, csp, receipt, *, identity=None, checkpoint=None, publication=False):

@@ -33,6 +33,16 @@ def relative(value):
     return value
 
 
+def public_route(base, path):
+    """Identify terminal index documents by their public directory route."""
+    path = relative(path)
+    if path == "index.html":
+        path = ""
+    elif path.endswith("/index.html"):
+        path = path[:-10]
+    return site_url(base) + path
+
+
 def read_owned(root, name):
     name = relative(name)
     root = Path(root).resolve()

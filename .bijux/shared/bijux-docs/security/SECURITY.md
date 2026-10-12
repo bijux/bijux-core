@@ -64,6 +64,14 @@ It verifies source authority before and after route/search checks on the exact
 selected artifact, retaining the independently fetched standard identity in the
 verification receipt. A completed render alone cannot substitute for these checks.
 
+Source-qualified native builds derive `SOURCE_DATE_EPOCH` from the selected Git
+commit's committer timestamp. The source and build checkpoints retain that exact
+revision and epoch; independent admission rederives both from Git. Production and
+reference renders use the same bounded clock, so native sitemap dates remain
+identical across midnight. A conflicting ambient epoch, a changed rendering
+epoch or a missing/forged checkpoint is rejected. The environment is restored
+after rendering, including failures; sitemap bytes remain fully compared.
+
 The source-derived reconstruction framework is optional. Its source-owned profile
 registry admits retained Darwin environments for verification only and exact
 source-owned Linux publication environments described in [runtime/README.md](runtime/README.md).

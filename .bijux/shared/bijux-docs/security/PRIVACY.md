@@ -61,6 +61,13 @@ the site. These defaults do not establish the request behavior of authored
 scripts, plugin output, social cards, embeds or a host's injected resources.
 Review the effective configuration and rendered requests for each consumer.
 
+Authored status badges can request images from Shields.io, raw GitHub content
+and the `bijux` namespace on GitHub. The shared image policy admits
+`https://github.com/bijux/` for existing workflow badges without allowing other
+GitHub namespaces or granting script, frame or API access. Those images load
+when their containing page is rendered; consumers must account for the actual
+providers and their request logging in their visitor disclosures.
+
 The external-link producer preserves authored destinations, target, download
 and referrer intent. It adds `noopener` to explicit `_blank` links while keeping
 other relationship tokens and removing contradictory `opener`. It does not

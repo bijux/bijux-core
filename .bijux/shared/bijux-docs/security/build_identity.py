@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import hashlib
 import importlib.metadata
 import importlib.util
@@ -58,6 +59,44 @@ def clean_source(root: Path, expected: str) -> dict:
     require(not git(root, "status", "--porcelain", "--untracked-files=all"),
             "Source identity: tracked or untracked source is dirty")
     return {"sha": expected, "tree": git(root, "rev-parse", "HEAD^{tree}")}
+
+
+def source_render_epoch(root: Path, source_sha: str) -> dict:
+    """Bind native time-derived output to the selected immutable Git revision."""
+    require(bool(SHA.fullmatch(source_sha)), "Render clock: exact source SHA required")
+    require(git(root, "rev-parse", "HEAD") == source_sha, "Render clock: source differs from HEAD")
+    timestamp = git(root, "show", "--no-patch", "--format=%ct", source_sha)
+    require(timestamp.isdecimal() and str(int(timestamp)) == timestamp,
+            "Render clock: canonical commit timestamp required")
+    seconds = int(timestamp)
+    require(0 <= seconds <= 253402300799, "Render clock: commit timestamp outside native date range")
+    return {"source_sha": source_sha, "seconds": seconds}
+
+
+def render_epoch_matches(actual: dict | None, expected: dict) -> bool:
+    return (isinstance(actual, dict) and set(actual) == {"source_sha", "seconds"}
+            and type(actual["seconds"]) is int and actual == expected)
+
+
+@contextmanager
+def publication_clock(root: Path, source_sha: str):
+    epoch = source_render_epoch(root, source_sha)
+    previous = os.environ.get("SOURCE_DATE_EPOCH")
+    expected = str(epoch["seconds"])
+    require(previous is None or previous == expected,
+            "Render clock: ambient SOURCE_DATE_EPOCH differs from committed source")
+    os.environ["SOURCE_DATE_EPOCH"] = expected
+    try:
+        yield epoch
+        require(os.environ.get("SOURCE_DATE_EPOCH") == expected,
+                "Render clock: native rendering changed the committed epoch")
+        require(source_render_epoch(root, source_sha) == epoch,
+                "Render clock: committed source changed during rendering")
+    finally:
+        if previous is None:
+            os.environ.pop("SOURCE_DATE_EPOCH", None)
+        else:
+            os.environ["SOURCE_DATE_EPOCH"] = previous
 
 
 def regular(root: Path, value: str) -> Path:
@@ -170,6 +209,7 @@ def source_checkpoint(root: Path, source_sha: str, standard_root: str,
     require(build_command.strip() and verify_command.strip(), "Publication identity: build and verifier commands required")
     result = {"schema": 1, "scope": "clean-source-and-fetched-standard", "verification_only": False,
             "repository_source": source, "standard": authority,
+            "render_epoch": source_render_epoch(root, source_sha),
             "standard_root": standard.relative_to(root).as_posix(),
             "standard_pin": {"selector": standard_pin, "path": pin_name},
             "pin_sha256": digest(pin_path.read_bytes()), "shared_root": shared.relative_to(root).as_posix(),
@@ -188,6 +228,8 @@ def verify_source(root: Path, checkpoint: dict) -> None:
             "Publication identity: qualified source checkpoint required")
     require(clean_source(root, checkpoint["repository_source"]["sha"]) == checkpoint["repository_source"],
             "Source identity: tree changed after capture")
+    require(render_epoch_matches(checkpoint.get("render_epoch"), source_render_epoch(root, checkpoint["repository_source"]["sha"])),
+            "Render clock: source checkpoint lacks the exact committed epoch")
     config = checkpoint.get("config")
     require(isinstance(config, dict) and set(config) == {"path", "sha256"}, "Source identity: owner config checkpoint required")
     git(root, "ls-files", "--error-unmatch", config["path"])
@@ -342,6 +384,7 @@ def begin(root: Path, config: str, site_dir: str, site_url: str, source_path: st
               "renderer_inputs": source_inputs(configuration, root, publication_scope=actual_source is not None, catalogue=catalogue),
               "processor_sha256": digest(Path(__file__).read_bytes()),
               "source_checkpoint": actual_source,
+              "render_epoch": actual_source["render_epoch"] if actual_source else None,
               "source_checkpoint_sha256": json_digest(actual_source) if actual_source else None}
     if catalogue:
         result.update(effective_config=catalogue.record["configuration"], derivation=catalogue.record)
@@ -371,6 +414,8 @@ def finish(root: Path, receipt: dict) -> dict:
             "Build identity: renderer source inputs changed during build")
     if receipt["source_checkpoint"]:
         verify_source(root, receipt["source_checkpoint"])
+        require(render_epoch_matches(receipt.get("render_epoch"), receipt["source_checkpoint"]["render_epoch"]),
+                "Render clock: build/source epoch differs")
         require(receipt.get("derivation") == receipt["source_checkpoint"].get("derivation"),
                 "Catalogue identity: build/source derivation differs")
     module = publication()

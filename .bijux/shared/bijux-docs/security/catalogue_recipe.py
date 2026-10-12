@@ -23,9 +23,11 @@ GENERATOR = {
     'scripts/render_root_mkdocs.py': '05ce8d0ca82b005b91a92d167aecadd21f366a78c899b38d66e3c89ba674f11d',
     'scripts/sync_series_docs.py': '65f43a155a0a64ab492d9a2fa7bbfdfce0c44663f4f9ad04a8ce96a0c4834d06',
 }
-# Both exact entrypoints use the same reviewed pure catalogue plan. The course
-# staging helper is not executed by reconstruction; its source is still bound.
+# Exact owned generator variants preserve the pure root catalogue plan. Course
+# staging is not executed by reconstruction; optional YAML uses the fixed loader.
 GENERATOR_VARIANTS = {
+    'scripts/catalogue/files.py': {'8ba6a6f3107410adca141b80c8d1a5e25d97319515dfc68383f8672fbcee6b57'},
+    'scripts/docs_nav.py': {'8d77d22553f0a868f96ac52461998e8ab444cb75b8502914a7ea8de4419e0998'},
     'scripts/sync_series_docs.py': {'84221a438172349a5b7eb1291606045a3ab202636a3e0ad18d6f6a726c87940c'},
 }
 MODULES = {'scripts.catalogue.links': 'scripts/catalogue/links.py',
