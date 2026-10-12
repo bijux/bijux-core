@@ -13,7 +13,7 @@
       "source": "bijux-docs/assets/bijux_logo_hq.png"
     },
     "docs/assets/javascripts/external-links.js": {
-      "sha256": "051fec9ad5e5488b47ec1ae18b108750d19a5faed105965fb3cb743cf94a008f",
+      "sha256": "047550188d0c242ad8b0e749d9b4d2f5b215435530aa531c9a6467a18bb48954",
       "source": "bijux-docs/scripts/external-links.js"
     },
     "docs/assets/javascripts/material-search.4b099ef8b0fc29069e50781122ce83e6c955ec2a46b6537b06c856d746c6727b.js": {
@@ -177,6 +177,6 @@
   "source": {
     "mode": "accepted-github",
     "origin": "https://github.com/bijux/bijux-std.git",
-    "sha": "266e9623957b3ed8cafec561e7cd835d7b4938e1"
+    "sha": "8c2b9d6d69614a6a6e66bd772c9d22edeec47579"
   }
 }

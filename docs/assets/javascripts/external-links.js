@@ -50,8 +50,8 @@
         const warning = document.createElement("span");
         do { warning.id = "bijux-link-warning-" + (++nextId); } while (document.getElementById(warning.id));
         warning.dataset.bijuxLinkIndication = download ? "download" : "new-tab";
-        if (!link.textContent.trim() && link.querySelector("svg, img")) {
-          // Icon links keep their compact hit area and expose the warning through text and description.
+        if (link.matches(".md-source") || (!link.textContent.trim() && link.querySelector("svg, img"))) {
+          // Repository and icon links keep their compact hit area without losing the accessible warning.
           const icon = document.createElement("span");
           icon.setAttribute("aria-hidden", "true");
           icon.textContent = download ? " ↓" : " ↗";
