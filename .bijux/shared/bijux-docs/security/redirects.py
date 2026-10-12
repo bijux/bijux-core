@@ -71,6 +71,21 @@ def path_parameter(value: str) -> str:
     return value
 
 
+def destination_url(value: str, destination: str) -> str:
+    """Bind MkDocs' exact root representations to the declared product base."""
+    require(isinstance(value, str), "Redirect: actual relative destination URL required")
+    if value in {"./", "index.html"} and destination == "index.html":
+        return ""
+    target = urlsplit(value)
+    decoded = unquote(value)
+    require(not target.scheme and not target.netloc and not target.query and not target.fragment
+            and not value.startswith("/") and "\\" not in decoded
+            and not any(ord(char) < 32 or ord(char) == 127 for char in decoded)
+            and not any(part in {".", ".."} for part in decoded.split("/")),
+            "Redirect: target escaped product base")
+    return value
+
+
 def plugin_inputs(plugin) -> tuple[dict, str]:
     require(type(plugin).__module__ == "mkdocs_redirects.plugin", "Redirect: admitted plugin implementation required")
     distribution = importlib.metadata.distribution("mkdocs-redirects")
@@ -178,8 +193,7 @@ def normalize_redirects(configuration, site: Path, site_url: str, *, write: bool
         document.feed(target.read_text(encoding="utf-8"))
         require(not document.redirect, "Redirect: undeclared redirect destination")
         require(not fragment or unquote(fragment) in document.ids, "Redirect: fixed fragment does not exist at final destination")
-        require(not urlsplit(target_url).scheme and not urlsplit(target_url).netloc and not target_url.startswith("/"),
-                "Redirect: target escaped product base")
+        target_url = destination_url(target_url, destination)
         absolute = site_url + quote(unquote(target_url), safe="/-._~")
         canonical = absolute
         if fragment:

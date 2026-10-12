@@ -98,13 +98,17 @@ def reconstruction(shared: Path, renderer: dict, csp_report: dict):
 def media_reconstruction(policy, renderer: dict, csp_report: dict) -> dict | None:
     """Re-derive the finite callback from actual installed producer bytes."""
     files = policy.media_inputs()
-    version = renderer.get("packages", {}).get("mkdocs-glightbox")
+    plugin = renderer.get("plugins", {}).get("glightbox")
     recorded = csp_report.get("policy_inputs", {}).get("media_callback")
     if not files:
-        require(version is None and recorded is None,
+        require(plugin is None and recorded is None,
                 "Script authority: media receipt lacks actual installed producer")
         return None
-    require(version == policy.GLIGHTBOX_VERSION,
+    expected_plugin = {"module": "mkdocs_glightbox.plugin",
+                       "distributions": {"mkdocs-glightbox": policy.GLIGHTBOX_VERSION},
+                       "source": {"name": "plugin.py",
+                                  "sha256": policy.GLIGHTBOX_INPUTS["mkdocs_glightbox/plugin.py"]}}
+    require(plugin == expected_plugin,
             "Script authority: media renderer differs from reviewed dependency")
     expected = {"distribution": "mkdocs-glightbox", "version": policy.GLIGHTBOX_VERSION,
                 "files": files, "script_sha256": digest(policy.GLIGHTBOX_SCRIPT.encode())}

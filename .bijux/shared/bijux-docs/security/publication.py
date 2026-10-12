@@ -258,14 +258,48 @@ def static_svg(content: bytes, maximum_bytes: int) -> None:
                 require(not parsed.scheme and not parsed.netloc, "SVG external resource")
 
 
+def custom_domain_output(root: Path, site_url: str, source_config: dict) -> str:
+    """Rederive the finite root domain output from its reviewed native callback.
+
+    The caller has verified the owner checkpoint. Transported build capabilities
+    never grant an extension exception: load the exact configuration and bind the
+    native callback, committed domain source and its physical copied output.
+    """
+    identity = identity_module()
+    require(site_url == "https://bijux.io/", "custom domain: reviewed Hub production identity required")
+    path = identity.regular(root, source_config["path"])
+    require(hashlib.sha256(path.read_bytes()).hexdigest() == source_config["sha256"],
+            "custom domain: owner configuration changed")
+    from mkdocs.config import load_config
+    configuration = load_config(config_file=str(path))
+    require(configuration.site_url == site_url, "custom domain: actual owner site URL differs")
+    spec = importlib.util.spec_from_file_location("bijux_custom_domain_producer", Path(__file__).with_name("producer_capabilities.py"))
+    capabilities = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(capabilities)
+    records = capabilities.hooks(configuration, root, publication=True)
+    domains = [record for record in records if record["recipe"] == "root-icons-and-custom-domain"]
+    require(len(domains) == 1, "custom domain: one reviewed source-owned callback required")
+    value = identity.regular(root, "CNAME").read_bytes()
+    identity.git(root, "ls-files", "--error-unmatch", "CNAME")
+    require(value == b"bijux.io\n", "custom domain: exact production domain source required")
+    output = hashlib.sha256(value).hexdigest()
+    require(domains[0]["outputs"].get("CNAME") == output
+            and {"path": "CNAME", "sha256": output} in domains[0]["inputs"],
+            "custom domain: reviewed callback input and output differ")
+    return output
+
+
 def bundle_manifest(repo_root: Path, site_dir: str, site_url: str, source_sha: str,
                     policy: dict, standard_sha: str | None = None, *, embedded_report_routes: set[str] | None = None,
-                    embedded_parent_routes: set[str] | None = None) -> dict:
+                    embedded_parent_routes: set[str] | None = None,
+                    owner_config: dict | None = None) -> dict:
     validate_url(site_url)
     require(bool(SHA.fullmatch(source_sha)), "source identity: full lowercase commit SHA required")
     if standard_sha is not None:
         require(bool(SHA.fullmatch(standard_sha)), "standard identity: full lowercase SHA required")
     site = site_directory(repo_root, site_dir, exists=True)
+    domain = (custom_domain_output(repo_root.resolve(), site_url, owner_config)
+              if owner_config is not None and (site / "CNAME").exists() else None)
     files: list[dict] = []
     failures: list[dict] = []
     for path in sorted(site.rglob("*")):
@@ -281,7 +315,12 @@ def bundle_manifest(repo_root: Path, site_dir: str, site_url: str, source_sha: s
             continue
         denied = any(part.startswith(".") or part in policy["forbidden_names"] for part in path.relative_to(site).parts)
         exception = any(fnmatch.fnmatchcase(relative, item["pattern"]) for item in policy.get("public_exceptions", []))
-        # Exceptions admit public downloads/maps, never private dotfiles, keys or secrets.
+        if relative == "CNAME" and domain is not None:
+            require(hashlib.sha256(path.read_bytes()).hexdigest() == domain,
+                    "custom domain: public bytes differ from reviewed source output")
+            exception = True
+        # Exceptions admit public downloads/maps and the rederived root domain,
+        # never private dotfiles, keys, secrets or unrelated extensionless files.
         if denied or path.name.startswith("id_rsa") or path.name.startswith("id_ed25519"):
             failures.append({"path": relative, "code": "private-file"})
         elif (path.suffix.lower() not in policy["allowed_extensions"] or path.suffix.lower() == ".map") and not exception:
@@ -335,7 +374,7 @@ def applied_csp(policy: str, admitted_hashes: set[str], capability: dict | None 
                 "form-action": ["'self'"], "script-src-attr": ["'none'"],
                 "style-src": ["'self'", "'unsafe-inline'"], "font-src": ["'self'"],
                 "connect-src": ["'self'"], "worker-src": ["'self'", "blob:"],
-                "img-src": ["'self'", "data:", "https://img.shields.io", "https://raw.githubusercontent.com"],
+                "img-src": ["'self'", "data:", "https://img.shields.io", "https://raw.githubusercontent.com", "https://github.com/bijux/"],
                 "media-src": ["'self'"], "frame-src": ["'none'"], "manifest-src": ["'self'"]}
     if capability is not None:
         expected["frame-src"] = capability["frame_uris"] or ["'none'"]
@@ -522,10 +561,7 @@ def qualified_redirects(canonical: Path, build: dict, csp: dict, site: Path, sit
             current = configured[current["destination"]]
         destination = current["destination"]
         identity_module().regular(site, destination)
-        url = current["url"]
-        require(not urlsplit(url).scheme and not urlsplit(url).netloc and not url.startswith("/")
-                and "\\" not in unquote(url) and not any(part in {".", ".."} for part in unquote(url).split("/")),
-                "Redirect receipt: target escaped product base")
+        url = processor.destination_url(current["url"], destination)
         canonical_url = site_url + quote(unquote(url), safe="/-._~")
         target = canonical_url + ("#" + quote(unquote(fragment), safe="-._~:") if fragment else "")
         require(record.get("destination") == destination and record.get("canonical") == canonical_url and record.get("target") == target,
@@ -608,7 +644,8 @@ def qualified_manifest(repo_root: Path, site_dir: str, site_url: str, source_sha
         require(embedded["site_url"] == site_url, "Embedded publication: source-owned site identity differs")
     result = bundle_manifest(root, site_dir, site_url, source_sha, policy, source["standard"]["sha"],
                              embedded_report_routes=embedded["report_routes"] if embedded else None,
-                             embedded_parent_routes=(set(embedded["capabilities"]) - embedded["report_routes"]) if embedded else None)
+                             embedded_parent_routes=(set(embedded["capabilities"]) - embedded["report_routes"]) if embedded else None,
+                             owner_config=source["config"])
     for name in ("build", "verification", "csp"):
         receipt = records[name]["receipt"]
         require(receipt.get("schema") == 1, f"{name} receipt: unsupported schema")
@@ -620,6 +657,9 @@ def qualified_manifest(repo_root: Path, site_dir: str, site_url: str, source_sha
             "build receipt: completed publication renderer identity required")
     require(build.get("source_checkpoint") == source and build.get("source_checkpoint_sha256") == identity.json_digest(source),
             "build receipt: another source checkpoint")
+    require(identity.render_epoch_matches(build.get("render_epoch"), source["render_epoch"]) and
+            source["render_epoch"] == identity.source_render_epoch(root, source_sha),
+            "Render clock: build/source epoch differs")
     require(build.get("processor_sha256") == hashlib.sha256(Path(__file__).with_name("build_identity.py").read_bytes()).hexdigest(),
             "build receipt: identity processor differs from accepted source")
     require(build.get("derivation") == source.get("derivation"),

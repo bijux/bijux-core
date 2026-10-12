@@ -11,6 +11,7 @@ from .contract import (
     digest,
     json_data,
     read_owned,
+    public_route,
     source_inputs,
 )
 from .html import (
@@ -19,10 +20,12 @@ from .html import (
     parent_iframe,
     reviewed_recipe,
     report_recipe,
+    report_class,
     validate_report,
 )
 from .planning import plan_embedded_reports, final_receipt, _report_capability
 from .resources import registration_data
+from .native_presentations import bootstrap, document_budget, sequence_data
 
 
 def processor_inputs():
@@ -216,7 +219,7 @@ def verify_composition(
             unlinked = source.replace(
                 "<head>",
                 '<head><link rel="canonical" href="'
-                + escape(retained["site_url"] + record["path"], quote=True)
+                + escape(public_route(retained["site_url"], record["path"]), quote=True)
                 + '">',
                 1,
             )
@@ -232,7 +235,10 @@ def verify_composition(
             record["admitted_scripts"] = [
                 s["body"] for s in executable_scripts(Document(source))
             ]
+            document_budget(repo, owner, source.encode(), retained["site_url"])
             validated = validate_report(source, owner, retained["site_url"])
+            if report_class(owner) == "interactive":
+                bootstrap(validated, owner)
             expected_recipe = report_recipe(
                 repo, validated, owner, retained["site_url"], record["path"]
             )
@@ -252,13 +258,15 @@ def verify_composition(
                         retained["site_url"],
                         record["path"],
                     )
+                elif resource["kind"] == "native-sequence-data":
+                    entry["data"] = sequence_data(repo, owner, name, resource, content_bytes, retained["site_url"])
                 expected_resources.append(entry)
             if (
                 record["source"] != owner["source"]
                 or record["input_sha256"] != digest(source.encode())
                 or record["normalized_sha256"]
                 != digest(record["normalized_html"].encode())
-                or record["canonical"] != retained["site_url"] + record["path"]
+                or record["canonical"] != public_route(retained["site_url"], record["path"])
                 or record["recipe"] != expected_recipe
                 or record["resources"] != expected_resources
                 or record["providers"] != owner["providers"]

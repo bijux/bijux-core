@@ -13,6 +13,7 @@ from .contract import (
     digest,
     json_data,
     read_owned,
+    public_route,
     relative,
     site_url,
     source_inputs,
@@ -27,6 +28,7 @@ from .html import (
     validate_report,
 )
 from .resources import registration_data
+from .native_presentations import bootstrap, document_budget, sequence_data
 
 
 def _report_capability(report, bodies):
@@ -203,9 +205,9 @@ def plan_embedded_reports(
             raise AdmissionError("duplicate report route")
         seen_routes.add(output)
         original = read_owned(site, output)
+        document_budget(repo_root, report, original, product_base)
         if (
-            len(original) > 524288
-            or len(report["resources"]) > 512
+            len(report["resources"]) > 512
             or sum(r["bytes"] for r in report["resources"].values()) > 134217728
         ):
             raise AdmissionError(
@@ -263,6 +265,8 @@ def plan_embedded_reports(
                     content, resource["registration"], product_base, output
                 )
                 chunks += 1
+            elif resource["kind"] == "native-sequence-data":
+                record["data"] = sequence_data(repo_root, report, resource_output, resource, content, product_base)
             elif resource["kind"] not in ("reviewed-script", "reviewed-style", "image"):
                 raise AdmissionError("unreviewed resource kind")
             resource_records.append(record)
@@ -277,20 +281,8 @@ def plan_embedded_reports(
             }
             if any(p not in report["resources"] for p in observed):
                 raise AdmissionError("undeclared executable/style resource in report tree")
-            bootstrap = [
-                s
-                for s in document.scripts
-                if s["attrs"].get("id") == report["bootstrap_id"]
-            ]
-            if (
-                len(bootstrap) != 1
-                or bootstrap[0]["attrs"].get("type") != "application/json"
-            ):
-                raise AdmissionError("owned bootstrap is absent")
-            data = json_data(bootstrap[0]["body"])
-            if digest(canonical(data)) != report["bootstrap_sha256"]:
-                raise AdmissionError("bootstrap manifest differs")
-        canonical_url = product_base + output
+            bootstrap(document, report)
+        canonical_url = public_route(product_base, output)
         if any(
             tag == "link" and attrs.get("rel") == "canonical"
             for tag, attrs in document.tags
@@ -321,7 +313,7 @@ def plan_embedded_reports(
                 "providers": providers,
             }
         )
-        mappings[output] = canonical_url
+        mappings[output] = product_base + output
     for parent in descriptor["parents"]:
         output = relative(parent["output"])
         if output in seen_routes:
@@ -535,7 +527,7 @@ def final_receipt(plan, final_build_receipt, final_policy_records):
             expected_html = original.replace(
                 "<head>",
                 '<head><link rel="canonical" href="'
-                + escape(plan["site_url"] + record["path"], quote=True)
+                + escape(public_route(plan["site_url"], record["path"]), quote=True)
                 + '">',
                 1,
             )

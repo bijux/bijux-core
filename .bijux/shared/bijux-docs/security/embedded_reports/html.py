@@ -139,6 +139,11 @@ def report_class(report):
 def report_recipe(repo, document, report, product_base, output):
     if report_class(report) == "static-reader":
         return {"class": "static-reader", "source_sha256": report["source"]["sha256"]}
+    from .native_presentations import document_budget, sequence_recipe
+    if sequence_recipe(report):
+        source = read_owned(repo, report["source"]["path"])
+        document_budget(repo, report, source, product_base)
+        return {"recipe_sha256": digest(source), "parameters_sha256": digest(b""), "slot_count": 0}
     return reviewed_recipe(
         repo, executable_scripts(document)[0]["body"], report["recipe"], product_base, output
     )

@@ -7,7 +7,7 @@ import json
 import posixpath
 import re
 from urllib.parse import quote, urljoin, urlsplit
-from .contract import AdmissionError, canonical, digest, json_data, read_owned, relative
+from .contract import AdmissionError, canonical, digest, json_data, read_owned, relative, public_route as _route
 
 
 BEGIN = "<!-- bijux-owned-reader-navigation -->"
@@ -40,14 +40,6 @@ class MaterialTarget(HTMLParser):
     def handle_endtag(self, tag):
         if tag == "script":
             self.active = None
-
-
-def _route(base, path):
-    if path == "index.html":
-        path = ""
-    elif path.endswith("/index.html"):
-        path = path[:-10]
-    return base + path
 
 
 def _target(site, base, path):
@@ -236,7 +228,7 @@ def sitemap(site, base, reader_routes, *, original=None):
             )
         name = page.relative_to(site).as_posix()
         if name in reader_routes:
-            eligible.add(base + name)
+            eligible.add(_route(base, name))
             continue
         document = HTMLParserDocument(page.read_text())
         if name == "404.html" or document.noindex:
@@ -251,7 +243,7 @@ def sitemap(site, base, reader_routes, *, original=None):
         if not canonical_url.startswith(base):
             raise AdmissionError("reader sitemap canonical leaves its product")
         eligible.add(canonical_url)
-    additions = {base + name for name in reader_routes}
+    additions = {_route(base, name) for name in reader_routes}
     if set(entries) - eligible or eligible - set(entries) - additions:
         raise AdmissionError(
             "reader sitemap ordinary or foreign route coverage differs"

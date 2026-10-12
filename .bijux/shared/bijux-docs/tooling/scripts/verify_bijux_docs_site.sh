@@ -57,11 +57,20 @@ args=(--repo-root "${repo_root}" --site-dir "${DOCS_SITE_DIR}" --site-url "${sit
 if [[ -n "${BIJUX_DOCS_DEVELOPMENT_LINK_POLICY:-}" ]]; then
   args+=(--development-link-policy "${BIJUX_DOCS_DEVELOPMENT_LINK_POLICY}")
 fi
-if [[ -n "${BIJUX_DOCS_READER_OWNER:-}" ]]; then
+if [[ -n "${BIJUX_DOCS_READER_OWNER:-}" && -n "${BIJUX_DOCS_INTERACTIVE_REPORT_OWNER:-}" ]]; then
+  echo 'ERROR: passive and interactive report owners cannot be mixed' >&2
+  exit 1
+fi
+if [[ -n "${BIJUX_DOCS_READER_OWNER:-}${BIJUX_DOCS_INTERACTIVE_REPORT_OWNER:-}" ]]; then
   [[ -n "${BIJUX_DOCS_READER_SOURCE_SHA:-}" ]] || { echo 'ERROR: reader verifier requires exact committed source SHA' >&2; exit 1; }
   args+=(--embedded-csp-report artifacts/website-security/csp.json
          --completed-build-receipt artifacts/website-security/build-identity.json
-         --source-sha "${BIJUX_DOCS_READER_SOURCE_SHA}" --reader-owner "${BIJUX_DOCS_READER_OWNER}")
+         --source-sha "${BIJUX_DOCS_READER_SOURCE_SHA}")
+  if [[ -n "${BIJUX_DOCS_INTERACTIVE_REPORT_OWNER:-}" ]]; then
+    args+=(--interactive-report-owner "${BIJUX_DOCS_INTERACTIVE_REPORT_OWNER}")
+  else
+    args+=(--reader-owner "${BIJUX_DOCS_READER_OWNER}")
+  fi
   if [[ -n "${DOCS_SOURCE_IDENTITY:-}" ]]; then args+=(--source-identity "${DOCS_SOURCE_IDENTITY}"); fi
 fi
 "${python_bin}" "${shared_root}/tooling/quality/validate_site_routes.py" "${args[@]}"

@@ -169,7 +169,7 @@ def qualify_html(html: str, allowed: set[str], normalized_base: str, capability:
         "default-src 'self'", "base-uri 'self'", "object-src 'none'", "form-action 'self'",
         "script-src 'self' " + " ".join(sorted(hashes)), "script-src-attr 'none'",
         "style-src 'self' 'unsafe-inline'", "font-src 'self'", "connect-src 'self'",
-        "worker-src 'self' blob:", "img-src 'self' data: https://img.shields.io https://raw.githubusercontent.com",
+        "worker-src 'self' blob:", "img-src 'self' data: https://img.shields.io https://raw.githubusercontent.com https://github.com/bijux/",
         "media-src 'self'", "frame-src 'none'", "manifest-src 'self'",
     ])
     if capability is not None:

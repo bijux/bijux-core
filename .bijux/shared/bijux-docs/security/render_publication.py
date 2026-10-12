@@ -81,12 +81,14 @@ def build_artifact(root: Path, config_name: str, site_name: str, *, site_url='',
     with tempfile.TemporaryDirectory(prefix='renderer-reference-',dir=evidence) as scratch:
         prepared=producer.prepare(root,config_name,shared,templates,Path(scratch)/'site',site,
                                   publication_scope=checkpoint is not None,source_recipe=source_recipe,reader_owner=reader_owner,
-                                  interactive_report_owner=interactive_report_owner)
+                                  interactive_report_owner=interactive_report_owner,
+                                  source_sha=checkpoint['repository_source']['sha'] if checkpoint else None)
         receipt=identity.begin(root,config_name,site_name,actual_url,source_identity,source_recipe)
         previous_strict=configuration.strict
         configuration.strict=strict
         try:
-            producer.render(configuration,catalogue=catalogue is not None)
+            producer.render(configuration,catalogue=catalogue is not None,source_root=root if checkpoint is not None else None,
+                            source_sha=checkpoint['repository_source']['sha'] if checkpoint else None)
         finally:
             configuration.strict=previous_strict
         configuration=(catalogue.configuration(site) if catalogue else
