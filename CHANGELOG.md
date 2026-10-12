@@ -25,6 +25,12 @@ This project adheres to [Semantic Versioning](https://semver.org) and the
 - Resolve the patched rustls TLS dependency for RUSTSEC-2026-0285 ([#145](https://github.com/bijux/bijux-core/pull/145)).
 
 - Adopt trusted manual publication admission and accepted shared documentation policy ([#145](https://github.com/bijux/bijux-core/pull/145)).
+
+### Security
+
+- Resolve five QUIC protocol denial-of-service advisories by locking `quinn-proto` to the compatible patched version `0.11.18` ([#150](https://github.com/bijux/bijux-core/pull/150)).
+
+
 ## 0.4.1 – 2026-07-25
 
 ### Added
