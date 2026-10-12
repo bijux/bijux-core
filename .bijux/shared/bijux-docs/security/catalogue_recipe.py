@@ -219,9 +219,12 @@ class CatalogueDerivation:
                 require(values == {name: data for name, data in self.inputs.items()
                                    if name.startswith(directory.relative_to(self.root).as_posix() + '/')},
                         'custom renderer input differs from committed source')
+            # Receipt and admission use the same component-ordered tree identity.
+            # Prefix siblings such as navigation.js and navigation/module.js must
+            # not acquire a different identity through string ordering.
+            identity = shared_module(self.shared / 'security/build_identity.py')
             records.append({'path': directory.relative_to(self.root).as_posix(),
-                            'sha256': json_digest({'files': [{'path': Path(name).relative_to(directory.relative_to(self.root)).as_posix(),
-                                                               'sha256': digest(data)} for name, data in sorted(values.items())]})})
+                            'sha256': identity.tree_identity(directory)})
         return records
 
 
