@@ -55,6 +55,8 @@ std_ref="${BIJUX_STD_REF:-${default_ref}}"
 tag_pattern="${BIJUX_STD_TAG_PATTERN:-${tag_pattern_default}}"
 allow_missing_dirs="${BIJUX_STD_UPDATE_ALLOW_MISSING_DIRS:-0}"
 self_repo_mode="${BIJUX_STD_SELF_REPO_MODE:-auto}"
+preserve_unselected="${BIJUX_STD_UPDATE_PRESERVE_UNSELECTED:-0}"
+[[ "${preserve_unselected}" == 0 || "${preserve_unselected}" == 1 ]] || { echo "ERROR: preserve-unselected must be 0 or 1" >&2; exit 1; }
 all_directories="$(read_directories)"
 selected_directories="$(read_selected_directories)"
 
@@ -154,6 +156,11 @@ if [[ "${self_repo_mode}" == "on" ]]; then
   should_use_self_repo_mode=1
 elif [[ "${self_repo_mode}" == "auto" && "${in_bijux_std_repo}" == "1" ]]; then
   should_use_self_repo_mode=1
+fi
+
+if [[ "${preserve_unselected}" == "1" && ( "${in_bijux_std_repo}" == "1" || "${should_use_self_repo_mode}" == "1" || -z "${BIJUX_STD_CAPABILITIES:-}" || "${allow_missing_dirs}" != "0" ) ]]; then
+  echo "ERROR: additive refresh requires explicit consumer capabilities and all required source directories" >&2
+  exit 1
 fi
 
 if [[ "${should_use_self_repo_mode}" == "1" ]]; then
@@ -282,6 +289,73 @@ done <<<"${all_directories}"
 if ! git -C "${repo_root}" diff --quiet -- "${manifest_local_rel}" || ! git -C "${repo_root}" diff --cached --quiet -- "${manifest_local_rel}"; then
   echo "ERROR: preserve local manifest changes before refresh" >&2; exit 1
 fi
+# An additive refresh retains only installed components proven against their
+# previously accepted authority; a matching local checksum alone grants no trust.
+preserved_directories=""
+preserved_records="${tmp_dir}/preserved-components.tsv"
+: > "${preserved_records}"
+validate_preserved_components() {
+  python3 - "${manifest_path}" "${all_directories}" <<'PY_MANIFEST'
+import re, sys
+from pathlib import Path
+known = set(sys.argv[2].splitlines())
+seen = set()
+for line in Path(sys.argv[1]).read_text().splitlines():
+    fields = line.split()
+    if len(fields) != 2 or not re.fullmatch(r"[0-9a-f]{64}", fields[0]) or fields[1] not in known or fields[1] in seen:
+        raise SystemExit("ERROR: additive refresh requires unique canonical shared manifest rows")
+    seen.add(fields[1])
+PY_MANIFEST
+  while IFS= read -r remote_dir_rel; do
+    if grep -Fxq "${remote_dir_rel}" <<<"${selected_directories}"; then continue; fi
+    local_dir_rel="$(resolve_local_rel "${remote_dir_rel}")"
+    row="$(awk -v rel="${remote_dir_rel}" '$2 == rel {print $1}' "${manifest_path}")"
+    if [[ ! -e "${repo_root}/${local_dir_rel}" && -z "${row}" ]]; then continue; fi
+    [[ -d "${repo_root}/${local_dir_rel}" && ! -L "${repo_root}/${local_dir_rel}" && -n "${row}" ]] || { echo "ERROR: retained component or manifest row is missing: ${remote_dir_rel}" >&2; exit 1; }
+    [[ -n "$(git -C "${repo_root}" ls-files -- "${local_dir_rel}")" && -z "$(git -C "${repo_root}" ls-files --others -- "${local_dir_rel}")" ]] || { echo "ERROR: retained component must contain only tracked inputs: ${remote_dir_rel}" >&2; exit 1; }
+    pin_rel=".github/standards/bijux-std.sha"
+    if [[ "${remote_dir_rel}" == "shared/bijux-docs" ]]; then pin_rel=".github/standards/bijux-docs.sha"; fi
+    pin_path="${repo_root}/${pin_rel}"
+    [[ -f "${pin_path}" && ! -L "${pin_path}" ]] || { echo "ERROR: retained component requires its exact tracked source pin: ${pin_rel}" >&2; exit 1; }
+    git -C "${repo_root}" ls-files --error-unmatch "${pin_rel}" >/dev/null
+    assert_managed_pristine "${pin_rel}"
+    retained_sha="$(cat "${pin_path}")"
+    [[ "${retained_sha}" =~ ^[a-f0-9]{40}$ ]] || { echo "ERROR: retained component pin requires full lowercase SHA" >&2; exit 1; }
+    prior="${tmp_dir}/retained-source-${retained_sha}"
+    if [[ ! -d "${prior}" ]]; then
+      git init --quiet "${prior}"
+      git -C "${prior}" remote add origin "${std_git_url}"
+      git -C "${prior}" fetch --quiet --depth 1 origin "${retained_sha}"
+      git -C "${prior}" checkout --quiet --detach FETCH_HEAD
+    fi
+    BIJUX_STD_GIT_URL="${std_git_url}" bash "${script_dir}/scripts/verify-accepted-source.sh" "${prior}" "${retained_sha}" >/dev/null
+    [[ "$(cat "${pin_path}")" == "${retained_sha}" ]] || { echo "ERROR: retained component source pin changed during verification" >&2; exit 1; }
+    python3 - "${repo_root}/${local_dir_rel}" <<'PY_COMPONENT'
+import os, stat, sys
+from pathlib import Path
+root = Path(sys.argv[1])
+for directory, folders, files in os.walk(root, followlinks=False):
+    for name in folders + files:
+        path = Path(directory) / name
+        mode = path.lstat()
+        if path.is_symlink() or not (stat.S_ISDIR(mode.st_mode) or stat.S_ISREG(mode.st_mode)) or (stat.S_ISREG(mode.st_mode) and mode.st_nlink != 1):
+            raise SystemExit("ERROR: retained component requires regular source paths: " + str(path))
+PY_COMPONENT
+    expected="$(awk -v rel="${remote_dir_rel}" '$2 == rel {print $1}' "${prior}/${manifest_rel}")"
+    actual="$(directory_tree_sha256 "${repo_root}/${local_dir_rel}")"
+    [[ "${expected}" =~ ^[a-f0-9]{64}$ && "${row}" == "${expected}" && "${actual}" == "${expected}" ]] || { echo "ERROR: retained component differs from its accepted source: ${remote_dir_rel}" >&2; exit 1; }
+    if [[ "${remote_dir_rel}" != "shared/bijux-docs" ]]; then
+      newer="$(awk -v rel="${remote_dir_rel}" '$2 == rel {print $1}' "${tmp_dir}/bijux-std/${manifest_rel}")"
+      [[ "${newer}" == "${expected}" ]] || { echo "ERROR: retained runtime component differs from new source; select its capability: ${remote_dir_rel}" >&2; exit 1; }
+    fi
+    printf '%s\t%s\t%s\n' "${remote_dir_rel}" "${retained_sha}" "${actual}" >> "${preserved_records}"
+    preserved_directories="${preserved_directories}${preserved_directories:+$'\n'}${remote_dir_rel}"
+  done <<<"${all_directories}"
+}
+if [[ "${preserve_unselected}" == "1" ]]; then
+  [[ ! -L "${manifest_path}" && -n "$(git -C "${repo_root}" ls-files -- "${manifest_local_rel}")" ]] || { echo "ERROR: additive refresh requires a tracked regular manifest" >&2; exit 1; }
+  validate_preserved_components
+fi
 python3 - "${bijux_std_artifact_root}/source-provenance.json" "${std_git_url}" "${resolved_ref}" "${fetched_sha}" "${BIJUX_STD_ALLOW_LOCAL_SOURCE:-0}" "${BIJUX_STD_UPDATE_DRY_RUN:-0}" <<'PY_RECEIPT'
 import json,sys
 from pathlib import Path
@@ -298,7 +372,7 @@ if [[ "${BIJUX_STD_UPDATE_DRY_RUN:-0}" == "1" ]]; then
   done
   while IFS= read -r remote_dir_rel; do
     local_dir_rel="$(resolve_local_rel "${remote_dir_rel}")"
-    if [[ -n "${BIJUX_STD_CAPABILITIES:-}" && "${in_bijux_std_repo}" == "0" ]] && ! grep -Fxq "${remote_dir_rel}" <<<"${selected_directories}" && [[ -d "${repo_root}/${local_dir_rel}" ]]; then
+    if [[ -n "${BIJUX_STD_CAPABILITIES:-}" && "${in_bijux_std_repo}" == "0" ]] && ! grep -Fxq "${remote_dir_rel}" <<<"${selected_directories}" && [[ "${preserve_unselected}" == "0" && -d "${repo_root}/${local_dir_rel}" ]]; then
       printf 'Remove unselected managed directory %s\n' "${local_dir_rel}"
     fi
     if [[ "${local_dir_rel}" != "${remote_dir_rel}" && -d "${repo_root}/${remote_dir_rel}" ]] && grep -Fxq "${remote_dir_rel}" <<<"${selected_directories}"; then
@@ -363,7 +437,7 @@ for remote_dir_rel in "${update_dirs[@]}"; do
   fi
 done
 
-if [[ -n "${BIJUX_STD_CAPABILITIES:-}" && "${in_bijux_std_repo}" == "0" ]]; then
+if [[ "${preserve_unselected}" == "0" && -n "${BIJUX_STD_CAPABILITIES:-}" && "${in_bijux_std_repo}" == "0" ]]; then
   while IFS= read -r remote_dir_rel; do
     if grep -Fxq "${remote_dir_rel}" <<<"${selected_directories}"; then
       continue
@@ -376,7 +450,18 @@ if [[ -n "${BIJUX_STD_CAPABILITIES:-}" && "${in_bijux_std_repo}" == "0" ]]; then
     fi
   done <<<"${all_directories}"
 fi
-rewrite_manifest_for_directories "${manifest_path}" "${selected_directories}"
+if [[ "${preserve_unselected}" == "1" ]]; then
+  # Retain each existing row and add only newly selected installed components.
+  installed_directories="$(awk '{print $2}' "${manifest_path}")"
+  rewrite_manifest_for_directories "${manifest_path}" "${installed_directories}"
+  original_preserved="$(cat "${preserved_records}")"
+  preserved_directories=""
+  : > "${preserved_records}"
+  validate_preserved_components
+  [[ "$(cat "${preserved_records}")" == "${original_preserved}" ]] || { echo "ERROR: retained components changed during additive refresh" >&2; exit 1; }
+else
+  rewrite_manifest_for_directories "${manifest_path}" "${selected_directories}"
+fi
 
 if [[ -d "${repo_root}/.bijux/shared" && "$(basename "${repo_root}")" != "bijux-std" ]]; then
   if [[ -d "${repo_root}/shared" ]]; then
@@ -393,10 +478,12 @@ if (( ${#skipped_dirs[@]} > 0 )); then
   done
 fi
 
-python3 - "${bijux_std_artifact_root}/source-provenance.json" <<'PY_FINISH'
+python3 - "${bijux_std_artifact_root}/source-provenance.json" "${preserve_unselected}" "${preserved_records}" <<'PY_FINISH'
 import json,sys
 from pathlib import Path
 path=Path(sys.argv[1]);record=json.loads(path.read_text());record['result']='refreshed'
+record['preserve_unselected'] = sys.argv[2] == '1'
+record['retained_components'] = [dict(directory=row[0],source_sha=row[1],tree_sha256=row[2]) for line in Path(sys.argv[3]).read_text().splitlines() if (row := line.split('\t'))]
 path.write_text(json.dumps(record,indent=2)+'\n')
 PY_FINISH
 echo "→ refreshed ${manifest_rel}"

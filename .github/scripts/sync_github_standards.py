@@ -6,6 +6,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -391,11 +392,26 @@ def write_docs_pin(repo_name: str, std_sha: str) -> None:
     pin_file.write_text(f"{std_sha}\n", encoding="utf-8")
 
 
-def write_std_pin(repo_name: str, std_sha: str) -> None:
-    pin_file = resolve_repository_checkout(repo_name) / PIN_PATH
+def write_std_pin(repo_name: str, std_sha: str, *, preserve_docs: bool = False) -> None:
+    if not isinstance(preserve_docs, bool):
+        raise ValueError("preserve_docs must be boolean")
+    repo_dir = resolve_repository_checkout(repo_name)
+    if preserve_docs:
+        if not re.fullmatch(r"[0-9a-f]{40}", std_sha):
+            raise ValueError("preserved component adoption requires a full lowercase runtime SHA")
+        docs_pin = repo_dir / DOCS_PIN_PATH
+        if docs_pin.is_symlink() or not docs_pin.is_file():
+            raise ValueError("preserved documentation authority requires a regular source pin")
+        run(["git", "ls-files", "--error-unmatch", DOCS_PIN_PATH], cwd=repo_dir)
+        if not re.fullmatch(r"[0-9a-f]{40}\n?", docs_pin.read_text()):
+            raise ValueError("preserved documentation authority requires a full lowercase SHA")
+        run(["git", "diff", "--quiet", "--", DOCS_PIN_PATH], cwd=repo_dir)
+        run(["git", "diff", "--cached", "--quiet", "--", DOCS_PIN_PATH], cwd=repo_dir)
+    pin_file = repo_dir / PIN_PATH
     pin_file.parent.mkdir(parents=True, exist_ok=True)
     pin_file.write_text(f"{std_sha}\n", encoding="utf-8")
-    write_docs_pin(repo_name, std_sha)
+    if not preserve_docs:
+        write_docs_pin(repo_name, std_sha)
 
 
 def has_changes(repo_name: str) -> bool:
