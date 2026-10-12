@@ -390,6 +390,8 @@ PY
 
 tmp_dir="$(mktemp -d "${bijux_std_artifact_root}/check.XXXXXX")"
 tmp_manifest="${tmp_dir}/manifest.txt"
+docs_manifest="${tmp_manifest}"
+docs_pin_before=""
 cleanup() {
   rm -rf "${tmp_dir}"
 }
@@ -426,8 +428,38 @@ else
   cp "${remote_manifest_path}" "${tmp_manifest}"
 fi
 
+# Documentation authority may remain on an independently accepted reader
+# source while common workflow components advance. Both sources remain exact.
+docs_pin="${repo_root}/.github/standards/bijux-docs.sha"
+if [[ "$(basename "${repo_root}")" != "bijux-std" && -d "${repo_root}/.bijux/shared/bijux-docs" ]] && grep -Fxq "shared/bijux-docs" <<<"${selected_directories}" && [[ -e "${docs_pin}" || -L "${docs_pin}" ]]; then
+  [[ -f "${docs_pin}" && ! -L "${docs_pin}" ]] || { echo "ERROR: documentation authority requires a regular source pin" >&2; exit 1; }
+  git -C "${repo_root}" ls-files --error-unmatch .github/standards/bijux-docs.sha >/dev/null
+  docs_pin_before="$(cat "${docs_pin}")"
+  [[ "${docs_pin_before}" =~ ^[a-f0-9]{40}$ ]] || { echo "ERROR: documentation authority requires full lowercase SHA" >&2; exit 1; }
+  fetched_source="${tmp_dir}/bijux-std"
+  if ! fetched_sha="$(git -C "${fetched_source}" rev-parse --verify HEAD 2>/dev/null)"; then
+    # Preserve the existing explicitly non-strict same-source fallback. A split
+    # authority always needs both independently fetched accepted objects.
+    [[ "${docs_pin_before}" == "${std_ref}" ]] || { echo "ERROR: separate documentation authority requires independently fetched runtime source" >&2; exit 1; }
+    fetched_sha="${docs_pin_before}"
+  fi
+  if [[ "${docs_pin_before}" != "${fetched_sha}" ]]; then
+    BIJUX_STD_GIT_URL="${std_git_url}" bash "${script_dir}/scripts/verify-accepted-source.sh" "${fetched_source}" "${fetched_sha}"
+    docs_source="${tmp_dir}/documentation-source"
+    git init --quiet "${docs_source}"
+    git -C "${docs_source}" remote add origin "${std_git_url}"
+    git -C "${docs_source}" fetch --quiet --depth 1 origin "${docs_pin_before}"
+    git -C "${docs_source}" checkout --quiet --detach FETCH_HEAD
+    BIJUX_STD_GIT_URL="${std_git_url}" bash "${script_dir}/scripts/verify-accepted-source.sh" "${docs_source}" "${docs_pin_before}"
+    docs_manifest="${docs_source}/${manifest_rel}"
+    [[ -f "${docs_manifest}" && ! -L "${docs_manifest}" ]] || { echo "ERROR: documentation source manifest missing" >&2; exit 1; }
+    require_remote_match=1
+  fi
+fi
 while IFS= read -r dir_rel; do
-  verify_dir_against_manifests "${dir_rel}" "${tmp_manifest}"
+  selected_manifest="${tmp_manifest}"
+  if [[ "${dir_rel}" == "shared/bijux-docs" ]]; then selected_manifest="${docs_manifest}"; fi
+  verify_dir_against_manifests "${dir_rel}" "${selected_manifest}"
 done <<<"${selected_directories}"
 
 verify_no_legacy_root_shared_dirs
@@ -438,5 +470,9 @@ fi
 verify_workflow_run_shell_preambles
 verify_release_pypi_toolchain_inheritance
 verify_release_env_shell_safety
+
+if [[ -n "${docs_pin_before}" && "$(cat "${docs_pin}")" != "${docs_pin_before}" ]]; then
+  echo "ERROR: documentation authority changed during component verification" >&2; exit 1
+fi
 
 echo "✔ bijux-std check passed (ref=${std_ref}, manifest=${manifest_rel}, remote=${git_url_default})"

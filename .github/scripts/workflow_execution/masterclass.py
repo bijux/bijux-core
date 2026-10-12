@@ -128,6 +128,8 @@ def accepted_baseline(source_root: Path, target: Path) -> Path:
 
 GITHUB_SOURCE = 'shared/bijux-gh'
 GITHUB_DESTINATION = '.bijux/shared/bijux-gh/'
+DOCS_PIN_PATH = '.github/standards/bijux-docs.sha'
+DOCS_DESTINATION = '.bijux/shared/bijux-docs/'
 
 
 def baseline_github_tree(baseline: Path) -> dict[str, bytes]:
@@ -169,7 +171,41 @@ def verify_github_tree(target: Path, expected: dict[str, bytes]) -> None:
         raise ValueError('noncanonical complete Masterclass GitHub projection: ' + ', '.join(differences))
 
 
-def expected_masterclass(source_root: Path, baseline: Path, target: Path, policy_sha: str) -> tuple[dict, set]:
+def documentation_authority(source_root: Path, target: Path, policy_sha: str) -> tuple[Path, str]:
+    """Resolve documentation from its independently accepted exact source pin."""
+    sha = read_owned(target, DOCS_PIN_PATH).decode().strip()
+    if not re.fullmatch(r'[0-9a-f]{40}', sha):
+        raise ValueError('Masterclass documentation requires a full lowercase source SHA')
+    if sha == policy_sha:
+        return source_root, sha
+    from .source_authority import git
+    git(target, 'ls-files', '--error-unmatch', DOCS_PIN_PATH)
+    return accepted_policy(source_root, target, sha), sha
+
+
+def verify_documentation_tree(target: Path, expected: dict[str, bytes]) -> None:
+    """Reject uncovered documentation bytes under the retained exact authority."""
+    wanted = {path: body for path, body in expected.items() if path.startswith(DOCS_DESTINATION)}
+    directory = target / DOCS_DESTINATION
+    if directory.is_symlink() or not directory.is_dir():
+        raise ValueError('Masterclass documentation requires its regular source directory')
+    actual = {}
+    for path in sorted(directory.rglob('*')):
+        if path.is_symlink():
+            raise ValueError('Masterclass documentation cannot contain path aliases')
+        if path.is_dir():
+            continue
+        if not path.is_file():
+            raise ValueError('Masterclass documentation requires regular files')
+        relative = path.relative_to(target).as_posix()
+        actual[relative] = read_owned(target, relative)
+    if actual != wanted:
+        raise ValueError('noncanonical complete Masterclass documentation projection')
+
+
+def expected_masterclass(source_root: Path, baseline: Path, target: Path, policy_sha: str,
+                         *, documentation_root: Path | None = None,
+                         documentation_sha: str | None = None) -> tuple[dict, set]:
     """Advance only governance and docs; complementary programs keep their baseline."""
     _, baseline_renderer = owning_scripts(baseline)
     original, absent = baseline_renderer.WORKFLOW_EXECUTION.verification.expected_projection(baseline, target, REPOSITORY)
@@ -228,13 +264,25 @@ def expected_masterclass(source_root: Path, baseline: Path, target: Path, policy
     for relative in ('.github/workflows/deploy-docs.yml', '.bijux/shared/bijux-gh/workflows/deploy-docs.yml',
                      '.bijux/shared/bijux-gh/scripts/publication_admission.py'):
         prepared[relative] = current_projection[relative]
-    docs_root = source_root / 'shared/bijux-docs'
+    if (documentation_root is None) != (documentation_sha is None):
+        raise ValueError('Masterclass documentation source requires a complete authority pair')
+    documentation_root = source_root if documentation_root is None else documentation_root
+    documentation_sha = policy_sha if documentation_sha is None else documentation_sha
+    if not re.fullmatch(r'[0-9a-f]{40}', documentation_sha):
+        raise ValueError('Masterclass documentation requires a full lowercase source SHA')
+    docs_root = documentation_root / 'shared/bijux-docs'
+    if docs_root.is_symlink() or not docs_root.is_dir():
+        raise ValueError('Masterclass documentation requires its regular source directory')
     for path in sorted(docs_root.rglob('*')):
+        if path.is_symlink():
+            raise ValueError('Masterclass documentation source cannot contain path aliases')
         if path.is_dir():
             continue
-        relative = path.relative_to(source_root).as_posix()
-        prepared['.bijux/' + relative] = read_owned(source_root, relative)
-    prepared['.github/standards/bijux-docs.sha'] = (policy_sha + '\n').encode()
+        if not path.is_file():
+            raise ValueError('Masterclass documentation source requires regular files')
+        relative = path.relative_to(documentation_root).as_posix()
+        prepared['.bijux/' + relative] = read_owned(documentation_root, relative)
+    prepared[DOCS_PIN_PATH] = (documentation_sha + '\n').encode()
     authority = {'schema': 1, 'repository': REPOSITORY, 'baseline_sha': BASELINE_SHA, 'execution_policy_sha': policy_sha}
     prepared[AUTHORITY_PATH] = (json.dumps(authority, indent=2, sort_keys=True) + '\n').encode()
     snapshots = '.github/standards/workflow-sources/'
@@ -251,8 +299,11 @@ def expected_masterclass(source_root: Path, baseline: Path, target: Path, policy
 def verify_masterclass(source_root: Path, target: Path) -> dict:
     authority = read_authority(target)
     baseline = accepted_baseline(source_root, target)
-    expected, absent = expected_masterclass(source_root, baseline, target, authority['execution_policy_sha'])
+    docs_root, docs_sha = documentation_authority(source_root, target, authority['execution_policy_sha'])
+    expected, absent = expected_masterclass(source_root, baseline, target, authority['execution_policy_sha'],
+                                           documentation_root=docs_root, documentation_sha=docs_sha)
     verify_github_tree(target, expected)
+    verify_documentation_tree(target, expected)
     failures, verified = [], {}
     checksum_rows = [line.split() for line in read_owned(target, '.github/bijux-std-shared.sha256').decode().splitlines()]
     for relative in [AUTHORITY_PATH, '.github/scripts/workflow_execution/masterclass.py', '.github/workflows/dependency-notice.yml']:
@@ -274,7 +325,11 @@ def verify_masterclass(source_root: Path, target: Path) -> dict:
              for path in (target / '.github/workflows').glob('*.yml')
              if str(path.relative_to(target)) not in expected}
     validate_owned_execution(owned, POLICY)
-    current, current_absent = expected_masterclass(source_root, baseline, target, authority['execution_policy_sha'])
+    final_docs_root, final_docs_sha = documentation_authority(source_root, target, authority['execution_policy_sha'])
+    current, current_absent = expected_masterclass(source_root, baseline, target, authority['execution_policy_sha'],
+                                                 documentation_root=final_docs_root, documentation_sha=final_docs_sha)
+    if (final_docs_root, final_docs_sha) != (docs_root, docs_sha):
+        failures.append('Masterclass documentation authority changed during verification')
     if current != expected or current_absent != absent or read_authority(target) != authority:
         failures.append('Masterclass source authority changed during verification')
     if failures:
@@ -292,8 +347,10 @@ def admit_previous_projection(source_root: Path, target: Path) -> Path:
     return previous
 
 
-def promote_masterclass(source_root: Path, target: Path, policy_sha: str) -> dict:
+def promote_masterclass(source_root: Path, target: Path, policy_sha: str, *, keep_documentation: bool = False) -> dict:
     """Promote accepted governance and docs without advancing the program baseline."""
+    if type(keep_documentation) is not bool:
+        raise ValueError('Masterclass documentation preservation must be explicit boolean selection')
     source_root, target = source_root.resolve(), target.resolve()
     if target.name != REPOSITORY or source_root == target or not source_root.is_relative_to(target / 'artifacts'):
         raise ValueError('Masterclass policy source must use its owning artifact cache')
@@ -314,21 +371,31 @@ def promote_masterclass(source_root: Path, target: Path, policy_sha: str) -> dic
     baseline = accepted_baseline(source_root, target)
     _, baseline_renderer = owning_scripts(baseline)
     baseline_expected, baseline_absent = baseline_renderer.WORKFLOW_EXECUTION.verification.expected_projection(baseline, target, REPOSITORY)
-    expected, absent = expected_masterclass(source_root, baseline, target, policy_sha)
     previous = None
     if (target / AUTHORITY_PATH).exists():
         authority = read_authority(target)
-        if authority['execution_policy_sha'] == policy_sha:
+        if (authority['execution_policy_sha'] == policy_sha
+                and (keep_documentation or read_owned(target, DOCS_PIN_PATH).decode().strip() == policy_sha)):
             verify_masterclass(source_root, target)
             return {'repository': REPOSITORY, 'changed_paths': [], 'authorities': authority}
         previous = admit_previous_projection(source_root, target)
+    docs_root, docs_sha = (documentation_authority(source_root, target, policy_sha)
+                           if keep_documentation else (source_root, policy_sha))
+    expected, absent = expected_masterclass(source_root, baseline, target, policy_sha,
+                                           documentation_root=docs_root, documentation_sha=docs_sha)
     github_preimage = baseline_github_tree(baseline)
     if previous is None:
         previous_expected = baseline_expected
     else:
         _, previous_renderer = owning_scripts(previous)
-        previous_expected, _ = previous_renderer.WORKFLOW_EXECUTION.masterclass.expected_masterclass(
-            previous, baseline, target, authority['execution_policy_sha'])
+        if read_owned(target, DOCS_PIN_PATH).decode().strip() == authority['execution_policy_sha']:
+            previous_expected, _ = previous_renderer.WORKFLOW_EXECUTION.masterclass.expected_masterclass(
+                previous, baseline, target, authority['execution_policy_sha'])
+        else:
+            previous_docs_root, previous_docs_sha = documentation_authority(previous, target, authority['execution_policy_sha'])
+            previous_expected, _ = previous_renderer.WORKFLOW_EXECUTION.masterclass.expected_masterclass(
+                previous, baseline, target, authority['execution_policy_sha'],
+                documentation_root=previous_docs_root, documentation_sha=previous_docs_sha)
     github_preimage.update({path: body for path, body in previous_expected.items()
                            if path.startswith(GITHUB_DESTINATION) and body is not None})
     verify_github_tree(target, github_preimage)
@@ -338,6 +405,10 @@ def promote_masterclass(source_root: Path, target: Path, policy_sha: str) -> dic
     for relative in (() if previous is not None else baseline_absent):
         if (target / relative).exists() or (target / relative).is_symlink():
             raise ValueError('Masterclass disabled baseline workflow is present: ' + relative)
+    if keep_documentation:
+        verify_documentation_tree(target, expected)
+        if read_owned(target, DOCS_PIN_PATH).decode().strip() != docs_sha:
+            raise ValueError('Masterclass retained documentation pin changed before promotion')
     changed = []
     for relative, body in expected.items():
         if body is None:

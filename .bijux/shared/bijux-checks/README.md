@@ -29,6 +29,36 @@ managed directories and writes a manifest containing only selected directories.
 Without `BIJUX_STD_CAPABILITIES`, synchronization retains the complete shared
 set for existing consumers.
 
+An additive refresh can preserve installed, independently accepted components while
+advancing common governance. Set `BIJUX_STD_UPDATE_PRESERVE_UNSELECTED=1` together
+with an explicit capability selection, and run the updater from the exact accepted
+source checkout. For example, select `BIJUX_STD_CAPABILITIES=common` to retain the
+documentation, Python and Rust components. This mode preserves their manifest rows
+and refuses modified, untracked, aliased or unaccepted inputs. Unselected runtime
+components must also match the new source; otherwise select their capability.
+The default replacement behaviour above remains unchanged.
+
+The governance writer exposes `write_std_pin(..., preserve_docs=True)` to retain
+the tracked `.github/standards/bijux-docs.sha` while advancing the standard pin.
+Use it only after qualifying the selected shared components and canonical workflow
+projection. Full consumer checks verify retained documentation against its own
+exact accepted source and other components against the standard source. Refresh
+and validate both checksum manifests before committing the composed result.
+A preserved source is not permission to reuse an artifact from a different commit.
+
+Consumers with installed documentation use
+`scripts/verify-documentation-components.sh` for their source-of-truth check.
+`BIJUX_STD_ROOT` and `BIJUX_STD_REF` continue to select the declared documentation
+source; the separate standard pin selects common governance. The check covers
+the actual installed capability profile, both accepted sources, the retained
+documentation projection and optional `DOCS_SITE_DIR` verification. Unknown
+retained source-of-truth contracts are refused. Repositories without installed
+documentation continue to use their applicable shared standards checks.
+
+Masterclass uses its canonical `promote_masterclass(..., keep_documentation=True)`
+composition instead of the common updater. It preserves its accepted programme
+baseline and independently admitted documentation while advancing governance.
+
 ## Source Pinning
 
 `BIJUX_STD_REF` accepts an exact commit SHA, branch, or tag. Downstream
