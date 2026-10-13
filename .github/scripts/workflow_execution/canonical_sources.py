@@ -11,6 +11,8 @@ from .source_loading import MODULE_ORDER, load_script
 
 SNAPSHOT_DIRECTORY = ".github/standards/workflow-sources"
 BASE_WORKFLOWS = ("bijux-std", "automerge-pr")
+AUTHORED_WORKFLOW_SOURCES = {"bijux-std": f"{SNAPSHOT_DIRECTORY}/bijux-std.yml",
+                           "automerge-pr": ".github/workflows/automerge-pr.yml"}
 
 
 def read_owned(root: Path, relative: str) -> bytes:
@@ -56,6 +58,8 @@ def capture_sources(source_root: Path) -> dict[str, bytes]:
              if not source.startswith(SNAPSHOT_DIRECTORY + "/")
              and source != ".github/bijux-std-shared.sha256"}
     paths.update(entry["source"] for entry in manifest["workflow_inventory"]["managed_workflows"])
+    # Std's canonical authored workflow stays authoritative when its runtime projection changes.
+    paths.update(AUTHORED_WORKFLOW_SOURCES.values())
     paths.update(f".github/scripts/workflow_execution/{name}.py" for name in (*MODULE_ORDER, "__init__"))
     paths.update({manifest_path, ".github/scripts/check_workflow_projection.py",
                   "shared/bijux-checks/scripts/verify-accepted-source.sh",
@@ -64,7 +68,7 @@ def capture_sources(source_root: Path) -> dict[str, bytes]:
     inputs = {relative: read_owned(source_root, relative) for relative in sorted(paths)}
     record = {"schema": 1, "inputs": {relative: hashlib.sha256(body).hexdigest()
                                        for relative, body in inputs.items()}}
-    result = {f"{SNAPSHOT_DIRECTORY}/{name}.yml": inputs[f".github/workflows/{name}.yml"]
+    result = {f"{SNAPSHOT_DIRECTORY}/{name}.yml": inputs[AUTHORED_WORKFLOW_SOURCES[name]]
               for name in BASE_WORKFLOWS}
     result[f"{SNAPSHOT_DIRECTORY}/source-manifest.json"] = (json.dumps(record, indent=2, sort_keys=True) + "\n").encode()
     return result

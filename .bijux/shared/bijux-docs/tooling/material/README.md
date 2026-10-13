@@ -23,6 +23,23 @@ eight-second no-byte-progress bound, response admission and current-attempt chec
 original index request is never subscribed because its `shareReplay(1)` retains
 the underlying transport after downstream unsubscribe.
 
+Result locations must resolve to the index endpoint's exact site base, origin
+and HTTP scheme without credentials. A single unsafe or out-of-site destination
+rejects the whole corpus with `invalid-index`; ordinary Retry can admit corrected
+source data. Relative locations, queries and encoded fragments retain their
+original strings for native result links.
+
+Title, snippet and optional tag-label markup is parsed in detached template contents before native
+worker setup. Only explicit presentational HTML elements remain, with every
+attribute removed. Resource, executable, template and foreign-namespace subtrees
+are discarded; other HTML elements unwrap their readable children. Comments are
+removed and each field is limited to 100,000 parsed elements. Parser failure
+refuses the corpus rather than passing unexamined markup into native rendering.
+Native scoring, highlighting and safe presentational text remain native-owned.
+Optional tags must be an array of strings with at most 50,000 labels; label
+characters and array entries count toward the existing total character budget.
+Malformed tags refuse the whole corpus with the same truthful Retry behavior.
+
 The shared outer Observable stays alive after index failure. Both native
 subscribers receive the same admitted data after ordinary retry. The error path
 announces availability without emitting fabricated empty data or terminating
@@ -210,3 +227,15 @@ Characters remain literal text in a focused query or authored editable field.
 Named Search controls retain ordinary Tab/Space activation, and native query
 and result keyboard subscriptions, Escape and browser modifier defaults are
 unchanged. Missing or duplicate upstream shortcut boundaries fail before output.
+
+## Native clipboard feedback
+
+The admitted ClipboardJS copy paths now require the copy command's actual boolean
+success before emitting success. False returns and caught command exceptions use
+its native error event. The scoped `clipboard-feedback.js` controller retains the
+copy button's focus, selects its original readable code when available and adds
+an accessible status explaining the browser's manual Copy alternative. A later
+successful ordinary activation removes the failure status and uses Material's
+unchanged native success toast. No clipboard API replacement or global error
+interception is installed. The compiler admits each copy path and the native
+subscription exactly once; missing or duplicate boundaries refuse emission.

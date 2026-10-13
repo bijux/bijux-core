@@ -50,6 +50,7 @@ def expected_projection(source_root: Path, target: Path, repository: str) -> tup
             prepared[entry["consumer_runtime"]] = runtime.get(entry["consumer_runtime"], raw)
         else:
             absent.add(entry["consumer_runtime"])
+    absent.update(sync.WORKFLOW_EXECUTION.retired_package_workflows.retired_paths(repository))
     absent -= set(prepared)
     prepared.update(renderer.prepare_repo_files(repository, manifest))
     prepared.update(capture_sources(source_root))

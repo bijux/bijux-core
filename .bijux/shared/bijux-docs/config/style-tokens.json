@@ -6,7 +6,7 @@
     "namespace": "--md-",
     "owner": "mkdocs-material",
     "provenance": "tooling/material/runtime-provenance.json",
-    "runtime_sha256": "4b099ef8b0fc29069e50781122ce83e6c955ec2a46b6537b06c856d746c6727b",
+    "runtime_sha256": "276df314ce6f8caef505d97be62d859022c7f5314a2411702d19775b093a2f83",
     "runtime_examples": [
       "--md-tooltip-x",
       "--md-tooltip-y",

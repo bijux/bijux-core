@@ -10,13 +10,45 @@
     window.dispatchEvent(new CustomEvent("bijux:search-index-status", { detail: state }));
   }
 
-  function admitted(index) {
+  const presentationTags = new Set(["p", "br", "pre", "code", "em", "strong", "b", "i", "s", "sub", "sup", "kbd", "samp", "span", "div", "ul", "ol", "li", "blockquote", "h1", "h2", "h3", "h4", "h5", "h6", "table", "thead", "tbody", "tfoot", "tr", "th", "td"]);
+  const excludedTags = new Set(["script", "style", "template", "iframe", "object", "embed", "link", "meta", "img", "picture", "audio", "video", "source", "svg", "math"]);
+
+  function inertMarkup(value) {
+    if (!value.includes("<")) return value;
+    // Template contents never enter the live document or dispatch resource events.
+    // Keep presentational search markup so native scoring and highlighting remain owned.
+    const template = document.createElement("template");
+    template.innerHTML = value;
+    const comments = [], walker = document.createTreeWalker(template.content, 128);
+    while (walker.nextNode()) comments.push(walker.currentNode);
+    for (const comment of comments) comment.remove();
+    const elements = [...template.content.querySelectorAll("*")];
+    if (elements.length > 100000) throw new Error("Search markup exceeds the bounded parser tree");
+    for (const node of elements.reverse()) {
+      if (node.namespaceURI !== "http://www.w3.org/1999/xhtml" || excludedTags.has(node.localName)) {
+        node.remove();
+      } else if (!presentationTags.has(node.localName)) {
+        node.replaceWith(...node.childNodes);
+      } else {
+        for (const attribute of [...node.attributes]) node.removeAttribute(attribute.name);
+      }
+    }
+    return template.innerHTML;
+  }
+
+  function admitted(index, indexURL) {
     if (!index || typeof index.config !== "object" || !index.config || Array.isArray(index.config) || !Array.isArray(index.docs) || index.docs.length > 50000) return false;
     let characters = 0;
+    const site = new URL("../", indexURL);
     for (const doc of index.docs) {
       if (!doc || typeof doc.location !== "string" || typeof doc.title !== "string" || typeof doc.text !== "string") return false;
+      if (doc.tags !== undefined && (!Array.isArray(doc.tags) || doc.tags.length > 50000 || !doc.tags.every(tag => typeof tag === "string"))) return false;
       characters += doc.location.length + doc.title.length + doc.text.length;
+      if (doc.tags) characters += doc.tags.length + doc.tags.reduce((total, tag) => total + tag.length, 0);
       if (characters > 40 * 1024 * 1024) return false;
+      let target;
+      try { target = new URL(doc.location, site); } catch (_) { return false; }
+      if (!/^https?:$/.test(target.protocol) || target.origin !== site.origin || target.username || target.password || !target.pathname.startsWith(site.pathname)) return false;
     }
     return true;
   }
@@ -80,7 +112,10 @@
             if (xhr.responseText.length > 40 * 1024 * 1024) { unavailable("index-size"); return; }
             let index;
             try { index = JSON.parse(xhr.responseText); } catch (_) { unavailable("invalid-index"); return; }
-            if (!admitted(index)) { unavailable("invalid-index"); return; }
+            if (!admitted(index, indexURL)) { unavailable("invalid-index"); return; }
+            try {
+              index = { ...index, docs: index.docs.map(doc => ({ ...doc, title: inertMarkup(doc.title), text: inertMarkup(doc.text), ...(doc.tags !== undefined ? { tags: doc.tags.map(inertMarkup) } : {}) })) };
+            } catch (_) { unavailable("invalid-index"); return; }
             if (Date.now() - startedAt >= totalDeadline) { unavailable("timeout"); return; }
             settled = true; cached = true;
             clearTimers(); detach(xhr); attempt = null;

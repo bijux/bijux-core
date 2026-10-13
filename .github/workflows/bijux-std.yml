@@ -13,6 +13,45 @@
 "permissions":
   "contents": "read"
 "jobs":
+  "input-plan":
+    "name": "${{ (github.event.pull_request.user.login == 'dependabot[bot]' || (github.event.pull_request.user.login == 'github-actions[bot]' && github.event.pull_request.head.ref == 'automation/dependency-lock-refresh')) && 'unverified dependency / ' || '' }}std / input plan"
+    "if": "${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (github.repository == 'bijux/bijux-std') }}"
+    "runs-on": "ubuntu-latest"
+    "timeout-minutes": 3
+    "permissions":
+      "contents": "read"
+      "actions": "read"
+    "outputs":
+      "frontend": "${{ steps.decision.outputs.frontend }}"
+    "steps":
+      - "name": "Checkout complete source and official main history"
+        "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
+        "with":
+          "fetch-depth": 0
+      - "name": "Select complete proof families from owned inputs"
+        "id": "plan"
+        "env":
+          "EXPECTED_BASELINE": "${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || '' }}"
+        "run": "python3 -B tests/bijux-docs/execution/input_planning/cli.py plan"
+      - "name": "Prepare exact runtime for eligible accepted proof"
+        "if": "${{ steps.plan.outputs.frontend == 'false' }}"
+        "uses": "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1"
+        "with":
+          "node-version": "24.21.0"
+      - "name": "Admit accepted original proof or select fresh execution"
+        "id": "decision"
+        "env":
+          "GH_TOKEN": "${{ github.token }}"
+          "EXPECTED_BASELINE": "${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || '' }}"
+        "run": "python3 -B tests/bijux-docs/execution/input_planning/cli.py select"
+      - "name": "Retain exact current-source input plan"
+        "if": "always()"
+        "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9"
+        "with":
+          "name": "docs-input-plan-${{ github.sha }}-${{ github.run_attempt }}"
+          "path": "artifacts/bijux-docs/input-plan"
+          "if-no-files-found": "error"
+          "retention-days": 14
   "checks":
     "name": "${{ (github.event.pull_request.user.login == 'dependabot[bot]' || (github.event.pull_request.user.login == 'github-actions[bot]' && github.event.pull_request.head.ref == 'automation/dependency-lock-refresh')) && 'unverified dependency / ' || '' }}std / ${{ matrix.check }}"
     "if": "${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (github.repository == 'bijux/bijux-std' || github.repository == 'bijux/bijux.github.io' || github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]') }}"
@@ -36,7 +75,7 @@
           "node-version": "24.21.0"
       - "name": "Prepare hub documentation builder"
         "if": "${{ matrix.check == 'contracts' && github.repository == 'bijux/bijux.github.io' }}"
-        "uses": "astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7"
+        "uses": "astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884"
         "with":
           "version": "0.11.17"
           "enable-cache": false
@@ -63,10 +102,17 @@
     "name": "${{ (github.event.pull_request.user.login == 'dependabot[bot]' || (github.event.pull_request.user.login == 'github-actions[bot]' && github.event.pull_request.head.ref == 'automation/dependency-lock-refresh')) && 'unverified dependency / ' || '' }}std / report"
     "if": "${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (always() && (github.repository == 'bijux/bijux-std' || github.repository == 'bijux/bijux.github.io' || github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]')) }}"
     "needs":
+      - "input-plan"
       - "checks"
       - "navigation"
       - "catalogue-renderer"
       - "renderer-controls"
+      - "navigation-fixtures"
+      - "navigation-browsers"
+      - "publication-commands"
+      - "persisted-native-reader"
+      - "frontend-browser-faults"
+      - "frontend-public-faults"
     "permissions":
       "contents": "read"
       "actions": "read"
@@ -77,23 +123,43 @@
         "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
         "with":
           "fetch-depth": 0
+      - "name": "Prepare exact runtime for accepted original proof"
+        "if": "${{ github.repository == 'bijux/bijux-std' && needs.input-plan.outputs.frontend == 'false' }}"
+        "uses": "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1"
+        "with":
+          "node-version": "24.21.0"
+      - "name": "Download exact current-source input plan"
+        "if": "${{ github.repository == 'bijux/bijux-std' && github.run_attempt == 1 }}"
+        "uses": "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333"
+        "with":
+          "name": "docs-input-plan-${{ github.sha }}-${{ github.run_attempt }}"
+          "path": "artifacts/bijux-docs/input-plan"
       - "name": "Require applicable source and rendered checks"
         "shell": "bash"
         "env":
           "GH_TOKEN": "${{ github.token }}"
           "EXPECTED_WORKFLOW_HEAD": "${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}"
+          "PLAN_RESULT": "${{ needs.input-plan.result }}"
+          "EXPECTED_BASELINE": "${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || '' }}"
+          "EXPECTED_FRONTEND": "${{ needs.input-plan.outputs.frontend }}"
+          "FIXTURE_RESULT": "${{ needs.navigation-fixtures.result }}"
+          "BROWSER_RESULT": "${{ needs.navigation-browsers.result }}"
+          "COMMAND_RESULT": "${{ needs.publication-commands.result }}"
+          "PERSISTED_RESULT": "${{ needs.persisted-native-reader.result }}"
+          "FAULT_BROWSER_RESULT": "${{ needs.frontend-browser-faults.result }}"
+          "FAULT_PUBLIC_RESULT": "${{ needs.frontend-public-faults.result }}"
           "CHECK_RESULT": "${{ needs.checks.result }}"
           "NAVIGATION_RESULT": "${{ needs.navigation.result }}"
           "CATALOGUE_RESULT": "${{ needs.catalogue-renderer.result }}"
           "RENDERER_RESULT": "${{ needs.renderer-controls.result }}"
-        "run": "set -euo pipefail\nif [[ \"$GITHUB_REPOSITORY\" == \"bijux/bijux-std\" && \"${GITHUB_RUN_ATTEMPT:-1}\" -gt 1 ]]; then\n  python3 tests/bijux-docs/execution/job_budget.py --observe-latest \\\n    --run-id \"$GITHUB_RUN_ID\" --attempt \"$GITHUB_RUN_ATTEMPT\" \\\n    --workflow-head \"$EXPECTED_WORKFLOW_HEAD\" \\\n    --output artifacts/bijux-docs/job-budget/qualification.json\nelse\n  test \"$CHECK_RESULT\" = success\n  if [[ \"$GITHUB_REPOSITORY\" == \"bijux/bijux-std\" ]]; then\n    test \"$NAVIGATION_RESULT\" = success\n    test \"$CATALOGUE_RESULT\" = success\n    test \"$RENDERER_RESULT\" = success\n  else\n    test \"$NAVIGATION_RESULT\" = skipped\n    test \"$CATALOGUE_RESULT\" = skipped\n    test \"$RENDERER_RESULT\" = skipped\n  fi\nfi\n"
+        "run": "set -euo pipefail\nif [[ \"$GITHUB_REPOSITORY\" == \"bijux/bijux-std\" ]]; then\n  if [[ \"${GITHUB_RUN_ATTEMPT:-1}\" -gt 1 ]]; then\n    python3 -B tests/bijux-docs/execution/input_planning/cli.py plan\n    python3 -B tests/bijux-docs/execution/input_planning/cli.py select\n    python3 -B tests/bijux-docs/execution/input_planning/cli.py verify --accepted-proof --selection-only --output artifacts/bijux-docs/input-plan/report-qualification.json\n  else\n    test \"$PLAN_RESULT\" = success\n    python3 -B tests/bijux-docs/execution/input_planning/cli.py verify --accepted-proof --output artifacts/bijux-docs/input-plan/report-qualification.json\n  fi\n  test \"$NAVIGATION_RESULT\" = success\n  if [[ \"${{ needs.input-plan.outputs.frontend }}\" == false ]]; then\n    test \"$CHECK_RESULT\" = success\n    exit 0\n  fi\nfi\nif [[ \"$GITHUB_REPOSITORY\" == \"bijux/bijux-std\" && \"${GITHUB_RUN_ATTEMPT:-1}\" -gt 1 ]]; then\n  python3 tests/bijux-docs/execution/job_budget.py --observe-latest \\\n    --run-id \"$GITHUB_RUN_ID\" --attempt \"$GITHUB_RUN_ATTEMPT\" \\\n    --workflow-head \"$EXPECTED_WORKFLOW_HEAD\" \\\n    --output artifacts/bijux-docs/job-budget/qualification.json\nelse\n  test \"$CHECK_RESULT\" = success\n  if [[ \"$GITHUB_REPOSITORY\" == \"bijux/bijux-std\" ]]; then\n    test \"$NAVIGATION_RESULT\" = success\n    test \"$CATALOGUE_RESULT\" = success\n    test \"$RENDERER_RESULT\" = success\n  else\n    test \"$NAVIGATION_RESULT\" = skipped\n    test \"$CATALOGUE_RESULT\" = skipped\n    test \"$RENDERER_RESULT\" = skipped\n  fi\nfi\n"
       - "name": "Verify complete frontend job duration"
-        "if": "${{ github.repository == 'bijux/bijux-std' && github.run_attempt == 1 }}"
+        "if": "${{ github.repository == 'bijux/bijux-std' && github.run_attempt == 1 && needs.input-plan.outputs.frontend != 'false' }}"
         "shell": "bash"
         "env":
           "GH_TOKEN": "${{ github.token }}"
           "EXPECTED_WORKFLOW_HEAD": "${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}"
-        "run": "set -euo pipefail\npython3 - <<'PYTHON'\nimport importlib.util, json, math, os, pathlib, time, urllib.request\noutput = pathlib.Path(\"artifacts/bijux-docs/job-budget\")\noutput.mkdir(parents=True, exist_ok=True)\nbase = f\"{os.environ['GITHUB_API_URL']}/repos/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}/attempts/{os.environ['GITHUB_RUN_ATTEMPT']}\"\ndef read(suffix=\"\", *, api_base=base, timeout=20):\n    request = urllib.request.Request(api_base + suffix, headers={\n        \"Accept\": \"application/vnd.github+json\", \"Authorization\": \"Bearer \" + os.environ[\"GH_TOKEN\"],\n        \"X-GitHub-Api-Version\": \"2022-11-28\", \"Cache-Control\": \"no-cache\"})\n    with urllib.request.urlopen(request, timeout=timeout) as response:\n        return json.load(response)\nrun = read()\n(output / \"workflow-run.json\").write_text(json.dumps(run, indent=2) + \"\\n\")\nif (run[\"id\"] != int(os.environ[\"GITHUB_RUN_ID\"]) or run[\"run_attempt\"] != int(os.environ[\"GITHUB_RUN_ATTEMPT\"])\n        or run[\"head_sha\"] != os.environ[\"EXPECTED_WORKFLOW_HEAD\"]):\n    raise SystemExit(\"Workflow observation does not match this event's source and attempt\")\njobs = read(\"/jobs?per_page=100&page=1\")\nfor page in range(2, math.ceil(jobs[\"total_count\"] / 100) + 1):\n    part = read(f\"/jobs?per_page=100&page={page}\")\n    if part[\"total_count\"] != jobs[\"total_count\"]:\n        raise SystemExit(\"Workflow job inventory changed during observation\")\n    jobs[\"jobs\"].extend(part[\"jobs\"])\n(output / \"jobs-initial.json\").write_text(json.dumps(jobs, indent=2) + \"\\n\")\ndef load(path, name):\n    spec = importlib.util.spec_from_file_location(name, path)\n    module = importlib.util.module_from_spec(spec)\n    spec.loader.exec_module(module)\n    return module\nbudget = load(\"tests/bijux-docs/execution/job_budget.py\", \"frontend_budget\")\nregistry = load(\"tests/bijux-docs/execution/browser_gate.py\", \"frontend_registry\")\ndeadline = time.monotonic() + 60\ndef fresh_job(identifier):\n    remaining = deadline - time.monotonic()\n    if remaining <= 0:\n        raise SystemExit(\"Job metadata refresh exceeded its bounded observation window\")\n    api_base = f\"{os.environ['GITHUB_API_URL']}/repos/{os.environ['GITHUB_REPOSITORY']}/actions/jobs/{identifier}\"\n    observed = read(api_base=api_base, timeout=min(10, remaining))\n    (output / f\"job-refresh-{identifier}.json\").write_text(json.dumps(observed, indent=2) + \"\\n\")\n    return observed\njobs = budget.refresh_nonterminal(jobs, fetch=fresh_job, groups=registry.GROUPS,\n    engines=registry.ENGINES, run_id=int(os.environ[\"GITHUB_RUN_ID\"]),\n    attempt=int(os.environ[\"GITHUB_RUN_ATTEMPT\"]), head=os.environ[\"EXPECTED_WORKFLOW_HEAD\"])\n(output / \"jobs.json\").write_text(json.dumps(jobs, indent=2) + \"\\n\")\nPYTHON\npython3 tests/bijux-docs/execution/job_budget.py \\\n  --jobs-json artifacts/bijux-docs/job-budget/jobs.json \\\n  --run-id \"$GITHUB_RUN_ID\" --attempt \"$GITHUB_RUN_ATTEMPT\" \\\n  --workflow-head \"$EXPECTED_WORKFLOW_HEAD\" \\\n  --output artifacts/bijux-docs/job-budget/qualification.json\n"
+        "run": "set -euo pipefail\npython3 - <<'PYTHON'\nimport importlib.util, json, math, os, pathlib, time, urllib.request\noutput = pathlib.Path(\"artifacts/bijux-docs/job-budget\")\noutput.mkdir(parents=True, exist_ok=True)\nbase = f\"{os.environ['GITHUB_API_URL']}/repos/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}/attempts/{os.environ['GITHUB_RUN_ATTEMPT']}\"\ndef read(suffix=\"\", *, api_base=base, timeout=20):\n    request = urllib.request.Request(api_base + suffix, headers={\n        \"Accept\": \"application/vnd.github+json\", \"Authorization\": \"Bearer \" + os.environ[\"GH_TOKEN\"],\n        \"X-GitHub-Api-Version\": \"2022-11-28\", \"Cache-Control\": \"no-cache\"})\n    with urllib.request.urlopen(request, timeout=timeout) as response:\n        return json.load(response)\nrun = read()\n(output / \"workflow-run.json\").write_text(json.dumps(run, indent=2) + \"\\n\")\nif (run[\"id\"] != int(os.environ[\"GITHUB_RUN_ID\"]) or run[\"run_attempt\"] != int(os.environ[\"GITHUB_RUN_ATTEMPT\"])\n        or run[\"head_sha\"] != os.environ[\"EXPECTED_WORKFLOW_HEAD\"]):\n    raise SystemExit(\"Workflow observation does not match this event's source and attempt\")\njobs = read(\"/jobs?per_page=100&page=1\")\nfor page in range(2, math.ceil(jobs[\"total_count\"] / 100) + 1):\n    part = read(f\"/jobs?per_page=100&page={page}\")\n    if part[\"total_count\"] != jobs[\"total_count\"]:\n        raise SystemExit(\"Workflow job inventory changed during observation\")\n    jobs[\"jobs\"].extend(part[\"jobs\"])\n(output / \"jobs-initial.json\").write_text(json.dumps(jobs, indent=2) + \"\\n\")\ndef load(path, name):\n    spec = importlib.util.spec_from_file_location(name, path)\n    module = importlib.util.module_from_spec(spec)\n    spec.loader.exec_module(module)\n    return module\nbudget = load(\"tests/bijux-docs/execution/job_budget.py\", \"frontend_budget\")\nregistry = load(\"tests/bijux-docs/execution/browser_gate.py\", \"frontend_registry\")\ndeadline = time.monotonic() + 60\ndef fresh_job(identifier):\n    remaining = deadline - time.monotonic()\n    if remaining <= 0:\n        raise SystemExit(\"Job metadata refresh exceeded its bounded observation window\")\n    api_base = f\"{os.environ['GITHUB_API_URL']}/repos/{os.environ['GITHUB_REPOSITORY']}/actions/jobs/{identifier}\"\n    observed = read(api_base=api_base, timeout=min(10, remaining))\n    (output / f\"job-refresh-{identifier}.json\").write_text(json.dumps(observed, indent=2) + \"\\n\")\n    return observed\njobs = budget.refresh_nonterminal(jobs, fetch=fresh_job, groups=registry.BATCHES,\n    engines=registry.ENGINES, run_id=int(os.environ[\"GITHUB_RUN_ID\"]),\n    attempt=int(os.environ[\"GITHUB_RUN_ATTEMPT\"]), head=os.environ[\"EXPECTED_WORKFLOW_HEAD\"])\n(output / \"jobs.json\").write_text(json.dumps(jobs, indent=2) + \"\\n\")\nPYTHON\npython3 tests/bijux-docs/execution/job_budget.py \\\n  --jobs-json artifacts/bijux-docs/job-budget/jobs.json \\\n  --run-id \"$GITHUB_RUN_ID\" --attempt \"$GITHUB_RUN_ATTEMPT\" \\\n  --workflow-head \"$EXPECTED_WORKFLOW_HEAD\" \\\n  --output artifacts/bijux-docs/job-budget/qualification.json\n"
       - "name": "Run standards report"
         "shell": "bash"
         "run": "set -euo pipefail\nif [[ -x \".bijux/shared/bijux-checks/scripts/run-bijux-check-suite.sh\" ]]; then\n  bash .bijux/shared/bijux-checks/scripts/run-bijux-check-suite.sh \\\n    --consumer .bijux/checks.consumer.json \\\n    --artifacts-dir artifacts/checks\nelif [[ -x \"shared/bijux-checks/scripts/run-bijux-check-suite.sh\" ]]; then\n  bash shared/bijux-checks/scripts/run-bijux-check-suite.sh \\\n    --consumer .bijux/checks.consumer.json \\\n    --artifacts-dir artifacts/bijux-checks\nelse\n  echo \"ERROR: unable to locate bijux checks runner script\" >&2\n  exit 1\nfi\n"
@@ -102,11 +168,14 @@
         "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9"
         "with":
           "name": "bijux-checks-report-${{ github.sha }}-${{ github.run_attempt }}"
-          "path": "artifacts/checks\nartifacts/bijux-checks\nartifacts/bijux-docs/job-budget\n"
+          "path": "artifacts/checks\nartifacts/bijux-checks\nartifacts/bijux-docs/input-plan\nartifacts/bijux-docs/job-budget\n"
           "if-no-files-found": "error"
   "catalogue-renderer":
     "name": "${{ (github.event.pull_request.user.login == 'dependabot[bot]' || (github.event.pull_request.user.login == 'github-actions[bot]' && github.event.pull_request.head.ref == 'automation/dependency-lock-refresh')) && 'unverified dependency / ' || '' }}std / catalogue ${{ matrix.group }}"
-    "if": "${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (github.repository == 'bijux/bijux-std') }}"
+    "if": "${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (always() && github.repository == 'bijux/bijux-std' && (needs.input-plan.result != 'success' || needs.input-plan.outputs.frontend != 'false')) }}"
+    "needs": "input-plan"
+    "env":
+      "BIJUX_COST_OWNER": "catalogue-renderer-${{ matrix.group || '' }}-${{ matrix.engine || '' }}"
     "runs-on": "ubuntu-latest"
     "timeout-minutes": 3
     "strategy":
@@ -121,7 +190,7 @@
       - "name": "Checkout"
         "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
       - "name": "Prepare the pinned dependency installer"
-        "uses": "astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7"
+        "uses": "astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884"
         "with":
           "version": "0.11.17"
           "enable-cache": false
@@ -149,7 +218,10 @@
           "retention-days": 14
   "publication-commands":
     "name": "${{ (github.event.pull_request.user.login == 'dependabot[bot]' || (github.event.pull_request.user.login == 'github-actions[bot]' && github.event.pull_request.head.ref == 'automation/dependency-lock-refresh')) && 'unverified dependency / ' || '' }}std / publication commands"
-    "if": "${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (github.repository == 'bijux/bijux-std') }}"
+    "if": "${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (always() && github.repository == 'bijux/bijux-std' && (needs.input-plan.result != 'success' || needs.input-plan.outputs.frontend != 'false')) }}"
+    "needs": "input-plan"
+    "env":
+      "BIJUX_COST_OWNER": "publication-commands-${{ matrix.group || '' }}-${{ matrix.engine || '' }}"
     "runs-on": "ubuntu-latest"
     "timeout-minutes": 3
     "steps":
@@ -172,7 +244,10 @@
           "retention-days": 14
   "renderer-controls":
     "name": "${{ (github.event.pull_request.user.login == 'dependabot[bot]' || (github.event.pull_request.user.login == 'github-actions[bot]' && github.event.pull_request.head.ref == 'automation/dependency-lock-refresh')) && 'unverified dependency / ' || '' }}std / renderer controls / ${{ matrix.group }}"
-    "if": "${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (github.repository == 'bijux/bijux-std') }}"
+    "if": "${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (always() && github.repository == 'bijux/bijux-std' && (needs.input-plan.result != 'success' || needs.input-plan.outputs.frontend != 'false')) }}"
+    "needs": "input-plan"
+    "env":
+      "BIJUX_COST_OWNER": "renderer-controls-${{ matrix.group || '' }}-${{ matrix.engine || '' }}"
     "runs-on": "ubuntu-latest"
     "timeout-minutes": 3
     "strategy":
@@ -213,7 +288,10 @@
     "outputs":
       "fixture-attempt": "${{ steps.fixture-identity.outputs.attempt }}"
     "name": "${{ (github.event.pull_request.user.login == 'dependabot[bot]' || (github.event.pull_request.user.login == 'github-actions[bot]' && github.event.pull_request.head.ref == 'automation/dependency-lock-refresh')) && 'unverified dependency / ' || '' }}std / navigation fixtures"
-    "if": "${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (github.repository == 'bijux/bijux-std') }}"
+    "if": "${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (always() && github.repository == 'bijux/bijux-std' && (needs.input-plan.result != 'success' || needs.input-plan.outputs.frontend != 'false')) }}"
+    "needs": "input-plan"
+    "env":
+      "BIJUX_COST_OWNER": "navigation-fixtures-${{ matrix.group || '' }}-${{ matrix.engine || '' }}"
     "runs-on": "ubuntu-latest"
     "timeout-minutes": 3
     "steps":
@@ -225,7 +303,7 @@
           "node-version": "24.21.0"
       - "name": "Build and identify strict browser fixtures once"
         "shell": "bash"
-        "run": "set -euo pipefail\nmake ui-test-install ui-test-install-docs ui-test-fixtures\nPYTHONDONTWRITEBYTECODE=1 artifacts/bijux-docs/python/bin/python \\\n  shared/bijux-docs/tooling/security/renderer_fingerprints.py \\\n  --output artifacts/bijux-docs/renderer-source-observation.json\nPYTHONDONTWRITEBYTECODE=1 artifacts/bijux-docs/python/bin/python \\\n  tests/bijux-docs/generated/build.py \\\n  --output artifacts/bijux-docs/contrast-generated \\\n  --base-url http://127.0.0.1:62599\npython3 tests/bijux-docs/execution/browser_gate.py prepare\n"
+        "run": "set -euo pipefail\nmake ui-test-install ui-test-install-docs ui-test-fixtures\nPYTHONDONTWRITEBYTECODE=1 artifacts/bijux-docs/python/bin/python \\\n  shared/bijux-docs/tooling/security/renderer_fingerprints.py \\\n  --output artifacts/bijux-docs/renderer-source-observation.json\nPYTHONDONTWRITEBYTECODE=1 artifacts/bijux-docs/python/bin/python \\\n  tests/bijux-docs/generated/build.py \\\n  --output artifacts/bijux-docs/contrast-generated \\\n  --base-url http://127.0.0.1:62599\npython3 tests/bijux-docs/execution/browser_gate.py prepare --package-container\n"
       - "name": "Identify the executed fixture attempt"
         "id": "fixture-identity"
         "run": "echo \"attempt=$GITHUB_RUN_ATTEMPT\" >> \"$GITHUB_OUTPUT\""
@@ -234,51 +312,46 @@
         "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9"
         "with":
           "name": "docs-navigation-fixtures-${{ github.sha }}-${{ github.run_attempt }}"
-          "path": "artifacts/bijux-docs/browser-fixtures.tar.gz\nartifacts/bijux-docs/browser-fixtures.sha256\nartifacts/bijux-docs/producer-envelope.json\nartifacts/bijux-docs/inventories\nartifacts/bijux-docs/renderer-source-observation.json\nartifacts/bijux-docs/generated/build-*.log\nartifacts/bijux-docs/contrast-generated/build-*.log\n"
+          "path": "artifacts/bijux-docs/browser-fixtures.tar.gz\nartifacts/bijux-docs/browser-fixtures.sha256\nartifacts/bijux-docs/browser-packages.tar.gz\nartifacts/bijux-docs/browser-packages.json\nartifacts/bijux-docs/producer-envelope.json\nartifacts/bijux-docs/inventories\nartifacts/bijux-docs/renderer-source-observation.json\nartifacts/bijux-docs/generated/build-*.log\nartifacts/bijux-docs/contrast-generated/build-*.log\n"
           "if-no-files-found": "error"
           "compression-level": 0
           "retention-days": 14
   "navigation-browsers":
-    "name": "${{ (github.event.pull_request.user.login == 'dependabot[bot]' || (github.event.pull_request.user.login == 'github-actions[bot]' && github.event.pull_request.head.ref == 'automation/dependency-lock-refresh')) && 'unverified dependency / ' || '' }}std / navigation ${{ matrix.group }} / ${{ matrix.engine }}"
-    "if": "${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh')) }}"
-    "needs": "navigation-fixtures"
+    "name": "${{ (github.event.pull_request.user.login == 'dependabot[bot]' || (github.event.pull_request.user.login == 'github-actions[bot]' && github.event.pull_request.head.ref == 'automation/dependency-lock-refresh')) && 'unverified dependency / ' || '' }}std / navigation ${{ matrix.batch }} / ${{ matrix.engine }}"
+    "if": "${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (always() && github.repository == 'bijux/bijux-std' && (needs.input-plan.result != 'success' || needs.input-plan.outputs.frontend != 'false')) }}"
+    "needs":
+      - "input-plan"
+      - "navigation-fixtures"
     "permissions":
       "contents": "read"
       "actions": "read"
+    "env":
+      "BIJUX_COST_OWNER": "navigation-browsers-${{ matrix.batch || '' }}-${{ matrix.engine || '' }}"
     "runs-on": "ubuntu-latest"
     "timeout-minutes": 3
     "strategy":
       "max-parallel": 12
       "fail-fast": false
       "matrix":
-        "group":
-          - "navigation-destinations"
+        "batch":
+          - "navigation-links"
           - "navigation-phone"
           - "navigation-compact"
           - "navigation-desktop"
           - "navigation-controls"
-          - "search"
+          - "search-modality"
           - "search-invoker"
-          - "reader"
-          - "diagrams"
-          - "contrast-phone"
-          - "contrast-compact"
+          - "reader-history"
+          - "diagram-assurance"
+          - "contrast-responsive"
           - "contrast-desktop"
-          - "links"
           - "history"
-          - "semantics"
-          - "search-scope-phone"
-          - "search-scope-compact"
-          - "search-scope-desktop"
+          - "search-scope-responsive"
+          - "search-scope-overflow"
           - "reader-accessibility"
-          - "diagram-trust"
-          - "accessibility-state"
-          - "search-shortcut-modality"
           - "search-reflow-phone"
           - "search-reflow-tablet"
           - "search-reflow-desktop"
-          - "registry-overflow"
-          - "native-reader-history"
         "engine":
           - "chromium"
           - "firefox"
@@ -305,13 +378,13 @@
           "PLAYWRIGHT_BROWSERS_PATH": "/ms-playwright"
           "GH_TOKEN": "${{ github.token }}"
           "EXPECTED_WORKFLOW_HEAD": "${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}"
-        "run": "set -euo pipefail\ngit config --global --add safe.directory \"$GITHUB_WORKSPACE\"\nchown \"$(id -u):$(id -g)\" \"$HOME\"\npython3 tests/bijux-docs/execution/browser_gate.py run \\\n  --group '${{ matrix.group }}' --engine '${{ matrix.engine }}'\n"
+        "run": "set -euo pipefail\ngit config --global --add safe.directory \"$GITHUB_WORKSPACE\"\nchown \"$(id -u):$(id -g)\" \"$HOME\"\npython3 tests/bijux-docs/execution/browser_gate.py run \\\n  --batch '${{ matrix.batch }}' --engine '${{ matrix.engine }}'\n"
       - "name": "Retain exact shard receipts and failure diagnostics"
         "if": "always()"
         "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9"
         "with":
-          "name": "docs-navigation-${{ matrix.group }}-${{ matrix.engine }}-${{ github.sha }}-${{ github.run_attempt }}"
-          "path": "artifacts/bijux-docs/shards"
+          "name": "docs-navigation-${{ matrix.batch }}-${{ matrix.engine }}-${{ github.sha }}-${{ github.run_attempt }}"
+          "path": "artifacts/bijux-docs/shards\nartifacts/bijux-docs/shards/*/runtime-transport.json\n"
           "if-no-files-found": "error"
           "include-hidden-files": true
           "compression-level": 0
@@ -320,17 +393,21 @@
         "if": "${{ always() && github.run_attempt > 1 }}"
         "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9"
         "with":
-          "name": "docs-workflow-input-audit-browser-${{ matrix.group }}-${{ matrix.engine }}-${{ github.sha }}-${{ github.run_attempt }}"
+          "name": "docs-workflow-input-audit-browser-${{ matrix.batch }}-${{ matrix.engine }}-${{ github.sha }}-${{ github.run_attempt }}"
           "path": "artifacts/bijux-docs/collection"
           "if-no-files-found": "warn"
           "retention-days": 14
   "persisted-native-reader":
     "name": "${{ (github.event.pull_request.user.login == 'dependabot[bot]' || (github.event.pull_request.user.login == 'github-actions[bot]' && github.event.pull_request.head.ref == 'automation/dependency-lock-refresh')) && 'unverified dependency / ' || '' }}std / persisted native reader / chromium"
-    "if": "${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (github.repository == 'bijux/bijux-std') }}"
-    "needs": "navigation-fixtures"
+    "if": "${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (always() && github.repository == 'bijux/bijux-std' && (needs.input-plan.result != 'success' || needs.input-plan.outputs.frontend != 'false')) }}"
+    "needs":
+      - "input-plan"
+      - "navigation-fixtures"
     "permissions":
       "contents": "read"
       "actions": "read"
+    "env":
+      "BIJUX_COST_OWNER": "persisted-native-reader-${{ matrix.group || '' }}-${{ matrix.engine || '' }}"
     "runs-on": "ubuntu-latest"
     "timeout-minutes": 3
     "container":
@@ -376,11 +453,15 @@
           "retention-days": 14
   "frontend-browser-faults":
     "name": "${{ (github.event.pull_request.user.login == 'dependabot[bot]' || (github.event.pull_request.user.login == 'github-actions[bot]' && github.event.pull_request.head.ref == 'automation/dependency-lock-refresh')) && 'unverified dependency / ' || '' }}std / frontend fault controls / ${{ matrix.engine }}"
-    "if": "${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh')) }}"
-    "needs": "navigation-fixtures"
+    "if": "${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (always() && github.repository == 'bijux/bijux-std' && (needs.input-plan.result != 'success' || needs.input-plan.outputs.frontend != 'false')) }}"
+    "needs":
+      - "input-plan"
+      - "navigation-fixtures"
     "permissions":
       "contents": "read"
       "actions": "read"
+    "env":
+      "BIJUX_COST_OWNER": "frontend-browser-faults-${{ matrix.group || '' }}-${{ matrix.engine || '' }}"
     "runs-on": "ubuntu-latest"
     "timeout-minutes": 3
     "strategy":
@@ -433,7 +514,10 @@
           "retention-days": 14
   "frontend-public-faults":
     "name": "${{ (github.event.pull_request.user.login == 'dependabot[bot]' || (github.event.pull_request.user.login == 'github-actions[bot]' && github.event.pull_request.head.ref == 'automation/dependency-lock-refresh')) && 'unverified dependency / ' || '' }}std / frontend public artifact fault controls"
-    "if": "${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (github.repository == 'bijux/bijux-std') }}"
+    "if": "${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (always() && github.repository == 'bijux/bijux-std' && (needs.input-plan.result != 'success' || needs.input-plan.outputs.frontend != 'false')) }}"
+    "needs": "input-plan"
+    "env":
+      "BIJUX_COST_OWNER": "frontend-public-faults-${{ matrix.group || '' }}-${{ matrix.engine || '' }}"
     "runs-on": "ubuntu-latest"
     "timeout-minutes": 3
     "steps":
@@ -456,6 +540,7 @@
     "name": "${{ (github.event.pull_request.user.login == 'dependabot[bot]' || (github.event.pull_request.user.login == 'github-actions[bot]' && github.event.pull_request.head.ref == 'automation/dependency-lock-refresh')) && 'unverified dependency / ' || '' }}std / navigation"
     "if": "${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (always() && github.repository == 'bijux/bijux-std') }}"
     "needs":
+      - "input-plan"
       - "navigation-fixtures"
       - "navigation-browsers"
       - "publication-commands"
@@ -463,55 +548,71 @@
       - "frontend-browser-faults"
       - "frontend-public-faults"
       - "persisted-native-reader"
+      - "catalogue-renderer"
     "permissions":
       "contents": "read"
       "actions": "read"
     "runs-on": "ubuntu-latest"
+    "env":
+      "BIJUX_COST_OWNER": "navigation-aggregate"
     "timeout-minutes": 3
     "steps":
       - "name": "Checkout"
         "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
-      - "name": "Download canonical inventories"
+        "with":
+          "fetch-depth": 0
+      - "name": "Prepare exact runtime for accepted original proof"
+        "if": "${{ github.repository == 'bijux/bijux-std' && needs.input-plan.outputs.frontend == 'false' }}"
+        "uses": "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1"
+        "with":
+          "node-version": "24.21.0"
+      - "name": "Download exact current-source input plan"
         "if": "${{ github.run_attempt == 1 }}"
+        "uses": "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333"
+        "with":
+          "name": "docs-input-plan-${{ github.sha }}-${{ github.run_attempt }}"
+          "path": "artifacts/bijux-docs/input-plan"
+      - "name": "Download canonical inventories"
+        "if": "${{ github.run_attempt == 1 && needs.input-plan.outputs.frontend != 'false' }}"
         "uses": "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333"
         "with":
           "name": "docs-navigation-fixtures-${{ github.sha }}-${{ github.run_attempt }}"
           "path": "artifacts/bijux-docs"
       - "name": "Download every assigned browser receipt"
-        "if": "${{ github.run_attempt == 1 }}"
+        "if": "${{ github.run_attempt == 1 && needs.input-plan.outputs.frontend != 'false' }}"
         "uses": "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333"
         "with":
           "pattern": "docs-navigation-*-*-${{ github.sha }}-${{ github.run_attempt }}"
           "path": "artifacts/bijux-docs/shards"
           "merge-multiple": true
       - "name": "Download exact cached native reader evidence"
-        "if": "${{ github.run_attempt == 1 }}"
+        "if": "${{ github.run_attempt == 1 && needs.input-plan.outputs.frontend != 'false' }}"
         "uses": "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333"
         "with":
           "name": "docs-persisted-native-reader-${{ github.sha }}-${{ github.run_attempt }}"
           "path": "artifacts/bijux-docs/persisted-reader"
       - "name": "Download exact renderer command evidence"
-        "if": "${{ github.run_attempt == 1 }}"
+        "if": "${{ github.run_attempt == 1 && needs.input-plan.outputs.frontend != 'false' }}"
         "uses": "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333"
         "with":
           "name": "docs-publication-commands-${{ github.sha }}-${{ github.run_attempt }}"
           "path": "artifacts/bijux-docs/publication-commands"
       - "name": "Download exact renderer unit evidence"
-        "if": "${{ github.run_attempt == 1 }}"
+        "if": "${{ github.run_attempt == 1 && needs.input-plan.outputs.frontend != 'false' }}"
         "uses": "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333"
         "with":
           "pattern": "docs-renderer-controls-*-${{ github.sha }}-${{ github.run_attempt }}"
           "path": "artifacts/bijux-docs/renderer-controls"
           "merge-multiple": true
       - "name": "Download exact frontend fault witnesses"
-        "if": "${{ github.run_attempt == 1 }}"
+        "if": "${{ github.run_attempt == 1 && needs.input-plan.outputs.frontend != 'false' }}"
         "uses": "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333"
         "with":
           "pattern": "docs-frontend-faults-browser-*-${{ github.sha }}-${{ github.run_attempt }}"
           "path": "artifacts/bijux-docs/frontend-faults"
           "merge-multiple": true
       - "name": "Download exact public artifact fault witnesses"
-        "if": "${{ github.run_attempt == 1 }}"
+        "if": "${{ github.run_attempt == 1 && needs.input-plan.outputs.frontend != 'false' }}"
         "uses": "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333"
         "with":
           "name": "docs-frontend-faults-public-${{ github.sha }}-${{ github.run_attempt }}"
@@ -526,15 +627,19 @@
           "COMMAND_RESULT": "${{ needs.publication-commands.result }}"
           "RENDERER_RESULT": "${{ needs.renderer-controls.result }}"
           "PERSISTED_RESULT": "${{ needs.persisted-native-reader.result }}"
+          "PLAN_RESULT": "${{ needs.input-plan.result }}"
+          "EXPECTED_BASELINE": "${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || '' }}"
+          "EXPECTED_FRONTEND": "${{ needs.input-plan.outputs.frontend }}"
+          "CATALOGUE_RESULT": "${{ needs.catalogue-renderer.result }}"
           "FAULT_BROWSER_RESULT": "${{ needs.frontend-browser-faults.result }}"
           "FAULT_PUBLIC_RESULT": "${{ needs.frontend-public-faults.result }}"
-        "run": "set -euo pipefail\nif [[ \"${GITHUB_RUN_ATTEMPT:-1}\" -gt 1 ]]; then\n  python3 tests/bijux-docs/execution/workflow_controllers.py aggregate\nelse\n  test \"$FAULT_BROWSER_RESULT\" = success\n  test \"$FAULT_PUBLIC_RESULT\" = success\n  test \"$PERSISTED_RESULT\" = success\n  python3 tests/bijux-docs/execution/frontend_faults.py aggregate\n  python3 tests/bijux-docs/execution/browser_gate.py aggregate\n  test \"$FIXTURE_RESULT\" = success\n  test \"$BROWSER_RESULT\" = success\n  test \"$COMMAND_RESULT\" = success\n  test \"$RENDERER_RESULT\" = success\nfi\n"
+        "run": "set -euo pipefail\nif [[ \"${GITHUB_RUN_ATTEMPT:-1}\" -gt 1 ]]; then\n  python3 -B tests/bijux-docs/execution/input_planning/cli.py plan\n  python3 -B tests/bijux-docs/execution/input_planning/cli.py select\n  python3 -B tests/bijux-docs/execution/input_planning/cli.py verify --accepted-proof --navigation-output artifacts/bijux-docs/navigation-qualification.json --selection-only\nelse\n  python3 -B tests/bijux-docs/execution/input_planning/cli.py verify --accepted-proof --navigation-output artifacts/bijux-docs/navigation-qualification.json\nfi\nif [[ \"${{ needs.input-plan.outputs.frontend }}\" == false ]]; then\n  exit 0\nfi\nif [[ \"${GITHUB_RUN_ATTEMPT:-1}\" -gt 1 ]]; then\n  python3 tests/bijux-docs/execution/workflow_controllers.py aggregate\nelse\n  test \"$FAULT_BROWSER_RESULT\" = success\n  test \"$FAULT_PUBLIC_RESULT\" = success\n  test \"$PERSISTED_RESULT\" = success\n  python3 tests/bijux-docs/execution/frontend_faults.py aggregate\n  python3 tests/bijux-docs/execution/browser_gate.py aggregate\n  test \"$FIXTURE_RESULT\" = success\n  test \"$BROWSER_RESULT\" = success\n  test \"$COMMAND_RESULT\" = success\n  test \"$RENDERER_RESULT\" = success\nfi\n"
       - "name": "Retain complete navigation qualification"
         "if": "always()"
         "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9"
         "with":
           "name": "docs-navigation-complete-${{ github.sha }}-${{ github.run_attempt }}"
           "include-hidden-files": true
-          "path": "artifacts/bijux-docs/navigation-qualification.json\nartifacts/bijux-docs/collection\nartifacts/bijux-docs/shards/**/execution.json\nartifacts/bijux-docs/frontend-faults/*/execution.json\nartifacts/bijux-docs/persisted-reader\nartifacts/bijux-docs/frontend-faults/qualification.json\nartifacts/bijux-docs/frontend-faults/*/receipt.json\nartifacts/bijux-docs/publication-commands\nartifacts/bijux-docs/renderer-controls\nartifacts/bijux-docs/producer-envelope.json\nartifacts/bijux-docs/renderer-source-observation.json\nartifacts/bijux-docs/inventories\nartifacts/bijux-docs/shards/**/qualification.json\nartifacts/bijux-docs/shards/**/junit.xml\n"
+          "path": "artifacts/bijux-docs/input-plan\nartifacts/bijux-docs/navigation-qualification.json\nartifacts/bijux-docs/collection\nartifacts/bijux-docs/shards/**/execution.json\nartifacts/bijux-docs/frontend-faults/*/execution.json\nartifacts/bijux-docs/persisted-reader\nartifacts/bijux-docs/frontend-faults/qualification.json\nartifacts/bijux-docs/frontend-faults/*/receipt.json\nartifacts/bijux-docs/publication-commands\nartifacts/bijux-docs/renderer-controls\nartifacts/bijux-docs/producer-envelope.json\nartifacts/bijux-docs/renderer-source-observation.json\nartifacts/bijux-docs/inventories\nartifacts/bijux-docs/shards/**/qualification.json\nartifacts/bijux-docs/shards/**/junit.xml\n"
           "if-no-files-found": "error"
           "retention-days": 14

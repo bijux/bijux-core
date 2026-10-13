@@ -91,6 +91,7 @@ BASE_FILE_MAPPINGS: list[tuple[str, str]] = [
     (".github/scripts/workflow_execution/source_authority.py", ".github/scripts/workflow_execution/source_authority.py"),
     (".github/scripts/workflow_execution/verification.py", ".github/scripts/workflow_execution/verification.py"),
     (".github/scripts/workflow_execution/masterclass.py", ".github/scripts/workflow_execution/masterclass.py"),
+    (".github/scripts/workflow_execution/retired_package_workflows.py", ".github/scripts/workflow_execution/retired_package_workflows.py"),
     (".github/scripts/build_repo_manifest.py", ".github/scripts/build_repo_manifest.py"),
     (".github/scripts/check_pinned_actions.py", ".github/scripts/check_pinned_actions.py"),
     (".github/scripts/check_protected_github_changes.py", ".github/scripts/check_protected_github_changes.py"),
@@ -104,7 +105,7 @@ BASE_FILE_MAPPINGS: list[tuple[str, str]] = [
     (".github/standards/workflow-sources/bijux-std.yml", ".github/standards/workflow-sources/bijux-std.yml"),
     (".github/standards/workflow-sources/automerge-pr.yml", ".github/standards/workflow-sources/automerge-pr.yml"),
     (".github/standards/workflow-sources/source-manifest.json", ".github/standards/workflow-sources/source-manifest.json"),
-    (".github/workflows/bijux-std.yml", ".github/workflows/bijux-std.yml"),
+    (".github/standards/workflow-sources/bijux-std.yml", ".github/workflows/bijux-std.yml"),
     (".github/workflows/automerge-pr.yml", ".github/workflows/automerge-pr.yml"),
     (".github/bijux-std-shared.sha256", ".github/bijux-std-shared.sha256"),
 ]
@@ -254,7 +255,7 @@ def prepare_runtime_workflows(repo_config: dict[str, Any], manifest: dict[str, A
         projected = WORKFLOW_EXECUTION.project_publication_entrypoints(identity, projected, policy)
         projected = WORKFLOW_EXECUTION.project_dependency_pull_requests(identity, projected, policy)
         documents[destination] = projected
-        if name == "bijux-std" and source == ".github/workflows/bijux-std.yml" and projected == document:
+        if name == "bijux-std" and source == ".github/standards/workflow-sources/bijux-std.yml" and projected == document:
             # The owning workflow is authored source. Preserve its readable source
             # and comments only after structural admission proves projection identity.
             prepared[destination] = (STD_REPO / source).read_bytes()
@@ -316,6 +317,7 @@ def copy_repo_files(target_repo: str, repo_config: dict[str, Any], manifest: dic
     source_snapshots = WORKFLOW_EXECUTION.capture_sources(STD_REPO)
     prepared = prepare_runtime_workflows(repo_config, manifest)
     repo_dir = resolve_repository_checkout(target_repo)
+    retirement = WORKFLOW_EXECUTION.retired_package_workflows.plan_retirement(repo_dir, target_repo)
     legacy_helper = qualified_legacy_policy_helper(repo_dir)
     for relative, content in source_snapshots.items():
         path = repo_dir / relative
@@ -348,6 +350,8 @@ def copy_repo_files(target_repo: str, repo_config: dict[str, Any], manifest: dic
                 shutil.rmtree(path)
             else:
                 path.unlink()
+
+    WORKFLOW_EXECUTION.retired_package_workflows.apply_retirement(repo_dir, target_repo, retirement)
 
     if legacy_helper is not None:
         legacy_helper.unlink()

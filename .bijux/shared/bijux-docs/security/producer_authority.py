@@ -428,10 +428,10 @@ def verify(site: Path, prepared: PreparedProducer, renderer: dict, csp_report: d
                           'executables': sorted(path for path, r in owned['resources'].items() if r['kind'] in {'reviewed-script', 'data-registration'}),
                           'search_route': csp_report['embedded']['reader_purposes'][name]['search_route']})
             continue
-        actual_page, source_page = References(), References()
-        actual_page.feed(originals[name].decode());source_page.feed(prepared.reference[name].decode())
-        require(actual_page.external == source_page.external and actual_page.configs == source_page.configs,
-                'Producer: native config/executable references differ from actual owner renderer')
+        # Exact resource equality above binds this parse to the independent
+        # source build; parsing its identical HTML again adds no authority.
+        actual_page = References()
+        actual_page.feed(originals[name].decode())
         require(len(actual_page.configs) == 1, 'Producer: single actual native config required')
         page_url = urljoin(site_url, name)
         paths = [local_resource(value,page_url,site_url) for value in actual_page.external]

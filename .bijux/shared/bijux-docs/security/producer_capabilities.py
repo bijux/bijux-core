@@ -16,6 +16,7 @@ import sys
 from urllib.parse import urlsplit
 
 HOOKS = {
+    '0e3cf71e68b4b3697b1ddd85f9bd9e45e5ec312105fcb1481e884ab6d293b256':'public-report-provenance',
     'ca8006f2c2665aecc7f2566344f4ad926ea6a2279e7a7ff5d7ae35bbee256c93':'core-contract-assets',
     '4f04c4736adc9b9ff801bb2e2214e4bb622b8858aac16a9f6ae88b49ff2f7e84':'root-icons',
     'bda022ee3efa9393f03cda2d49684ba186d67714a362f4225890b8d4b15583d5':'source-assets-and-root-icons',
@@ -172,6 +173,15 @@ def hooks(configuration,root,*,publication=False):
         if publication:
             git(root,'ls-files','--error-unmatch',path.relative_to(root).as_posix())
         reviewed_hook_functions(hook,source,path)
+        if recipe=='public-report-provenance':
+            helper_path = Path(__file__).absolute().with_name('report_provenance.py')
+            helper_source = helper_path.read_bytes()
+            helper = types.ModuleType('bijux_public_report_provenance')
+            helper.__file__ = str(helper_path)
+            exec(compile(helper_source, str(helper_path), 'exec', dont_inherit=True), vars(helper))
+            records.append(helper.admit(hook, configuration, root, path, source, regular))
+            require(helper_source == helper_path.read_bytes(), 'Producer capability: projection authority changed')
+            continue
         if recipe=='core-contract-assets':
             records.append(core_contract_assets(hook,configuration,root,path,source,publication=publication))
             continue

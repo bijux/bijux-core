@@ -167,8 +167,17 @@ class CatalogueDerivation:
         configuration = load_config(config_file=str(self.root / CONFIGURATION), site_dir=str(site_dir))
         require(configuration.docs_dir == str(self.root / 'docs'), 'derived docs root differs')
         require('bijux/catalogue-sources' not in configuration.plugins, 'foreign catalogue plugin declared')
+        require(configuration.repo_url == 'https://github.com/bijux/bijux-masterclass',
+                'catalogue source actions require the reviewed repository')
+        require(configuration.edit_uri == 'edit/main/docs/'
+                and configuration.edit_uri_template is None,
+                'catalogue source actions require the reviewed main edit prefix')
         self.plugin = self.helper.CatalogueSourcePlugin(self.sources)
         configuration.plugins['bijux/catalogue-sources'] = self.plugin
+        # Catalogue File.edit_uri names each verified repository-relative original,
+        # including its docs/ or programs/ namespace. Only this registered native
+        # derivation may remove the docs-root prefix used by ordinary MkDocs pages.
+        configuration.edit_uri = 'edit/main/'
         return configuration
 
     def verify_outputs(self):
