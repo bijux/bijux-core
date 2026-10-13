@@ -18,6 +18,8 @@ This project adheres to [Semantic Versioning](https://semver.org) and the
 
 ### Changed
 
+- Adopt accepted reader preference recovery, inert native search, truthful clipboard feedback, patched publication dependencies and authenticated workflow actions ([#151](https://github.com/bijux/bijux-core/pull/151)).
+
 - Bound manual documentation publication to the canonical 60-minute hosted budget and verify common governance independently from the retained documentation source ([#150](https://github.com/bijux/bijux-core/pull/150)).
 
 - Keep repository new-tab warnings compact and accessible, and align catalogue input identities with independent publication admission ([#149](https://github.com/bijux/bijux-core/pull/149)).
