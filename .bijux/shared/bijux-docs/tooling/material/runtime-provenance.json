@@ -6,7 +6,7 @@
   "upstream_base_template_sha256": "e1762a3a14f8afe93968241dac537a9dae1e35e71b2faf225bdb7ee88143c14c",
   "upstream_map_sha256": "dcfd5eb85b43e975773ecf102220197ef3f985f45abbbee4a5286e137f8097ba",
   "upstream_license_sha256": "e1150f26b4c0f872627b39fda49ae3bd850304f2f7f3171ae0531c1f8f4dd078",
-  "adapter_sha256": "a25ce37d43fc524e9b02090a014931ef4076bc29a9b2537ccc3317159a6fa3fa",
+  "adapter_sha256": "b5aba6cc353c9619681fbf4c95d33bf04bd001564ec21c0eb6373839734f1bb2",
   "owned_source": "tooling/material/search-index-adapter.js",
   "worker_adapter_sha256": "49508722bc042e3bb5ceecd8aa717dda92dca65c22e9166919a8e5b7be6904d1",
   "worker_owned_source": "tooling/material/search-worker-adapter.js",
@@ -21,6 +21,32 @@
     "original": "function Ei(e,t){let r=Mn(e);",
     "replacement": "function Ei(e,t){let r=window.bijuxSearchWorker.channel(e,T);",
     "occurrences": 1
+  },
+  "clipboard_owned_source": "tooling/material/clipboard-feedback.js",
+  "clipboard_sha256": "11c2c99b45350c7c190d9d27b5be2f42ced8f59b2775c38a3b489acf478ba213",
+  "clipboard_boundaries": {
+    "temporary_selection": {
+      "original": "return u(\"copy\"),D.remove(),N",
+      "replacement": "var B=u(\"copy\");return D.remove(),B?N:\"\"",
+      "occurrences": 1
+    },
+    "element_selection": {
+      "original": "(D=f()(C),u(\"copy\")),D",
+      "replacement": "(D=f()(C),u(\"copy\")||(D=\"\")),D",
+      "occurrences": 1
+    },
+    "native_subscription": {
+      "original": ".on(\"success\",r=>t.next(r))",
+      "replacement": ".on(\"success\",r=>{__bijuxClipboardClear(r.trigger);t.next(r)}).on(\"error\",r=>e.next(__bijuxClipboardFailure(r)))",
+      "occurrences": 1
+    }
+  },
+  "clipboard_behavior": "False or thrown native copy commands emit native error, preserve trigger focus and select readable source for manual copy with an accessible status. A successful retry removes failure feedback and retains native success rendering. Helpers remain scoped to the admitted IIFE.",
+  "palette_preference_boundary": {
+    "original": "let a=matchMedia(\"(prefers-color-scheme: light)\")",
+    "replacement": "let a=typeof matchMedia===\"function\"?matchMedia(\"(prefers-color-scheme: light)\"):{matches:true}",
+    "occurrences": 1,
+    "fallback": "Light for a subsequent Auto request when matchMedia is unavailable; initial native renderer media adapters remain required."
   },
   "global_character_shortcuts": {
     "original": ",r.pipe(g(({mode:c})=>c===\"global\")).subscribe(c=>{switch(c.type){case\"f\":case\"s\":case\"/\":i.focus(),i.select(),c.claim();break}});",
@@ -65,8 +91,8 @@
     "occurrences": 1,
     "helper_scope": "unique admitted native runtime IIFE"
   },
-  "output_asset": "assets/javascripts/material-search.4b099ef8b0fc29069e50781122ce83e6c955ec2a46b6537b06c856d746c6727b.js",
-  "output_sha256": "4b099ef8b0fc29069e50781122ce83e6c955ec2a46b6537b06c856d746c6727b",
+  "output_asset": "assets/javascripts/material-search.276df314ce6f8caef505d97be62d859022c7f5314a2411702d19775b093a2f83.js",
+  "output_sha256": "276df314ce6f8caef505d97be62d859022c7f5314a2411702d19775b093a2f83",
   "syntax_validation": {
     "parser": "Node.js vm.Script",
     "required_version": "v24.21.0",

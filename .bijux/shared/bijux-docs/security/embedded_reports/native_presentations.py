@@ -69,7 +69,9 @@ def document_budget(repository, report, content, product_base):
             origin = subprocess.check_output(["git", "-C", str(repository), "remote", "get-url", "origin"], text=True).strip()
         except (OSError, subprocess.CalledProcessError) as error:
             raise AdmissionError("native presentation requires its owned Git repository") from error
-        if origin not in {"https://github.com/bijux/bijux-pollenomics.git", "git@github.com:bijux/bijux-pollenomics.git"}:
+        if origin not in {"https://github.com/bijux/bijux-pollenomics",
+                          "https://github.com/bijux/bijux-pollenomics.git",
+                          "git@github.com:bijux/bijux-pollenomics.git"}:
             raise AdmissionError("native presentation requires the reviewed Pollenomics repository")
     if selected_sequence:
         if product_base != SITE or len(content) != 9402 or digest(content) != SEQUENCE_SHA:

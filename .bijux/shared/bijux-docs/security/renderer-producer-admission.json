@@ -1043,7 +1043,7 @@
           {
             "root": "site-packages",
             "files_count": 16931,
-            "files_sha256": "ec1f6560ec87198c9f77110ebf1a257b57489c049fa9ea7c27cc8f206043a87c"
+            "files_sha256": "f016b804156e2d8cba324dc6a1adbc6c578407680ec54e11d8cb11bbc06069b5"
           }
         ],
         "startup_inputs": [],
@@ -1098,9 +1098,9 @@
           },
           {
             "name": "GitPython",
-            "version": "3.1.59",
+            "version": "3.1.62",
             "files_count": 43,
-            "files_sha256": "751d8904600e5b6d934c8ea00df14470ea27a97167e4ded859eee3c148d03f20"
+            "files_sha256": "4548e19fe22d74a5b3ae73e49e7dd29af6289f2c91a4bba2b135952619ce1147"
           },
           {
             "name": "idna",
@@ -1254,9 +1254,9 @@
           },
           {
             "name": "urllib3",
-            "version": "2.7.0",
+            "version": "2.8.0",
             "files_count": 41,
-            "files_sha256": "c0d6ac06d469174baa67c0aa1226cccc453f366d231a9b436368a0298066e68f"
+            "files_sha256": "cc892498503d9305f9c35ec09c1b6b12a688a8730714cd2a26b0ba95dfe84b36"
           },
           {
             "name": "watchdog",
@@ -1294,7 +1294,7 @@
           {
             "root": "site-packages",
             "files_count": 16930,
-            "files_sha256": "63a5339e81a2ecabff504e5547140ec7b2ff82a01ca8e02ab5c7198dbf9678ff"
+            "files_sha256": "ae3372436671870b94e679141647764c6f3f9c49242e722e4f4bb35dd07a2ae8"
           }
         ],
         "startup_inputs": [],
@@ -1349,9 +1349,9 @@
           },
           {
             "name": "GitPython",
-            "version": "3.1.59",
+            "version": "3.1.62",
             "files_count": 43,
-            "files_sha256": "751d8904600e5b6d934c8ea00df14470ea27a97167e4ded859eee3c148d03f20"
+            "files_sha256": "4548e19fe22d74a5b3ae73e49e7dd29af6289f2c91a4bba2b135952619ce1147"
           },
           {
             "name": "idna",
@@ -1505,9 +1505,9 @@
           },
           {
             "name": "urllib3",
-            "version": "2.7.0",
+            "version": "2.8.0",
             "files_count": 41,
-            "files_sha256": "c0d6ac06d469174baa67c0aa1226cccc453f366d231a9b436368a0298066e68f"
+            "files_sha256": "cc892498503d9305f9c35ec09c1b6b12a688a8730714cd2a26b0ba95dfe84b36"
           },
           {
             "name": "watchdog",
@@ -1545,7 +1545,7 @@
           {
             "root": "site-packages",
             "files_count": 17004,
-            "files_sha256": "afd70252ba33c552cddf998e29d4a9f710833b3e2f419382f026fceca832a7d3"
+            "files_sha256": "356078a02acfa392e106bf640cdfc8a425b4805a01325e1e3df4ddb6e0e6d514"
           }
         ],
         "startup_inputs": [],
@@ -1606,9 +1606,9 @@
           },
           {
             "name": "GitPython",
-            "version": "3.1.59",
+            "version": "3.1.62",
             "files_count": 43,
-            "files_sha256": "751d8904600e5b6d934c8ea00df14470ea27a97167e4ded859eee3c148d03f20"
+            "files_sha256": "4548e19fe22d74a5b3ae73e49e7dd29af6289f2c91a4bba2b135952619ce1147"
           },
           {
             "name": "htmlmin2",
@@ -1792,9 +1792,9 @@
           },
           {
             "name": "urllib3",
-            "version": "2.7.0",
+            "version": "2.8.0",
             "files_count": 41,
-            "files_sha256": "c0d6ac06d469174baa67c0aa1226cccc453f366d231a9b436368a0298066e68f"
+            "files_sha256": "cc892498503d9305f9c35ec09c1b6b12a688a8730714cd2a26b0ba95dfe84b36"
           },
           {
             "name": "watchdog",

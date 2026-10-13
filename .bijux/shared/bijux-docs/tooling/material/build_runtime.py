@@ -19,6 +19,13 @@ FRAGMENT_SCROLL_REPLACEMENT = 'function gn(e){__bijuxScrollCurrentFragment(e)}'
 VIEWPORT_HISTORY_BOUNDARY = 'r.pipe(ne("offset"),Ae(100)).subscribe(({offset:a})=>{history.replaceState(a,"")})'
 VIEWPORT_HISTORY_REPLACEMENT = '__bijuxWatchViewportHistory(()=>r.pipe(ne("offset"),Ae(100)))'
 
+CLIPBOARD_BOUNDARIES = {
+    'temporary_selection': ('return u("copy"),D.remove(),N', 'var B=u("copy");return D.remove(),B?N:""'),
+    'element_selection': ('(D=f()(C),u("copy")),D', '(D=f()(C),u("copy")||(D="")),D'),
+    'native_subscription': ('.on("success",r=>t.next(r))', '.on("success",r=>{__bijuxClipboardClear(r.trigger);t.next(r)}).on("error",r=>e.next(__bijuxClipboardFailure(r)))'),
+}
+
+
 GLOBAL_CHARACTER_SHORTCUTS = ',r.pipe(g(({mode:c})=>c==="global")).subscribe(c=>{switch(c.type){case"f":case"s":case"/":i.focus(),i.select(),c.claim();break}});'
 
 
@@ -79,6 +86,18 @@ def compile_runtime(templates: Path, installed_version: str) -> tuple[str, bytes
     worker_adapter = (OWNED / 'search-worker-adapter.js').read_bytes()
     # The original map describes upstream offsets. Never claim it maps modified bytes.
     modified = without_global_character_shortcuts(original).replace(needle, REPLACEMENT).replace(worker_needle, WORKER_REPLACEMENT)
+    clipboard = (OWNED / 'clipboard-feedback.js').read_bytes()
+    for name, (boundary, replacement) in CLIPBOARD_BOUNDARIES.items():
+        if original.count(boundary) != 1 or '__bijuxClipboard' in original:
+            raise ValueError('Native clipboard ' + name + ' boundary must occur exactly once')
+        modified = modified.replace(boundary, replacement)
+    palette_needle = 'let a=matchMedia("(prefers-color-scheme: light)")'
+    palette_replacement = 'let a=typeof matchMedia==="function"?matchMedia("(prefers-color-scheme: light)"):{matches:true}'
+    if original.count(palette_needle) != 1:
+        raise ValueError('Native palette preference boundary must occur exactly once')
+    # Initial renderer media adapters remain required; a later Auto request can
+    # use the shared light fallback if the optional preference API disappears.
+    modified = modified.replace(palette_needle, palette_replacement)
     renderer_needle = 'href:`${s}`,class:"md-search-result__link",tabIndex:-1'
     renderer_replacement = 'href:`${s}`,target:__bijuxSearchCapabilityTarget(s),class:"md-search-result__link",tabIndex:-1'
     opening = '"use strict";(()=>{'
@@ -99,7 +118,7 @@ def compile_runtime(templates: Path, installed_version: str) -> tuple[str, bytes
     resize = (OWNED / 'element-resize-delivery.js').read_bytes()
     modified = modified.replace(resize_needle, resize_replacement)
     navigation = (OWNED / 'search-capability-boundary.js').read_bytes()
-    modified = modified.replace(renderer_needle, renderer_replacement).replace(opening, opening + navigation.decode() + resize.decode() + fragment_scroll.decode() + viewport_history.decode())
+    modified = modified.replace(renderer_needle, renderer_replacement).replace(opening, opening + navigation.decode() + resize.decode() + fragment_scroll.decode() + viewport_history.decode() + clipboard.decode())
     modified, maps = re.subn(r'(?m)^//# sourceMappingURL=.*(?:\n|$)', '', modified)
     if maps != 1:
         raise ValueError('Expected exactly one upstream source-map annotation')
@@ -117,6 +136,11 @@ def compile_runtime(templates: Path, installed_version: str) -> tuple[str, bytes
         'upstream_worker': admitted['worker'], 'upstream_worker_sha256': admitted['worker_sha256'],
         'boundary': {'original': needle, 'replacement': REPLACEMENT, 'occurrences': 1},
         'worker_boundary': {'original': worker_needle, 'replacement': WORKER_REPLACEMENT, 'occurrences': 1},
+        'clipboard_owned_source': 'tooling/material/clipboard-feedback.js',
+        'clipboard_sha256': sha256(clipboard),
+        'clipboard_boundaries': {name: {'original': boundary, 'replacement': replacement, 'occurrences': 1} for name, (boundary, replacement) in CLIPBOARD_BOUNDARIES.items()},
+        'clipboard_behavior': 'False or thrown native copy commands emit native error, preserve trigger focus and select readable source for manual copy with an accessible status. A successful retry removes failure feedback and retains native success rendering. Helpers remain scoped to the admitted IIFE.',
+        'palette_preference_boundary': {'original': palette_needle, 'replacement': palette_replacement, 'occurrences': 1, 'fallback': 'Light for a subsequent Auto request when matchMedia is unavailable; initial native renderer media adapters remain required.'},
         'global_character_shortcuts': {'original': GLOBAL_CHARACTER_SHORTCUTS, 'replacement': ';', 'occurrences': 1, 'disabled_keys': ['/', 'f', 's'], 'retained': 'Focused native query/result keyboard subscriptions and browser modifier defaults.'},
         'fragment_restoration_owned_source': 'tooling/material/fragment-restoration.js',
         'fragment_restoration_sha256': sha256(fragment_scroll),
@@ -151,6 +175,27 @@ def compile_runtime(templates: Path, installed_version: str) -> tuple[str, bytes
     return asset, runtime, provenance, template
 
 
+def runtime_vocabulary(runtime: bytes, provenance: dict) -> bytes:
+    """Bind reviewed external writer examples to the newly compiled source."""
+    path = SHARED / 'config/style-tokens.json'
+    if path.is_symlink() or not path.is_file():
+        raise ValueError('Material runtime requires its owned token vocabulary')
+    vocabulary = json.loads(path.read_bytes())
+    external = vocabulary.get('external', {})
+    examples = external.get('runtime_examples')
+    if (vocabulary.get('owner') != 'bijux-std' or vocabulary.get('namespace') != '--bijux-'
+            or external.get('owner') != 'mkdocs-material' or external.get('namespace') != '--md-'
+            or external.get('provenance') != 'tooling/material/runtime-provenance.json'
+            or not isinstance(examples, list) or not examples
+            or any(not isinstance(name, str) or not re.fullmatch(r'--md-[a-z0-9-]+', name) for name in examples)
+            or len(examples) != len(set(examples))):
+        raise ValueError('Material runtime token vocabulary ownership differs')
+    if any(('.setProperty("' + name + '"').encode() not in runtime for name in examples):
+        raise ValueError('Material runtime token example has no admitted literal writer')
+    external['runtime_sha256'] = provenance['output_sha256']
+    return (json.dumps(vocabulary, indent=2) + '\n').encode()
+
+
 def generate(shared: Path, templates: Path, installed_version: str, check: bool = False) -> dict:
     asset, runtime, provenance, template = compile_runtime(templates, installed_version)
     if not check:
@@ -159,6 +204,7 @@ def generate(shared: Path, templates: Path, installed_version: str, check: bool 
         shared / asset: runtime,
         shared / 'tooling/material/runtime-provenance.json': (json.dumps(provenance, indent=2) + '\n').encode(),
         shared / 'partials/main.html': template,
+        shared / 'config/style-tokens.json': runtime_vocabulary(runtime, provenance),
     }
     stale = sorted((shared / 'assets/javascripts').glob('material-search.*.js'))
     stale = [path for path in stale if path != shared / asset]
