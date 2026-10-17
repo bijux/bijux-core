@@ -32,7 +32,7 @@ serde.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true
 toml.workspace = true
-sha2 = "0.10.9"
+sha2 = "0.11.1"
 shlex = "2.0.1"
 thiserror.workspace = true
 
