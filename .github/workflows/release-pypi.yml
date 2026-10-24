@@ -211,7 +211,7 @@
         "id": "trusted_publish"
         "if": "${{ steps.auth.outputs.mode != 'token' }}"
         "continue-on-error": true
-        "uses": "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33"
+        "uses": "pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086"
         "with":
           "packages-dir": ".github/tmp/${{ matrix.package_slug }}-dist"
           "skip-existing": "${{ needs.resolve.outputs.skip_existing == 'true' }}"
@@ -226,7 +226,7 @@
         "if": "${{ (steps.auth.outputs.mode == 'token' || (steps.auth.outputs.mode != 'token' && needs.resolve.outputs.allow_token_bootstrap_on_missing == 'true' && steps.trusted_publish.outcome == 'failure' && steps.pypi_project.outputs.probe_status == 'missing')) && env.PYPI_API_TOKEN_PRESENT == 'true' }}"
         "env":
           "PYPI_API_TOKEN_PRESENT": "${{ secrets.PYPI_API_TOKEN != '' }}"
-        "uses": "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33"
+        "uses": "pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086"
         "with":
           "packages-dir": ".github/tmp/${{ matrix.package_slug }}-dist"
           "skip-existing": "${{ needs.resolve.outputs.skip_existing == 'true' }}"
@@ -346,7 +346,7 @@
         "id": "trusted_publish"
         "if": "${{ steps.release.outputs.publish == 'true' && needs.resolve.outputs.publish_command == '' && steps.auth.outputs.mode != 'token' }}"
         "continue-on-error": true
-        "uses": "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33"
+        "uses": "pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086"
         "with":
           "packages-dir": "artifacts/python/build"
           "skip-existing": "${{ needs.resolve.outputs.skip_existing == 'true' }}"
@@ -361,7 +361,7 @@
         "if": "${{ steps.release.outputs.publish == 'true' && needs.resolve.outputs.publish_command == '' && (steps.auth.outputs.mode == 'token' || (steps.auth.outputs.mode != 'token' && needs.resolve.outputs.allow_token_bootstrap_on_missing == 'true' && steps.trusted_publish.outcome == 'failure' && steps.pypi_project.outputs.probe_status == 'missing')) && env.PYPI_API_TOKEN_PRESENT == 'true' }}"
         "env":
           "PYPI_API_TOKEN_PRESENT": "${{ secrets.PYPI_API_TOKEN != '' }}"
-        "uses": "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33"
+        "uses": "pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086"
         "with":
           "packages-dir": "artifacts/python/build"
           "skip-existing": "${{ needs.resolve.outputs.skip_existing == 'true' }}"
