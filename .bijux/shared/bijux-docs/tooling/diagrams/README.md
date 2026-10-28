@@ -1,7 +1,7 @@
 # Reproducible self-hosted diagram dependency
 
 Build the maintained Mermaid ESM graph rather than patching a minified vendor file.
-The exact pins are Mermaid 11.17.2, DOMPurify 3.4.16, KaTeX 0.18.2 and esbuild 0.28.2.
+The exact pins are Mermaid 11.17.2, DOMPurify 3.4.17, KaTeX 0.18.2 and esbuild 0.28.2.
 Both direct dependencies and npm overrides pin the sanitizer/math dependencies that
 Mermaid imports from its core ESM modules. Npm package semver metadata alone does not
 identify a prebuilt browser bundle's embedded dependency versions.
@@ -99,9 +99,11 @@ The API corpus's sanitized-output checks do not certify zero network side effect
 Before changing pins, read [Mermaid advisories](https://github.com/mermaid-js/mermaid/security/advisories),
 [DOMPurify advisories](https://github.com/cure53/DOMPurify/security/advisories) and
 [KaTeX advisories](https://github.com/KaTeX/KaTeX/security/advisories).
-The admitted local graph reported zero npm audit advisories on 8 October 2026. That
-is a time-scoped registry result, not proof of immunity or a substitute for explicit
-feature/advisory review. Rerun it at dependency changes and publication qualification.
+The DOMPurify 3.4.17 graph reported zero npm audit advisories on 27 October 2026.
+This supersedes the historical 8 October audit of the previous graph. The patched
+release addresses the upstream IN_PLACE, SAFE_FOR_TEMPLATES/shadow-root and XHTML
+SMIL advisories. The audit is a time-scoped registry result, not proof of immunity
+or a substitute for explicit feature/advisory review. Rerun it at dependency changes and publication qualification.
 
 Rebuild, compare full identities, qualify the real diagrams and hostile corpus, retain
 licenses and review the generated projection. Update provenance only from an actually

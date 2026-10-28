@@ -77,7 +77,7 @@
   "diagram": {
     "fence_class": "bijux-diagram",
     "vendor": "assets/javascripts/vendor/mermaid-11.17.2.min.js",
-    "sha256": "d7db2d59ac3457fb61477895a767b0642222f85133ac124beee47c0cc41e8139",
+    "sha256": "396652af2e260036351dd21ab7151a6f1817b87528720eb83c88f9d1cde2d8ec",
     "security_level": "strict",
     "maximum_source_characters": 50000,
     "maximum_edges": 500

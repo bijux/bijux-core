@@ -1,7 +1,7 @@
 (function () {
   "use strict";
   const vendor = new URL("./vendor/mermaid-11.17.2.min.js", document.currentScript.src);
-  const integrity = "sha384-Y1B9CVhnQzsm0/34uQIbETs2AXzXz2C1uZLiDm51sNcO4xKIMS/Fi8BCpNlIrQy5";
+  const integrity = "sha384-FP9R1k88a3jZMk+HHTB3H346AFcwK+1U10ye1uvn/wMAAqwYom1Gl5myT/LvkcyP";
   const sources = new WeakMap();
   let library;
   let generation = 0;

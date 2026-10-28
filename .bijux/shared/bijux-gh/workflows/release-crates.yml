@@ -234,13 +234,13 @@ jobs:
 
       - name: Set up Rust
         if: ${{ steps.release.outputs.publish == 'true' && needs.resolve.outputs.setup_rust == 'true' }}
-        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # v1
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
         with:
           toolchain: ${{ needs.resolve.outputs.rust_toolchain }}
 
       - name: Restore the Rust cache
         if: ${{ steps.release.outputs.publish == 'true' && needs.resolve.outputs.setup_rust == 'true' }}
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
       - name: Verify crates.io credentials
         if: ${{ steps.release.outputs.publish == 'true' && needs.resolve.outputs.verify_token_command != '' }}

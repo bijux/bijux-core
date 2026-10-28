@@ -240,7 +240,8 @@ def verify_composition(
             if report_class(owner) == "interactive":
                 bootstrap(validated, owner)
             expected_recipe = report_recipe(
-                repo, validated, owner, retained["site_url"], record["path"]
+                repo, validated, owner, retained["site_url"], record["path"],
+                source_sha=retained["source_sha"], source_descriptor=descriptor,
             )
             expected_resources = []
             for name, resource in sorted(owner["resources"].items()):

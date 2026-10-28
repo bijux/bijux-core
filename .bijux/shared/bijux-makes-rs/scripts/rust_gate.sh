@@ -125,9 +125,12 @@ run_logged() {
   set +e
   set -o pipefail
   "$@" 2>&1 | tee "${report_path}"
-  local status="${PIPESTATUS[0]}"
+  local pipeline_status=("${PIPESTATUS[@]}")
   set -e
-  return "${status}"
+  if [[ "${pipeline_status[0]}" -ne 0 ]]; then
+    return "${pipeline_status[0]}"
+  fi
+  return "${pipeline_status[1]}"
 }
 
 run_logged_append() {
@@ -136,9 +139,12 @@ run_logged_append() {
   set +e
   set -o pipefail
   "$@" 2>&1 | tee -a "${report_path}"
-  local status="${PIPESTATUS[0]}"
+  local pipeline_status=("${PIPESTATUS[@]}")
   set -e
-  return "${status}"
+  if [[ "${pipeline_status[0]}" -ne 0 ]]; then
+    return "${pipeline_status[0]}"
+  fi
+  return "${pipeline_status[1]}"
 }
 
 nextest_expression() {

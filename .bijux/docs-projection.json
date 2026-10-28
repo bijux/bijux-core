@@ -21,7 +21,7 @@
       "source": "bijux-docs/assets/javascripts/material-search.276df314ce6f8caef505d97be62d859022c7f5314a2411702d19775b093a2f83.js"
     },
     "docs/assets/javascripts/mermaid-init.js": {
-      "sha256": "6208b08cf51a2b0ef7ec8a86d0b9598c66f33993ecb40d291bbf779d55ce13ed",
+      "sha256": "cfb51a5f8b3e956a5feec53d811af1d585fe2af033b243ef67a5417dc69ed64f",
       "source": "bijux-docs/scripts/mermaid-init.js"
     },
     "docs/assets/javascripts/navigation-sync.js": {
@@ -61,15 +61,15 @@
       "source": "bijux-docs/scripts/viewport-profile.js"
     },
     "docs/assets/javascripts/vendor/THIRD-PARTY-LICENSES.txt": {
-      "sha256": "dc176484e5bce18733e7e5ec03f9ca04ca1359240b26805464036049d3e5650b",
+      "sha256": "b1a1c2ec5b21441701338b87c192c9afad3b932725590c7bf03f0534c7f29189",
       "source": "bijux-docs/assets/javascripts/vendor/THIRD-PARTY-LICENSES.txt"
     },
     "docs/assets/javascripts/vendor/mermaid-11.17.2.min.js": {
-      "sha256": "d7db2d59ac3457fb61477895a767b0642222f85133ac124beee47c0cc41e8139",
+      "sha256": "396652af2e260036351dd21ab7151a6f1817b87528720eb83c88f9d1cde2d8ec",
       "source": "bijux-docs/assets/javascripts/vendor/mermaid-11.17.2.min.js"
     },
     "docs/assets/javascripts/vendor/mermaid-11.17.2.min.js.LEGAL.txt": {
-      "sha256": "63e9022c5c1157ac16f67a05895fd57030c9f2e2fb7b9f9cfb060e8307612e18",
+      "sha256": "45565431e698aca64d6ff1ebc56d923254046116099248f7978498b9029cd6a4",
       "source": "bijux-docs/assets/javascripts/vendor/mermaid-11.17.2.min.js.LEGAL.txt"
     },
     "docs/assets/site-icons/apple-touch-icon-precomposed.png": {
@@ -177,6 +177,6 @@
   "source": {
     "mode": "accepted-github",
     "origin": "https://github.com/bijux/bijux-std.git",
-    "sha": "82486badb4fd5e1f854953030df398cbb296af1a"
+    "sha": "4e179df9b665edcb00f68bdfb5907b4ff2021e2d"
   }
 }

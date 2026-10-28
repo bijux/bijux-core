@@ -23,7 +23,7 @@ SOURCE_HASHES = {
     ('csscompressor', '0.9.5'): 'afa22badbcf3120a4f392e4d22f9fff485c044a1feda4a950ecc5eba9dd31a05',
     ('jsmin', '3.0.1'): 'c0959a121ef94542e807a674142606f7e90214a2b3d1eb17300244bbb5cc2bfc',
 }
-BUILDER = {'setuptools': '83.0.0', 'wheel': '0.47.0', 'packaging': '26.2'}
+BUILDER = {'setuptools': '84.1.0', 'wheel': '0.47.0', 'packaging': '26.2'}
 
 
 def require(value, message):

@@ -4,7 +4,16 @@
 
 "name": "bijux-std"
 "on":
-  "workflow_dispatch": null
+  "workflow_dispatch":
+    "inputs":
+      "verification_mode":
+        "description": "Full current execution or independent qualification of accepted original proof"
+        "type": "choice"
+        "required": true
+        "default": "full"
+        "options":
+          - "full"
+          - "accepted-proof-qualification"
   "pull_request": null
   "merge_group": null
 "concurrency":
@@ -31,7 +40,8 @@
       - "name": "Select complete proof families from owned inputs"
         "id": "plan"
         "env":
-          "EXPECTED_BASELINE": "${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || '' }}"
+          "EXPECTED_BASELINE": "${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.sha }}"
+          "VERIFICATION_MODE": "${{ github.event_name == 'workflow_dispatch' && inputs.verification_mode || 'full' }}"
         "run": "python3 -B tests/bijux-docs/execution/input_planning/cli.py plan"
       - "name": "Prepare exact runtime for eligible accepted proof"
         "if": "${{ steps.plan.outputs.frontend == 'false' }}"
@@ -42,8 +52,9 @@
         "id": "decision"
         "env":
           "GH_TOKEN": "${{ github.token }}"
-          "EXPECTED_BASELINE": "${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || '' }}"
-        "run": "python3 -B tests/bijux-docs/execution/input_planning/cli.py select"
+          "EXPECTED_BASELINE": "${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.sha }}"
+          "VERIFICATION_MODE": "${{ github.event_name == 'workflow_dispatch' && inputs.verification_mode || 'full' }}"
+        "run": "python3 -B tests/bijux-docs/execution/input_planning/cli.py select --consumer-platform"
       - "name": "Retain exact current-source input plan"
         "if": "always()"
         "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9"
@@ -56,7 +67,7 @@
     "name": "${{ (github.event.pull_request.user.login == 'dependabot[bot]' || (github.event.pull_request.user.login == 'github-actions[bot]' && github.event.pull_request.head.ref == 'automation/dependency-lock-refresh')) && 'unverified dependency / ' || '' }}std / ${{ matrix.check }}"
     "if": "${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (github.repository == 'bijux/bijux-std' || github.repository == 'bijux/bijux.github.io' || github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]') }}"
     "runs-on": "ubuntu-latest"
-    "timeout-minutes": 10
+    "timeout-minutes": "${{ github.repository == 'bijux/bijux-std' && matrix.check == 'contracts' && 20 || 10 }}"
     "strategy":
       "fail-fast": false
       "matrix":
@@ -75,13 +86,13 @@
           "node-version": "24.21.0"
       - "name": "Prepare hub documentation builder"
         "if": "${{ matrix.check == 'contracts' && github.repository == 'bijux/bijux.github.io' }}"
-        "uses": "astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884"
+        "uses": "astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e"
         "with":
           "version": "0.11.17"
           "enable-cache": false
       - "name": "Provision action reference parser"
         "if": "${{ matrix.check == 'standard' }}"
-        "uses": "ruby/setup-ruby@e81a8fa391b11a595c1b7ed84177cc0fe02faf83"
+        "uses": "ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f"
         "with":
           "ruby-version": "3.3.12"
       - "name": "Admit action reference parser runtime"
@@ -140,7 +151,8 @@
           "GH_TOKEN": "${{ github.token }}"
           "EXPECTED_WORKFLOW_HEAD": "${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}"
           "PLAN_RESULT": "${{ needs.input-plan.result }}"
-          "EXPECTED_BASELINE": "${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || '' }}"
+          "EXPECTED_BASELINE": "${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.sha }}"
+          "VERIFICATION_MODE": "${{ github.event_name == 'workflow_dispatch' && inputs.verification_mode || 'full' }}"
           "EXPECTED_FRONTEND": "${{ needs.input-plan.outputs.frontend }}"
           "FIXTURE_RESULT": "${{ needs.navigation-fixtures.result }}"
           "BROWSER_RESULT": "${{ needs.navigation-browsers.result }}"
@@ -152,7 +164,7 @@
           "NAVIGATION_RESULT": "${{ needs.navigation.result }}"
           "CATALOGUE_RESULT": "${{ needs.catalogue-renderer.result }}"
           "RENDERER_RESULT": "${{ needs.renderer-controls.result }}"
-        "run": "set -euo pipefail\nif [[ \"$GITHUB_REPOSITORY\" == \"bijux/bijux-std\" ]]; then\n  if [[ \"${GITHUB_RUN_ATTEMPT:-1}\" -gt 1 ]]; then\n    python3 -B tests/bijux-docs/execution/input_planning/cli.py plan\n    python3 -B tests/bijux-docs/execution/input_planning/cli.py select\n    python3 -B tests/bijux-docs/execution/input_planning/cli.py verify --accepted-proof --selection-only --output artifacts/bijux-docs/input-plan/report-qualification.json\n  else\n    test \"$PLAN_RESULT\" = success\n    python3 -B tests/bijux-docs/execution/input_planning/cli.py verify --accepted-proof --output artifacts/bijux-docs/input-plan/report-qualification.json\n  fi\n  test \"$NAVIGATION_RESULT\" = success\n  if [[ \"${{ needs.input-plan.outputs.frontend }}\" == false ]]; then\n    test \"$CHECK_RESULT\" = success\n    exit 0\n  fi\nfi\nif [[ \"$GITHUB_REPOSITORY\" == \"bijux/bijux-std\" && \"${GITHUB_RUN_ATTEMPT:-1}\" -gt 1 ]]; then\n  python3 tests/bijux-docs/execution/job_budget.py --observe-latest \\\n    --run-id \"$GITHUB_RUN_ID\" --attempt \"$GITHUB_RUN_ATTEMPT\" \\\n    --workflow-head \"$EXPECTED_WORKFLOW_HEAD\" \\\n    --output artifacts/bijux-docs/job-budget/qualification.json\nelse\n  test \"$CHECK_RESULT\" = success\n  if [[ \"$GITHUB_REPOSITORY\" == \"bijux/bijux-std\" ]]; then\n    test \"$NAVIGATION_RESULT\" = success\n    test \"$CATALOGUE_RESULT\" = success\n    test \"$RENDERER_RESULT\" = success\n  else\n    test \"$NAVIGATION_RESULT\" = skipped\n    test \"$CATALOGUE_RESULT\" = skipped\n    test \"$RENDERER_RESULT\" = skipped\n  fi\nfi\n"
+        "run": "set -euo pipefail\nif [[ \"$GITHUB_REPOSITORY\" == \"bijux/bijux-std\" ]]; then\n  if [[ \"${GITHUB_RUN_ATTEMPT:-1}\" -gt 1 ]]; then\n    python3 -B tests/bijux-docs/execution/input_planning/cli.py plan\n    python3 -B tests/bijux-docs/execution/input_planning/cli.py select --consumer-platform\n    python3 -B tests/bijux-docs/execution/input_planning/cli.py verify --consumer-platform --accepted-proof --selection-only --output artifacts/bijux-docs/input-plan/report-qualification.json\n  else\n    test \"$PLAN_RESULT\" = success\n    python3 -B tests/bijux-docs/execution/input_planning/cli.py verify --consumer-platform --accepted-proof --output artifacts/bijux-docs/input-plan/report-qualification.json\n  fi\n  test \"$NAVIGATION_RESULT\" = success\n  if [[ \"${{ needs.input-plan.outputs.frontend }}\" == false ]]; then\n    test \"$CHECK_RESULT\" = success\n    exit 0\n  fi\nfi\nif [[ \"$GITHUB_REPOSITORY\" == \"bijux/bijux-std\" && \"${GITHUB_RUN_ATTEMPT:-1}\" -gt 1 ]]; then\n  python3 tests/bijux-docs/execution/job_budget.py --observe-latest \\\n    --run-id \"$GITHUB_RUN_ID\" --attempt \"$GITHUB_RUN_ATTEMPT\" \\\n    --workflow-head \"$EXPECTED_WORKFLOW_HEAD\" \\\n    --output artifacts/bijux-docs/job-budget/qualification.json\nelse\n  test \"$CHECK_RESULT\" = success\n  if [[ \"$GITHUB_REPOSITORY\" == \"bijux/bijux-std\" ]]; then\n    test \"$NAVIGATION_RESULT\" = success\n    test \"$CATALOGUE_RESULT\" = success\n    test \"$RENDERER_RESULT\" = success\n  else\n    test \"$NAVIGATION_RESULT\" = skipped\n    test \"$CATALOGUE_RESULT\" = skipped\n    test \"$RENDERER_RESULT\" = skipped\n  fi\nfi\n"
       - "name": "Verify complete frontend job duration"
         "if": "${{ github.repository == 'bijux/bijux-std' && github.run_attempt == 1 && needs.input-plan.outputs.frontend != 'false' }}"
         "shell": "bash"
@@ -190,7 +202,7 @@
       - "name": "Checkout"
         "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
       - "name": "Prepare the pinned dependency installer"
-        "uses": "astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884"
+        "uses": "astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e"
         "with":
           "version": "0.11.17"
           "enable-cache": false
@@ -628,12 +640,13 @@
           "RENDERER_RESULT": "${{ needs.renderer-controls.result }}"
           "PERSISTED_RESULT": "${{ needs.persisted-native-reader.result }}"
           "PLAN_RESULT": "${{ needs.input-plan.result }}"
-          "EXPECTED_BASELINE": "${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || '' }}"
+          "EXPECTED_BASELINE": "${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.sha }}"
+          "VERIFICATION_MODE": "${{ github.event_name == 'workflow_dispatch' && inputs.verification_mode || 'full' }}"
           "EXPECTED_FRONTEND": "${{ needs.input-plan.outputs.frontend }}"
           "CATALOGUE_RESULT": "${{ needs.catalogue-renderer.result }}"
           "FAULT_BROWSER_RESULT": "${{ needs.frontend-browser-faults.result }}"
           "FAULT_PUBLIC_RESULT": "${{ needs.frontend-public-faults.result }}"
-        "run": "set -euo pipefail\nif [[ \"${GITHUB_RUN_ATTEMPT:-1}\" -gt 1 ]]; then\n  python3 -B tests/bijux-docs/execution/input_planning/cli.py plan\n  python3 -B tests/bijux-docs/execution/input_planning/cli.py select\n  python3 -B tests/bijux-docs/execution/input_planning/cli.py verify --accepted-proof --navigation-output artifacts/bijux-docs/navigation-qualification.json --selection-only\nelse\n  python3 -B tests/bijux-docs/execution/input_planning/cli.py verify --accepted-proof --navigation-output artifacts/bijux-docs/navigation-qualification.json\nfi\nif [[ \"${{ needs.input-plan.outputs.frontend }}\" == false ]]; then\n  exit 0\nfi\nif [[ \"${GITHUB_RUN_ATTEMPT:-1}\" -gt 1 ]]; then\n  python3 tests/bijux-docs/execution/workflow_controllers.py aggregate\nelse\n  test \"$FAULT_BROWSER_RESULT\" = success\n  test \"$FAULT_PUBLIC_RESULT\" = success\n  test \"$PERSISTED_RESULT\" = success\n  python3 tests/bijux-docs/execution/frontend_faults.py aggregate\n  python3 tests/bijux-docs/execution/browser_gate.py aggregate\n  test \"$FIXTURE_RESULT\" = success\n  test \"$BROWSER_RESULT\" = success\n  test \"$COMMAND_RESULT\" = success\n  test \"$RENDERER_RESULT\" = success\nfi\n"
+        "run": "set -euo pipefail\nif [[ \"${GITHUB_RUN_ATTEMPT:-1}\" -gt 1 ]]; then\n  python3 -B tests/bijux-docs/execution/input_planning/cli.py plan\n  python3 -B tests/bijux-docs/execution/input_planning/cli.py select --consumer-platform\n  python3 -B tests/bijux-docs/execution/input_planning/cli.py verify --consumer-platform --accepted-proof --navigation-output artifacts/bijux-docs/navigation-qualification.json --selection-only\nelse\n  python3 -B tests/bijux-docs/execution/input_planning/cli.py verify --consumer-platform --accepted-proof --navigation-output artifacts/bijux-docs/navigation-qualification.json\nfi\nif [[ \"${{ needs.input-plan.outputs.frontend }}\" == false ]]; then\n  exit 0\nfi\nif [[ \"${GITHUB_RUN_ATTEMPT:-1}\" -gt 1 ]]; then\n  python3 tests/bijux-docs/execution/workflow_controllers.py aggregate\nelse\n  test \"$FAULT_BROWSER_RESULT\" = success\n  test \"$FAULT_PUBLIC_RESULT\" = success\n  test \"$PERSISTED_RESULT\" = success\n  python3 tests/bijux-docs/execution/frontend_faults.py aggregate\n  python3 tests/bijux-docs/execution/browser_gate.py aggregate\n  test \"$FIXTURE_RESULT\" = success\n  test \"$BROWSER_RESULT\" = success\n  test \"$COMMAND_RESULT\" = success\n  test \"$RENDERER_RESULT\" = success\nfi\n"
       - "name": "Retain complete navigation qualification"
         "if": "always()"
         "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9"
