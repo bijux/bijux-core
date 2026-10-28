@@ -18,6 +18,8 @@ This project adheres to [Semantic Versioning](https://semver.org) and the
 
 ### Changed
 
+- Require the patched Tokio runtime with corrected asynchronous descriptor safety.
+
 - Patch Rustls certificate validation, WebPKI verification and certificate trust roots.
 
 - Qualify PyO3 0.30, current compatible Rust dependency patches and Pymdown
