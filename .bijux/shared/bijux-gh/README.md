@@ -317,3 +317,22 @@ independent artifact checks and authenticated manual admission.
 Restore the product lanes in the canonical repository manifest after they pass
 on the accepted Genomics source, with the restored workflow covered by the
 projection contracts. Other repositories retain their existing test lanes.
+
+## Source admission before package construction
+
+The reusable artifact builder verifies the release tag, checkout and workflow
+revision before invoking the optional repository command
+`BIJUX_RELEASE_SOURCE_VERIFICATION_COMMAND` from `.github/release.env`.
+The command runs after Python setup and before package installation or build
+hooks can change generated source-version files. A nonzero exit stops artifact
+construction and upload.
+
+The source step exposes the package, repository revision and release-tag
+context with a token restricted to read permissions for repository contents
+and Actions evidence. It can admit retained same-revision evidence without
+performing its original scientific or product computation. Repositories that
+need source-specific admission own the command in the typed repository manifest.
+
+`BIJUX_RELEASE_ARTIFACT_VERIFICATION_COMMAND` remains the later, independent
+check of constructed distribution identity and repository artifact policy.
+Passing either command does not publish a package or replace the other check.

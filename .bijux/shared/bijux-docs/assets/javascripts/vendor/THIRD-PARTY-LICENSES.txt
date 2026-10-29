@@ -1313,9 +1313,9 @@ THIS SOFTWARE.
 
 -----
 
-Package: dompurify@3.4.16
+Package: dompurify@3.4.17
 License: (MPL-2.0 OR Apache-2.0)
-Source: https://registry.npmjs.org/dompurify/-/dompurify-3.4.16.tgz
+Source: https://registry.npmjs.org/dompurify/-/dompurify-3.4.17.tgz
 
 LICENSE
 

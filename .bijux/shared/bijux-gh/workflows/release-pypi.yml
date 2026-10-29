@@ -457,7 +457,7 @@ jobs:
         id: trusted_publish
         if: ${{ steps.auth.outputs.mode != 'token' }}
         continue-on-error: true
-        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # release/v1
         with:
           packages-dir: .github/tmp/${{ matrix.package_slug }}-dist
           skip-existing: ${{ needs.resolve.outputs.skip_existing == 'true' }}
@@ -477,7 +477,7 @@ jobs:
         if: ${{ (steps.auth.outputs.mode == 'token' || (steps.auth.outputs.mode != 'token' && needs.resolve.outputs.allow_token_bootstrap_on_missing == 'true' && steps.trusted_publish.outcome == 'failure' && steps.pypi_project.outputs.probe_status == 'missing')) && env.PYPI_API_TOKEN_PRESENT == 'true' }}
         env:
           PYPI_API_TOKEN_PRESENT: ${{ secrets.PYPI_API_TOKEN != '' }}
-        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # release/v1
         with:
           packages-dir: .github/tmp/${{ matrix.package_slug }}-dist
           skip-existing: ${{ needs.resolve.outputs.skip_existing == 'true' }}
@@ -573,7 +573,7 @@ jobs:
 
       - name: Set up Python
         if: ${{ steps.release.outputs.publish == 'true' && needs.resolve.outputs.setup_python == 'true' }}
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ needs.resolve.outputs.python_version }}
           cache: pip
@@ -581,13 +581,13 @@ jobs:
 
       - name: Set up Rust
         if: ${{ steps.release.outputs.publish == 'true' && needs.resolve.outputs.setup_rust == 'true' }}
-        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # v1
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
         with:
           toolchain: ${{ needs.resolve.outputs.rust_toolchain }}
 
       - name: Restore the Rust cache
         if: ${{ steps.release.outputs.publish == 'true' && needs.resolve.outputs.setup_rust == 'true' }}
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
       - name: Prepare release tree
         if: ${{ steps.release.outputs.publish == 'true' }}
@@ -707,7 +707,7 @@ jobs:
         id: trusted_publish
         if: ${{ steps.release.outputs.publish == 'true' && needs.resolve.outputs.publish_command == '' && steps.auth.outputs.mode != 'token' }}
         continue-on-error: true
-        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # release/v1
         with:
           packages-dir: artifacts/python/build
           skip-existing: ${{ needs.resolve.outputs.skip_existing == 'true' }}
@@ -727,7 +727,7 @@ jobs:
         if: ${{ steps.release.outputs.publish == 'true' && needs.resolve.outputs.publish_command == '' && (steps.auth.outputs.mode == 'token' || (steps.auth.outputs.mode != 'token' && needs.resolve.outputs.allow_token_bootstrap_on_missing == 'true' && steps.trusted_publish.outcome == 'failure' && steps.pypi_project.outputs.probe_status == 'missing')) && env.PYPI_API_TOKEN_PRESENT == 'true' }}
         env:
           PYPI_API_TOKEN_PRESENT: ${{ secrets.PYPI_API_TOKEN != '' }}
-        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # release/v1
         with:
           packages-dir: artifacts/python/build
           skip-existing: ${{ needs.resolve.outputs.skip_existing == 'true' }}

@@ -4,7 +4,7 @@ from collections.abc import Mapping
 import copy
 import re
 
-from .contract import AdmissionError, canonical, digest, json_data, read_owned, relative, source_inputs
+from .contract import AdmissionError, canonical, digest, json_data, read_owned, relative, retained_templates, source_inputs
 from .html import Document, executable_scripts, report_class, report_recipe, validate_report
 from .integration import verify_composition
 from .planning import _descriptor_inputs, reviewed_providers
@@ -30,8 +30,9 @@ def configured_owner(configuration, *, selected=None, passive=None):
     return owner
 
 
-def _input(pointer):
-    if (not isinstance(pointer, dict) or set(pointer) != {'path', 'sha256'}
+def _input(pointer, *, retained=False):
+    fields = {'path', 'sha256'} | ({'storage'} if retained and isinstance(pointer, dict) and 'storage' in pointer else set())
+    if (not isinstance(pointer, dict) or set(pointer) != fields
         or not isinstance(pointer['sha256'], str) or re.fullmatch(r'[0-9a-f]{64}', pointer['sha256']) is None):
         raise AdmissionError('interactive ownership requires exact source input identities')
     relative(pointer['path'])
@@ -42,7 +43,7 @@ def _shape(descriptor):
     _input(descriptor['config'])
     _input(descriptor['reader_purpose'])
     for pointer in descriptor['producer_inputs']:
-        _input(pointer)
+        _input(pointer, retained=True)
     for report in descriptor['reports']:
         if not isinstance(report, dict):
             raise AdmissionError('interactive renderer requires typed report objects')
@@ -124,6 +125,7 @@ def _shape(descriptor):
             raise AdmissionError('interactive parent report closure must be finite')
         for report in parent['reports']:
             relative(report)
+    retained_templates(descriptor)
 
 
 class InteractiveReportSource(ReaderSource):
@@ -157,7 +159,7 @@ class InteractiveReportSource(ReaderSource):
             or not any(isinstance(r, dict) and r.get('report_class') == 'interactive' for r in reports)):
             raise AdmissionError('interactive renderer requires finite explicitly classified reports and producers')
         _shape(descriptor)
-        source_inputs(self.repository, self.source_sha, _descriptor_inputs(descriptor))
+        source_inputs(self.repository, self.source_sha, _descriptor_inputs(descriptor), descriptor=descriptor)
         producer_paths = {item['path'] for item in producers}
         for report in reports:
             if not isinstance(report, dict) or report.get('report_class') not in {'interactive', 'static-reader'}:
@@ -185,7 +187,8 @@ class InteractiveReportSource(ReaderSource):
             recipe_paths = {recipe['template'], *[item['path'] for item in recipe['expansions'] if item.get('path')]}
             if not recipe_paths <= producer_paths:
                 raise AdmissionError('interactive recipe lacks committed producer closure')
-            report_recipe(self.repository, document, report, self.site_url, report['output'])
+            report_recipe(self.repository, document, report, self.site_url, report['output'],
+                          source_sha=self.source_sha, source_descriptor=descriptor)
             bodies = executable_scripts(document)
             reviewed_providers(report, bodies)
             bootstrap(document, report)

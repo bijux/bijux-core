@@ -33,6 +33,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: release-artifacts-${{ github.workflow }}-${{ github.ref }}-${{ inputs.package_slug }}
@@ -55,15 +56,44 @@ jobs:
           ref: ${{ github.sha }}
 
       - name: Setup Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.11"
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           enable-cache: true
           cache-dependency-glob: uv.lock
+
+      - name: Verify release source and repository admission
+        shell: bash
+        env:
+          PACKAGE_DIR: ${{ inputs.package_dir }}
+          PACKAGE_SLUG: ${{ inputs.package_slug }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          case "${RELEASE_TAG}" in
+            v?*) ;;
+            *) echo "release_tag must start with 'v' and include a version" >&2; exit 1 ;;
+          esac
+          tag_commit="$(git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}")"
+          head_commit="$(git rev-parse --verify HEAD)"
+          if [[ "${tag_commit}" != "${head_commit}" || "${head_commit}" != "${GITHUB_SHA}" ]]; then
+            echo "Release source tag, checkout, and workflow revision must identify one commit." >&2
+            exit 1
+          fi
+          if [[ -f .github/release.env ]]; then
+            set -a
+            source .github/release.env
+            set +a
+          fi
+          source_command="${BIJUX_RELEASE_SOURCE_VERIFICATION_COMMAND:-}"
+          if [[ -n "${source_command}" ]]; then
+            eval "${source_command}"
+          fi
 
       - name: Install package toolchain
         shell: bash

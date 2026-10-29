@@ -141,6 +141,38 @@ measurement does not replace canonical generation or the full public-route
 validator. Raw repetition does not establish compressed delivery, cache, CPU or
 optimization savings, and the report prescribes no unmeasured reduction target.
 
+## Retained interactive report templates
+
+An interactive report owner may declare one of its recipe-template producer
+inputs as a retained Git source. The outer input keeps its canonical `path` and
+exact `sha256`; an additional `storage` object has exactly these fields:
+
+| Field | Required value |
+| --- | --- |
+| `role` | `retained-template` |
+| `commit` | Full historical commit identity, an ancestor of the selected source commit |
+| `blob` | Full Git blob identity at that same path in the historical commit |
+| `bytes` | Exact positive integer byte count, at most 2 MiB |
+
+The verifier reads that declared historical blob even when the current file
+differs or is absent. It checks ordinary Git file mode, ancestry, byte count,
+blob identity and SHA-256. Required Git objects must already be available;
+verification does not fetch history or restore files. Tags, grafted history,
+unrelated commits, duplicate retained producer authority and contradictory
+source roles fail admission.
+
+This role applies only to an explicitly selected interactive recipe template.
+Configuration, reader descriptions, report HTML, resources, parent documents,
+recipe expansions and other producer inputs retain current physical-file and
+selected-commit checks. Ordinary identical producer references retain their
+existing deduplication behavior. Constructor, planning, application and final
+verification bind the same declared historical identity.
+
+This proves correspondence of retained report bytes to their declared original
+recipe. It does not certify a fresh renderer execution, browser observation or
+equivalence with a newer template. Existing document, expression, provider and
+publication limits continue to apply.
+
 ## Shared ownership and verification
 
 Every row has one behavior producer. Product configuration/content and Material

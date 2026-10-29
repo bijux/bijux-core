@@ -20,8 +20,8 @@
         "physical_roots": [
           {
             "root": "site-packages",
-            "files_count": 17306,
-            "files_sha256": "15a3161d67861dd5a4d34393abbe05ea664c6d7911625f5828ee0247cbf447a5"
+            "files_count": 17307,
+            "files_sha256": "b3143a69aa24c642dcaabbd830873d46851ebad34aacede751cafa5c73fb2ec6"
           }
         ],
         "startup_inputs": [
@@ -47,9 +47,9 @@
           },
           {
             "name": "certifi",
-            "version": "2026.7.22",
+            "version": "2026.10.19",
             "files_count": 11,
-            "files_sha256": "c9c0397564526a56ad87e539aaedf46b50c105feae6438aa02758db6d3e7168c"
+            "files_sha256": "4e0435ab63f21a30f8ebe006af7e4c715a1369d0a28fd667899a01e0cef66b28"
           },
           {
             "name": "charset-normalizer",
@@ -228,8 +228,8 @@
           {
             "name": "watchdog",
             "version": "6.0.0",
-            "files_count": 34,
-            "files_sha256": "82afd6fb4a4fee81de5d12d87b88b528ad710d12adaf7299bb67de14a6b5f513"
+            "files_count": 35,
+            "files_sha256": "7a7902c9170ae88eb9fd1cca04bfe8e752a26dd0f49068bba6a983984292ff5c"
           }
         ]
       }
@@ -253,8 +253,8 @@
         "physical_roots": [
           {
             "root": "site-packages",
-            "files_count": 17434,
-            "files_sha256": "47950a787eaf460506e421661a868c43816b491a0dec9b795fa3b72d47347cfa"
+            "files_count": 17435,
+            "files_sha256": "a71d141fc6cf6715c19c1636e6135dd5eda0399b6078744844cf1a544aa0a24a"
           }
         ],
         "startup_inputs": [
@@ -280,9 +280,9 @@
           },
           {
             "name": "certifi",
-            "version": "2026.7.22",
+            "version": "2026.10.19",
             "files_count": 11,
-            "files_sha256": "c9c0397564526a56ad87e539aaedf46b50c105feae6438aa02758db6d3e7168c"
+            "files_sha256": "4e0435ab63f21a30f8ebe006af7e4c715a1369d0a28fd667899a01e0cef66b28"
           },
           {
             "name": "charset-normalizer",
@@ -322,9 +322,9 @@
           },
           {
             "name": "GitPython",
-            "version": "3.2.0",
+            "version": "3.2.1",
             "files_count": 43,
-            "files_sha256": "cd719f9b2a9f9fa66cdf59ae93e08e9760a3177da89004e0aa9ff21ddd128e46"
+            "files_sha256": "866517e5531426158a41423d8499f64cd846cffe2b555cc4051940e17063181d"
           },
           {
             "name": "idna",
@@ -491,8 +491,8 @@
           {
             "name": "watchdog",
             "version": "6.0.0",
-            "files_count": 34,
-            "files_sha256": "00d8a731d663956bb60dd974b7ed2c00c562cd56c55ab184111038c08735a8a2"
+            "files_count": 35,
+            "files_sha256": "7a7902c9170ae88eb9fd1cca04bfe8e752a26dd0f49068bba6a983984292ff5c"
           }
         ]
       }
@@ -516,8 +516,8 @@
         "physical_roots": [
           {
             "root": "site-packages",
-            "files_count": 17473,
-            "files_sha256": "0b09375f9de9e31eb50d4e8c7571cb627fadf1ab5fd600be4a2c13610156875f"
+            "files_count": 17476,
+            "files_sha256": "a4847a56525be40cd19694120aeb94f6bdf7e675641802aa99b60d0011cebaa4"
           }
         ],
         "startup_inputs": [
@@ -543,9 +543,9 @@
           },
           {
             "name": "certifi",
-            "version": "2026.7.22",
+            "version": "2026.10.19",
             "files_count": 11,
-            "files_sha256": "c9c0397564526a56ad87e539aaedf46b50c105feae6438aa02758db6d3e7168c"
+            "files_sha256": "4e0435ab63f21a30f8ebe006af7e4c715a1369d0a28fd667899a01e0cef66b28"
           },
           {
             "name": "charset-normalizer",
@@ -568,8 +568,8 @@
           {
             "name": "csscompressor",
             "version": "0.9.5",
-            "files_count": 12,
-            "files_sha256": "d003818ac6eabeb667bafdacddc87e4180ae4605a2542c2c6ef1b4f0341d2d17"
+            "files_count": 13,
+            "files_sha256": "52dfd69fb4aa8e95aa4ec1b8c5551e6a0d530b12cbb61f45d545419466ba105c"
           },
           {
             "name": "ghp-import",
@@ -585,9 +585,9 @@
           },
           {
             "name": "GitPython",
-            "version": "3.2.0",
+            "version": "3.2.1",
             "files_count": 43,
-            "files_sha256": "cd719f9b2a9f9fa66cdf59ae93e08e9760a3177da89004e0aa9ff21ddd128e46"
+            "files_sha256": "866517e5531426158a41423d8499f64cd846cffe2b555cc4051940e17063181d"
           },
           {
             "name": "hjson",
@@ -616,8 +616,8 @@
           {
             "name": "jsmin",
             "version": "3.0.1",
-            "files_count": 7,
-            "files_sha256": "bf5d0bd0a158a160dbb46c0a4adfbc22d16caa56b431b55d2486fe9af13556c5"
+            "files_count": 8,
+            "files_sha256": "ed9d14a39a65290128cf4fc3e6b270e9c08fe97b5a2200aa43f6336831244c83"
           },
           {
             "name": "Markdown",
@@ -784,8 +784,8 @@
           {
             "name": "watchdog",
             "version": "6.0.0",
-            "files_count": 34,
-            "files_sha256": "a0f46f4f76ff7931253d92165b4b51f0f3b47e48f3215634acc0b319892cf61f"
+            "files_count": 35,
+            "files_sha256": "15c8f8d42a940794bb406335b83aead7004bdec38f700629ea7e5da1d3387936"
           }
         ]
       }
@@ -809,8 +809,8 @@
         "physical_roots": [
           {
             "root": "site-packages",
-            "files_count": 17306,
-            "files_sha256": "ce63d274b7434c5584fe0bed6eb1d726c90c6da3a45b801efd648efdc1cba9d9"
+            "files_count": 17307,
+            "files_sha256": "85ed96371a7abe82728a13d07bc443c3d0a7b917ad73efa9c73eccbe88f29094"
           }
         ],
         "startup_inputs": [
@@ -836,9 +836,9 @@
           },
           {
             "name": "certifi",
-            "version": "2026.7.22",
+            "version": "2026.10.19",
             "files_count": 11,
-            "files_sha256": "c9c0397564526a56ad87e539aaedf46b50c105feae6438aa02758db6d3e7168c"
+            "files_sha256": "4e0435ab63f21a30f8ebe006af7e4c715a1369d0a28fd667899a01e0cef66b28"
           },
           {
             "name": "charset-normalizer",
@@ -1017,8 +1017,8 @@
           {
             "name": "watchdog",
             "version": "6.0.0",
-            "files_count": 34,
-            "files_sha256": "63ebd9cf371bbbe9b32ad3c02b978d542ec83057bb1353f98b8ac91360d42c90"
+            "files_count": 35,
+            "files_sha256": "15c8f8d42a940794bb406335b83aead7004bdec38f700629ea7e5da1d3387936"
           }
         ]
       }
@@ -1042,8 +1042,8 @@
         "physical_roots": [
           {
             "root": "site-packages",
-            "files_count": 16931,
-            "files_sha256": "f016b804156e2d8cba324dc6a1adbc6c578407680ec54e11d8cb11bbc06069b5"
+            "files_count": 16933,
+            "files_sha256": "623c5e79947923986dbda7525f2290a7e7e9b58583ef63575bebe28265f8f3ad"
           }
         ],
         "startup_inputs": [],
@@ -1062,9 +1062,9 @@
           },
           {
             "name": "certifi",
-            "version": "2026.2.25",
-            "files_count": 9,
-            "files_sha256": "02f606fc16fa9e03c11c1a638cd7979ca1e15ccabaa5dc89c8e788703ba48d56"
+            "version": "2026.10.19",
+            "files_count": 11,
+            "files_sha256": "4e0435ab63f21a30f8ebe006af7e4c715a1369d0a28fd667899a01e0cef66b28"
           },
           {
             "name": "charset-normalizer",
@@ -1098,9 +1098,9 @@
           },
           {
             "name": "GitPython",
-            "version": "3.1.62",
+            "version": "3.2.1",
             "files_count": 43,
-            "files_sha256": "4548e19fe22d74a5b3ae73e49e7dd29af6289f2c91a4bba2b135952619ce1147"
+            "files_sha256": "866517e5531426158a41423d8499f64cd846cffe2b555cc4051940e17063181d"
           },
           {
             "name": "idna",
@@ -1293,8 +1293,8 @@
         "physical_roots": [
           {
             "root": "site-packages",
-            "files_count": 16930,
-            "files_sha256": "ae3372436671870b94e679141647764c6f3f9c49242e722e4f4bb35dd07a2ae8"
+            "files_count": 16932,
+            "files_sha256": "69ac90622eb11d0d9745d771e178ba66eadc78a544f89eca6fedd8ffdb7cd1c5"
           }
         ],
         "startup_inputs": [],
@@ -1313,9 +1313,9 @@
           },
           {
             "name": "certifi",
-            "version": "2026.2.25",
-            "files_count": 9,
-            "files_sha256": "02f606fc16fa9e03c11c1a638cd7979ca1e15ccabaa5dc89c8e788703ba48d56"
+            "version": "2026.10.19",
+            "files_count": 11,
+            "files_sha256": "4e0435ab63f21a30f8ebe006af7e4c715a1369d0a28fd667899a01e0cef66b28"
           },
           {
             "name": "charset-normalizer",
@@ -1349,9 +1349,9 @@
           },
           {
             "name": "GitPython",
-            "version": "3.1.62",
+            "version": "3.2.1",
             "files_count": 43,
-            "files_sha256": "4548e19fe22d74a5b3ae73e49e7dd29af6289f2c91a4bba2b135952619ce1147"
+            "files_sha256": "866517e5531426158a41423d8499f64cd846cffe2b555cc4051940e17063181d"
           },
           {
             "name": "idna",
@@ -1544,8 +1544,8 @@
         "physical_roots": [
           {
             "root": "site-packages",
-            "files_count": 17004,
-            "files_sha256": "356078a02acfa392e106bf640cdfc8a425b4805a01325e1e3df4ddb6e0e6d514"
+            "files_count": 17006,
+            "files_sha256": "7c05e8ca91c186e4ad7785d506d542eb581f63c0582c1d45bdc0109329c3b862"
           }
         ],
         "startup_inputs": [],
@@ -1564,9 +1564,9 @@
           },
           {
             "name": "certifi",
-            "version": "2026.2.25",
-            "files_count": 9,
-            "files_sha256": "02f606fc16fa9e03c11c1a638cd7979ca1e15ccabaa5dc89c8e788703ba48d56"
+            "version": "2026.10.19",
+            "files_count": 11,
+            "files_sha256": "4e0435ab63f21a30f8ebe006af7e4c715a1369d0a28fd667899a01e0cef66b28"
           },
           {
             "name": "charset-normalizer",
@@ -1590,7 +1590,7 @@
             "name": "csscompressor",
             "version": "0.9.5",
             "files_count": 12,
-            "files_sha256": "3d79bd9fa74983eb96359857e15b6890a66b274250ef3b56d78239d7f89671b5"
+            "files_sha256": "972c74fbe710a4430245b8385735fc435f1ae494934a3f3e24189653b426a19c"
           },
           {
             "name": "ghp-import",
@@ -1606,9 +1606,9 @@
           },
           {
             "name": "GitPython",
-            "version": "3.1.62",
+            "version": "3.2.1",
             "files_count": 43,
-            "files_sha256": "4548e19fe22d74a5b3ae73e49e7dd29af6289f2c91a4bba2b135952619ce1147"
+            "files_sha256": "866517e5531426158a41423d8499f64cd846cffe2b555cc4051940e17063181d"
           },
           {
             "name": "htmlmin2",
@@ -1632,7 +1632,7 @@
             "name": "jsmin",
             "version": "3.0.1",
             "files_count": 7,
-            "files_sha256": "8478063309c7c82dc55190ede4862b3c7cd6158e6a4775464ba05fc651ee54ae"
+            "files_sha256": "21e593a1e7abb5d7553a83acc1d6afd8e5abde375b9d65946781accaf0a43de3"
           },
           {
             "name": "Markdown",

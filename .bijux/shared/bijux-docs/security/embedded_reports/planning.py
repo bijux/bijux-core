@@ -13,6 +13,7 @@ from .contract import (
     digest,
     json_data,
     read_owned,
+    retained_templates,
     public_route,
     relative,
     site_url,
@@ -107,6 +108,7 @@ def reviewed_providers(report, bodies):
 
 
 def _descriptor_inputs(descriptor):
+    retained_templates(descriptor)
     inputs = [descriptor["config"], *descriptor["producer_inputs"]]
     if descriptor.get("reader_purpose") is not None:
         inputs.append(descriptor["reader_purpose"])
@@ -186,7 +188,7 @@ def plan_embedded_reports(
     _config(repo_root, descriptor, build_receipt)
     mappings = {}
     checked_inputs = source_inputs(
-        repo_root, source_sha, _descriptor_inputs(descriptor)
+        repo_root, source_sha, _descriptor_inputs(descriptor), descriptor=descriptor
     )
     _, initial_bundle = bundle_identity(site)
     from .reader import purposes, insert, sitemap, search_index
@@ -219,7 +221,8 @@ def plan_embedded_reports(
         document = validate_report(original.decode(), report, product_base)
         bodies = executable_scripts(document)
         if report_class(report) == "static-reader":
-            recipe = report_recipe(repo_root, document, report, product_base, output)
+            recipe = report_recipe(repo_root, document, report, product_base, output,
+                                   source_sha=source_sha, source_descriptor=descriptor)
             providers = {}
         else:
             if len(bodies) != 1:
@@ -239,7 +242,8 @@ def plan_embedded_reports(
                 raise AdmissionError(
                     "renderer recipe lacks tracked producer fingerprint closure"
                 )
-            recipe = report_recipe(repo_root, document, report, product_base, output)
+            recipe = report_recipe(repo_root, document, report, product_base, output,
+                                   source_sha=source_sha, source_descriptor=descriptor)
             providers = reviewed_providers(report, bodies)
         resource_records = []
         chunks = 0
@@ -400,7 +404,8 @@ def apply_plan(plan):
         raise AdmissionError("bundle changed after full preflight")
     if digest(Path(plan["descriptor_path"]).read_bytes()) != plan["descriptor_sha256"]:
         raise AdmissionError("descriptor changed after full preflight")
-    source_inputs(Path(plan["repo"]), plan["source_sha"], plan["source_inputs"])
+    descriptor = json_data(Path(plan["descriptor_path"]).read_bytes())
+    source_inputs(Path(plan["repo"]), plan["source_sha"], plan["source_inputs"], descriptor=descriptor)
     expected = plan_embedded_reports(
         Path(plan["repo"]),
         site,
@@ -439,12 +444,12 @@ def final_receipt(plan, final_build_receipt, final_policy_records):
         for entry in plan["navigation"]
     }
     site = Path(plan["site"])
-    source_inputs(Path(plan["repo"]), plan["source_sha"], plan["source_inputs"])
     if digest(Path(plan["descriptor_path"]).read_bytes()) != plan["descriptor_sha256"]:
         raise AdmissionError("descriptor changed before final receipt")
     descriptor = json_data(Path(plan["descriptor_path"]).read_bytes())
+    source_inputs(Path(plan["repo"]), plan["source_sha"], plan["source_inputs"], descriptor=descriptor)
     expected_inputs = source_inputs(
-        Path(plan["repo"]), plan["source_sha"], _descriptor_inputs(descriptor)
+        Path(plan["repo"]), plan["source_sha"], _descriptor_inputs(descriptor), descriptor=descriptor
     )
     from .reader import purposes, insert, verify_sitemap, verify_search_index
     if purposes(Path(plan["repo"]), site, descriptor) != plan.get("reader_purposes", {}):

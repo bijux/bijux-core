@@ -18,6 +18,14 @@ This project adheres to [Semantic Versioning](https://semver.org) and the
 
 ### Changed
 
+- Require the patched Tokio runtime with corrected asynchronous descriptor safety.
+
+- Patch Rustls certificate validation, WebPKI verification and certificate trust roots.
+
+- Qualify PyO3 0.30, current compatible Rust dependency patches and Pymdown
+  extensions while preserving Rust 1.86 and the public Schemars 0.8 schema types.
+- Consume accepted shared documentation security and authenticated workflow actions.
+
 - Adopt accepted reader preference recovery, inert native search, truthful clipboard feedback, patched publication dependencies and authenticated workflow actions ([#151](https://github.com/bijux/bijux-core/pull/151)).
 
 - Bound manual documentation publication to the canonical 60-minute hosted budget and verify common governance independently from the retained documentation source ([#150](https://github.com/bijux/bijux-core/pull/150)).

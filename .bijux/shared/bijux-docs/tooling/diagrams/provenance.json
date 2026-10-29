@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "inputs": {
-    "package_sha256": "ba8f5d97eab9e2a22788315f3e22d98a4f65f8c683d80b7e9ee8c1441a4d8951",
-    "lock_sha256": "d7ffdce239eb46a301036c239276a040b2b9ba8cab494573217bd81e539dd5b5",
+    "package_sha256": "7610b65fa8c346c43df69f52bf4c52d6184da9eadbaf0a9b2b278973aa9f1f4c",
+    "lock_sha256": "2a1bb5d4e4551524981efaac126a20d07957bba1a160285363da58c36a5d6e80",
     "builder_sha256": "a317235dc64c191ba6969868267e0325301e1550c9b799f415dea27af190c367",
     "mermaid": "11.17.2",
-    "dompurify": "3.4.16",
+    "dompurify": "3.4.17",
     "katex": "0.18.2",
     "esbuild": "0.28.2",
     "source_origin": "https://github.com/mermaid-js/mermaid",
@@ -15,17 +15,17 @@
   "output": [
     {
       "name": "mermaid-11.17.2.min.js",
-      "bytes": 3450804,
-      "sha256": "d7db2d59ac3457fb61477895a767b0642222f85133ac124beee47c0cc41e8139",
-      "integrity": "sha384-Y1B9CVhnQzsm0/34uQIbETs2AXzXz2C1uZLiDm51sNcO4xKIMS/Fi8BCpNlIrQy5"
+      "bytes": 3451984,
+      "sha256": "396652af2e260036351dd21ab7151a6f1817b87528720eb83c88f9d1cde2d8ec",
+      "integrity": "sha384-FP9R1k88a3jZMk+HHTB3H346AFcwK+1U10ye1uvn/wMAAqwYom1Gl5myT/LvkcyP"
     },
     {
       "name": "mermaid-11.17.2.min.js.LEGAL.txt",
       "bytes": 2333,
-      "sha256": "63e9022c5c1157ac16f67a05895fd57030c9f2e2fb7b9f9cfb060e8307612e18"
+      "sha256": "45565431e698aca64d6ff1ebc56d923254046116099248f7978498b9029cd6a4"
     }
   ],
-  "license_sha256": "dc176484e5bce18733e7e5ec03f9ca04ca1359240b26805464036049d3e5650b",
+  "license_sha256": "b1a1c2ec5b21441701338b87c192c9afad3b932725590c7bf03f0534c7f29189",
   "bundled_inputs": [
     {
       "path": "node_modules/@braintree/sanitize-url/dist/constants.js",
@@ -4184,8 +4184,8 @@
     },
     {
       "path": "node_modules/dompurify/dist/purify.es.mjs",
-      "bytes": 84443,
-      "sha256": "c44274a7959cfdd4da871fa78a5d5fbbef55db68d118c5c0833bc4b5cf9633ad"
+      "bytes": 85820,
+      "sha256": "60c5d5ccbb466de3de3ba863461a92bf134f8c156cef7992da43e0f659bc5cbd"
     },
     {
       "path": "node_modules/es-toolkit/dist/_internal/globalThis.mjs",
@@ -10708,11 +10708,11 @@
     },
     {
       "name": "dompurify",
-      "version": "3.4.16",
+      "version": "3.4.17",
       "license": "(MPL-2.0 OR Apache-2.0)",
       "location": "node_modules/dompurify",
-      "resolved": "https://registry.npmjs.org/dompurify/-/dompurify-3.4.16.tgz",
-      "integrity": "sha512-sqo+pNp3qRhCIpbgRi1y8Tgk27Bo2Ry7w0dC1NBeNTdZChWjz9Xb/KOoZbRP/R6pQZ80Qw8YhXw13hWWBbMRnQ=="
+      "resolved": "https://registry.npmjs.org/dompurify/-/dompurify-3.4.17.tgz",
+      "integrity": "sha512-B/pSlYVHQ58kqISD/yDjuJ1yfzI34m1gF4lAod2bwSRhiN4K5Cl3H8Af7hqB2PmTL911tdEudnnXn5FnhRoz0w=="
     },
     {
       "name": "es-toolkit",

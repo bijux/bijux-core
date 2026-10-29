@@ -23,11 +23,13 @@ ACTION_PIN_SOURCES = {
     'actions/upload-artifact': 'shared/bijux-gh/workflows/release-artifacts.yml',
     'actions/download-artifact': 'shared/bijux-gh/workflows/release-ghcr.yml',
     'actions/setup-node': 'shared/bijux-gh/workflows/deploy-docs.yml',
+    'astral-sh/setup-uv': '.github/workflows/bijux-std.yml',
+    'ruby/setup-ruby': 'shared/bijux-gh/workflows/github-policy.yml',
 }
 
 
 def action_pins(source_root: Path) -> dict[str, str]:
-    """Read only the three admitted action identities from canonical templates."""
+    """Read the admitted action identities from canonical templates."""
     def references(value):
         if isinstance(value, dict):
             for key, child in value.items():
@@ -184,6 +186,26 @@ def documentation_authority(source_root: Path, target: Path, policy_sha: str) ->
     return accepted_policy(source_root, target, sha), sha
 
 
+def documentation_tree(documentation_root: Path) -> dict[str, bytes]:
+    """Own every regular byte of one independently admitted documentation source."""
+    prepared = {}
+    docs_root = documentation_root / 'shared/bijux-docs'
+    if docs_root.is_symlink() or not docs_root.is_dir():
+        raise ValueError('Masterclass documentation requires its regular source directory')
+    for path in sorted(docs_root.rglob('*')):
+        if path.is_symlink():
+            raise ValueError('Masterclass documentation source cannot contain path aliases')
+        if path.is_dir():
+            continue
+        if not path.is_file():
+            raise ValueError('Masterclass documentation source requires regular files')
+        if path.stat().st_nlink != 1:
+            raise ValueError('Masterclass documentation source cannot contain hardlink aliases')
+        relative = path.relative_to(documentation_root).as_posix()
+        prepared['.bijux/' + relative] = read_owned(documentation_root, relative)
+    return prepared
+
+
 def verify_documentation_tree(target: Path, expected: dict[str, bytes]) -> None:
     """Reject uncovered documentation bytes under the retained exact authority."""
     wanted = {path: body for path, body in expected.items() if path.startswith(DOCS_DESTINATION)}
@@ -198,6 +220,8 @@ def verify_documentation_tree(target: Path, expected: dict[str, bytes]) -> None:
             continue
         if not path.is_file():
             raise ValueError('Masterclass documentation requires regular files')
+        if path.stat().st_nlink != 1:
+            raise ValueError('Masterclass documentation cannot contain hardlink aliases')
         relative = path.relative_to(target).as_posix()
         actual[relative] = read_owned(target, relative)
     if actual != wanted:
@@ -285,7 +309,9 @@ def expected_masterclass(source_root: Path, baseline: Path, target: Path, policy
     """Advance only governance and docs; complementary programs keep their baseline."""
     _, baseline_renderer = owning_scripts(baseline)
     original, absent = baseline_renderer.WORKFLOW_EXECUTION.verification.expected_projection(baseline, target, REPOSITORY)
-    prepared = copy.deepcopy(original)
+    prepared = {path: body for path, body in copy.deepcopy(original).items()
+                if not path.startswith(DOCS_DESTINATION)}
+    absent = absent | {path for path in original if path.startswith(DOCS_DESTINATION)}
     prepared.update(baseline_github_tree(baseline))
     _, renderer = owning_scripts(source_root)
     manifest = json.loads(read_owned(baseline, '.github/standards/repo-config.manifest.json'))
@@ -346,18 +372,7 @@ def expected_masterclass(source_root: Path, baseline: Path, target: Path, policy
     documentation_sha = policy_sha if documentation_sha is None else documentation_sha
     if not re.fullmatch(r'[0-9a-f]{40}', documentation_sha):
         raise ValueError('Masterclass documentation requires a full lowercase source SHA')
-    docs_root = documentation_root / 'shared/bijux-docs'
-    if docs_root.is_symlink() or not docs_root.is_dir():
-        raise ValueError('Masterclass documentation requires its regular source directory')
-    for path in sorted(docs_root.rglob('*')):
-        if path.is_symlink():
-            raise ValueError('Masterclass documentation source cannot contain path aliases')
-        if path.is_dir():
-            continue
-        if not path.is_file():
-            raise ValueError('Masterclass documentation source requires regular files')
-        relative = path.relative_to(documentation_root).as_posix()
-        prepared['.bijux/' + relative] = read_owned(documentation_root, relative)
+    prepared.update(documentation_tree(documentation_root))
     prepared[DOCS_PIN_PATH] = (documentation_sha + '\n').encode()
     prepared[DIRECTORY_MANIFEST_PATH] = documentation_directory_manifest(source_root, documentation_root, target)
     authority = {'schema': 1, 'repository': REPOSITORY, 'baseline_sha': BASELINE_SHA, 'execution_policy_sha': policy_sha}
@@ -462,7 +477,8 @@ def promote_masterclass(source_root: Path, target: Path, policy_sha: str, *, kee
                                            documentation_root=docs_root, documentation_sha=docs_sha)
     github_preimage = baseline_github_tree(baseline)
     if previous is None:
-        previous_expected = baseline_expected
+        previous_expected = copy.deepcopy(baseline_expected)
+        previous_expected.update(documentation_tree(baseline))
     else:
         _, previous_renderer = owning_scripts(previous)
         if read_owned(target, DOCS_PIN_PATH).decode().strip() == authority['execution_policy_sha']:
@@ -482,6 +498,24 @@ def promote_masterclass(source_root: Path, target: Path, policy_sha: str, *, kee
     for relative in (() if previous is not None else baseline_absent):
         if (target / relative).exists() or (target / relative).is_symlink():
             raise ValueError('Masterclass disabled baseline workflow is present: ' + relative)
+    # Replacement owns the complete admitted old namespace, not an overlay.
+    verify_documentation_tree(target, previous_expected)
+    previous_docs = {path: body for path, body in previous_expected.items()
+                     if path.startswith(DOCS_DESTINATION) and body is not None}
+    obsolete_docs = set(previous_docs) - set(expected)
+    checksum = target / '.github/bijux-std-shared.sha256'
+    checksum_preimage = read_owned(target, '.github/bijux-std-shared.sha256')
+    if checksum.stat().st_nlink != 1:
+        raise ValueError('Masterclass promotion checksum must not be a hardlink')
+    checksum_lines = checksum_preimage.decode().splitlines(keepends=True)
+    for relative in sorted(obsolete_docs):
+        bindings = [parts[0] for line in checksum_lines
+                    if len(parts := line.split()) == 2 and parts[1] == relative]
+        if bindings != [hashlib.sha256(previous_docs[relative]).hexdigest()]:
+            raise ValueError('Masterclass obsolete documentation lacks its exact prior checksum: ' + relative)
+    for relative in absent - obsolete_docs:
+        if (target / relative).exists() or (target / relative).is_symlink():
+            raise ValueError('Masterclass promotion cannot delete an authored path: ' + relative)
     if keep_documentation:
         verify_documentation_tree(target, expected)
         if read_owned(target, DOCS_PIN_PATH).decode().strip() != docs_sha:
@@ -499,12 +533,18 @@ def promote_masterclass(source_root: Path, target: Path, policy_sha: str, *, kee
             read_owned(target, relative)
         path.write_bytes(body)
         changed.append(relative)
-    for relative in absent:
-        if (target / relative).exists():
-            raise ValueError('Masterclass promotion cannot delete an authored path: ' + relative)
+    for relative in sorted(obsolete_docs):
+        path = target / relative
+        if path.stat().st_nlink != 1 or read_owned(target, relative) != previous_docs[relative]:
+            raise ValueError('Masterclass obsolete documentation changed during promotion: ' + relative)
+        path.unlink()
+        changed.append(relative)
+    if read_owned(target, '.github/bijux-std-shared.sha256') != checksum_preimage:
+        raise ValueError('Masterclass promotion checksum changed during replacement')
+    checksum.write_bytes(''.join(line for line in checksum_lines
+                                 if not (len(parts := line.split()) == 2 and parts[1] in obsolete_docs)).encode())
     sync, _ = owning_scripts(source_root)
     sync.refresh_shared_checksums(target)
-    checksum = target / '.github/bijux-std-shared.sha256'
     rows = [line.split() for line in checksum.read_text().splitlines()]
     covered = {row[1] for row in rows if len(row) == 2}
     with checksum.open('a') as output:

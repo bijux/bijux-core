@@ -226,13 +226,13 @@ jobs:
 
       - name: Setup Python
         if: ${{ steps.config.outputs.setup_python == 'true' }}
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ steps.config.outputs.python_version }}
 
       - name: Setup uv
         if: ${{ steps.config.outputs.setup_uv == 'true' }}
-        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           version: '0.11.17'
           enable-cache: true
@@ -246,13 +246,13 @@ jobs:
 
       - name: Install Rust toolchain
         if: ${{ steps.config.outputs.setup_rust == 'true' }}
-        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # v1
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
         with:
           toolchain: ${{ steps.config.outputs.rust_toolchain }}
 
       - name: Restore Rust cache
         if: ${{ steps.config.outputs.setup_rust == 'true' }}
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
       - name: Install docs toolchain
         if: ${{ steps.config.outputs.install_command != '' }}

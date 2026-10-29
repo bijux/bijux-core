@@ -36,6 +36,18 @@ A consumer must qualify its actual configuration, authored hooks,
 committed source history, routes and output against the selected publication recipe.
 A successful baseline profile selection does not establish those consumer facts.
 
+Active recipes pin Certifi 2026.10.19 and GitPython 3.2.1 to address
+[compromised emSign certificate authorities](https://github.com/advisories/GHSA-6q48-6c7w-9gw2)
+and [submodule checkout path validation](https://github.com/advisories/GHSA-83vg-56qc-22m7).
+The source-wheel builder pins Setuptools 84.1.0 for
+[namespace-package path validation](https://github.com/advisories/GHSA-xmj3-9gf7-h52w),
+with both minifier wheels independently reproduced before their hashes are admitted.
+Their installed physical profiles are independently renewed; changing a lock
+alone cannot authorize the new environment. The separate historical Canon
+observation under `tests/bijux-docs/execution/recipes/canon-docs/` preserves its
+original dependency bytes for comparison. It is not an active publication recipe
+and does not grant publication admission.
+
 From a consumer with accepted synchronized shared documentation:
 
 ```sh

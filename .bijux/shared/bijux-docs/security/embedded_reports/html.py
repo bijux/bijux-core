@@ -6,7 +6,7 @@ import base64
 import math
 import re
 
-from .contract import AdmissionError, digest, inspect_data, json_data, read_owned
+from .contract import AdmissionError, digest, inspect_data, json_data, read_owned, recipe_template
 
 
 class Document(HTMLParser):
@@ -68,8 +68,9 @@ def csp_hash(body):
     return "sha256-" + base64.b64encode(bytes.fromhex(digest(body.encode()))).decode()
 
 
-def reviewed_recipe(repo, body, recipe, product_base, report_path):
-    template = Document(read_owned(repo, recipe["template"]).decode())
+def reviewed_recipe(repo, body, recipe, product_base, report_path, *, source_sha=None, source_descriptor=None):
+    original = recipe_template(repo, recipe["template"], source_sha=source_sha, descriptor=source_descriptor)
+    template = Document(original.decode())
     scripts = executable_scripts(template)
     if len(scripts) != 1:
         raise AdmissionError("renderer template must have one executable body")
@@ -123,7 +124,7 @@ def reviewed_recipe(repo, body, recipe, product_base, report_path):
         else:
             raise AdmissionError("unknown recipe slot grammar")
     return {
-        "recipe_sha256": digest(read_owned(repo, recipe["template"])),
+        "recipe_sha256": digest(original),
         "parameters_sha256": digest(str(sorted(values.items())).encode()),
         "slot_count": len(tokens),
     }
@@ -136,7 +137,7 @@ def report_class(report):
     return kind
 
 
-def report_recipe(repo, document, report, product_base, output):
+def report_recipe(repo, document, report, product_base, output, *, source_sha=None, source_descriptor=None):
     if report_class(report) == "static-reader":
         return {"class": "static-reader", "source_sha256": report["source"]["sha256"]}
     from .native_presentations import document_budget, sequence_recipe
@@ -145,7 +146,8 @@ def report_recipe(repo, document, report, product_base, output):
         document_budget(repo, report, source, product_base)
         return {"recipe_sha256": digest(source), "parameters_sha256": digest(b""), "slot_count": 0}
     return reviewed_recipe(
-        repo, executable_scripts(document)[0]["body"], report["recipe"], product_base, output
+        repo, executable_scripts(document)[0]["body"], report["recipe"], product_base, output,
+        source_sha=source_sha, source_descriptor=source_descriptor,
     )
 
 

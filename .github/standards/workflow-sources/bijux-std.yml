@@ -2,6 +2,15 @@ name: bijux-std
 
 on:
   workflow_dispatch:
+    inputs:
+      verification_mode:
+        description: 'Full current execution or independent qualification of accepted original proof'
+        type: choice
+        required: true
+        default: full
+        options:
+          - full
+          - accepted-proof-qualification
   pull_request:
   merge_group:
 
@@ -31,7 +40,8 @@ jobs:
       - name: Select complete proof families from owned inputs
         id: plan
         env:
-          EXPECTED_BASELINE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || '' }}
+          EXPECTED_BASELINE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.sha }}
+          VERIFICATION_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.verification_mode || 'full' }}
         run: python3 -B tests/bijux-docs/execution/input_planning/cli.py plan
       - name: Prepare exact runtime for eligible accepted proof
         if: ${{ steps.plan.outputs.frontend == 'false' }}
@@ -42,8 +52,9 @@ jobs:
         id: decision
         env:
           GH_TOKEN: ${{ github.token }}
-          EXPECTED_BASELINE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || '' }}
-        run: python3 -B tests/bijux-docs/execution/input_planning/cli.py select
+          EXPECTED_BASELINE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.sha }}
+          VERIFICATION_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.verification_mode || 'full' }}
+        run: python3 -B tests/bijux-docs/execution/input_planning/cli.py select --consumer-platform
       - name: Retain exact current-source input plan
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -57,7 +68,7 @@ jobs:
     name: ${{ (github.event.pull_request.user.login == 'dependabot[bot]' || (github.event.pull_request.user.login == 'github-actions[bot]' && github.event.pull_request.head.ref == 'automation/dependency-lock-refresh')) && 'unverified dependency / ' || '' }}std / ${{ matrix.check }}
     if: ${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (github.repository == 'bijux/bijux-std' || github.repository == 'bijux/bijux.github.io' || github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: ${{ github.repository == 'bijux/bijux-std' && matrix.check == 'contracts' && 20 || 10 }}
     strategy:
       fail-fast: false
       matrix:
@@ -76,14 +87,14 @@ jobs:
 
       - name: Prepare hub documentation builder
         if: ${{ matrix.check == 'contracts' && github.repository == 'bijux/bijux.github.io' }}
-        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           version: '0.11.17'
           enable-cache: false
 
       - name: Provision action reference parser
         if: ${{ matrix.check == 'standard' }}
-        uses: ruby/setup-ruby@e81a8fa391b11a595c1b7ed84177cc0fe02faf83
+        uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f
         with:
           ruby-version: '3.3.12'
 
@@ -176,7 +187,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           EXPECTED_WORKFLOW_HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
           PLAN_RESULT: ${{ needs.input-plan.result }}
-          EXPECTED_BASELINE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || '' }}
+          EXPECTED_BASELINE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.sha }}
+          VERIFICATION_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.verification_mode || 'full' }}
           EXPECTED_FRONTEND: ${{ needs.input-plan.outputs.frontend }}
           FIXTURE_RESULT: ${{ needs.navigation-fixtures.result }}
           BROWSER_RESULT: ${{ needs.navigation-browsers.result }}
@@ -193,11 +205,11 @@ jobs:
           if [[ "$GITHUB_REPOSITORY" == "bijux/bijux-std" ]]; then
             if [[ "${GITHUB_RUN_ATTEMPT:-1}" -gt 1 ]]; then
               python3 -B tests/bijux-docs/execution/input_planning/cli.py plan
-              python3 -B tests/bijux-docs/execution/input_planning/cli.py select
-              python3 -B tests/bijux-docs/execution/input_planning/cli.py verify --accepted-proof --selection-only --output artifacts/bijux-docs/input-plan/report-qualification.json
+              python3 -B tests/bijux-docs/execution/input_planning/cli.py select --consumer-platform
+              python3 -B tests/bijux-docs/execution/input_planning/cli.py verify --consumer-platform --accepted-proof --selection-only --output artifacts/bijux-docs/input-plan/report-qualification.json
             else
               test "$PLAN_RESULT" = success
-              python3 -B tests/bijux-docs/execution/input_planning/cli.py verify --accepted-proof --output artifacts/bijux-docs/input-plan/report-qualification.json
+              python3 -B tests/bijux-docs/execution/input_planning/cli.py verify --consumer-platform --accepted-proof --output artifacts/bijux-docs/input-plan/report-qualification.json
             fi
             test "$NAVIGATION_RESULT" = success
             if [[ "${{ needs.input-plan.outputs.frontend }}" == false ]]; then
@@ -323,7 +335,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Prepare the pinned dependency installer
-        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e
         with:
           version: '0.11.17'
           enable-cache: false
@@ -786,7 +798,8 @@ jobs:
           RENDERER_RESULT: ${{ needs.renderer-controls.result }}
           PERSISTED_RESULT: ${{ needs.persisted-native-reader.result }}
           PLAN_RESULT: ${{ needs.input-plan.result }}
-          EXPECTED_BASELINE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || '' }}
+          EXPECTED_BASELINE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.sha }}
+          VERIFICATION_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.verification_mode || 'full' }}
           EXPECTED_FRONTEND: ${{ needs.input-plan.outputs.frontend }}
           CATALOGUE_RESULT: ${{ needs.catalogue-renderer.result }}
           FAULT_BROWSER_RESULT: ${{ needs.frontend-browser-faults.result }}
@@ -795,10 +808,10 @@ jobs:
           set -euo pipefail
           if [[ "${GITHUB_RUN_ATTEMPT:-1}" -gt 1 ]]; then
             python3 -B tests/bijux-docs/execution/input_planning/cli.py plan
-            python3 -B tests/bijux-docs/execution/input_planning/cli.py select
-            python3 -B tests/bijux-docs/execution/input_planning/cli.py verify --accepted-proof --navigation-output artifacts/bijux-docs/navigation-qualification.json --selection-only
+            python3 -B tests/bijux-docs/execution/input_planning/cli.py select --consumer-platform
+            python3 -B tests/bijux-docs/execution/input_planning/cli.py verify --consumer-platform --accepted-proof --navigation-output artifacts/bijux-docs/navigation-qualification.json --selection-only
           else
-            python3 -B tests/bijux-docs/execution/input_planning/cli.py verify --accepted-proof --navigation-output artifacts/bijux-docs/navigation-qualification.json
+            python3 -B tests/bijux-docs/execution/input_planning/cli.py verify --consumer-platform --accepted-proof --navigation-output artifacts/bijux-docs/navigation-qualification.json
           fi
           if [[ "${{ needs.input-plan.outputs.frontend }}" == false ]]; then
             exit 0

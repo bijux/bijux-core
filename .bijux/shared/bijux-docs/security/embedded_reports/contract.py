@@ -5,6 +5,7 @@ from urllib.parse import urlsplit, urljoin
 import hashlib
 import json
 import math
+import os
 import re
 import subprocess
 
@@ -161,7 +162,115 @@ def json_data(value):
         raise AdmissionError("invalid bounded JSON: " + str(error)) from error
 
 
-def source_inputs(repo, source_sha, inputs):
+def retained_templates(descriptor):
+    """Limit historical Git authority to explicit interactive recipe templates."""
+    if descriptor is None:
+        return {}
+    producers = descriptor["producer_inputs"]
+    templates = {
+        report["recipe"]["template"]
+        for report in descriptor["reports"]
+        if report.get("report_class") == "interactive"
+    }
+    ordinary = {descriptor["config"]["path"]}
+    if descriptor.get("reader_purpose") is not None:
+        ordinary.add(descriptor["reader_purpose"]["path"])
+    for report in descriptor["reports"]:
+        ordinary.add(report["source"]["path"])
+        ordinary.update(row["source"] for row in report["resources"].values())
+        ordinary.update(
+            row["path"] for row in report.get("recipe", {}).get("expansions", [])
+            if row.get("path") is not None
+        )
+    ordinary.update(row["source"]["path"] for row in descriptor["parents"])
+    retained = {}
+    for pointer in producers:
+        if "storage" not in pointer:
+            continue
+        name = relative(pointer["path"])
+        if sum(row["path"] == name for row in producers) != 1:
+            raise AdmissionError("duplicate producer source authority for retained template")
+        if (set(pointer) != {"path", "sha256", "storage"}
+            or name not in templates or name in ordinary):
+            raise AdmissionError("retained template requires sole recipe-only producer authority")
+        storage = pointer["storage"]
+        if (not isinstance(storage, dict)
+            or set(storage) != {"role", "commit", "blob", "bytes"}
+            or storage["role"] != "retained-template"
+            or type(storage["bytes"]) is not int
+            or not 1 <= storage["bytes"] <= 2 * 1024**2
+            or not isinstance(pointer["sha256"], str)
+            or re.fullmatch(r"[0-9a-f]{64}", pointer["sha256"]) is None
+            or any(not isinstance(storage[key], str)
+                   or re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", storage[key]) is None
+                   for key in ("commit", "blob"))):
+            raise AdmissionError("retained template requires exact bounded Git identity")
+        retained[name] = pointer
+    return retained
+
+
+def _retained_template(repo, source_sha, pointer):
+    """Read one reachable ordinary historical blob, never a filesystem fallback."""
+    if (not isinstance(source_sha, str)
+        or re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", source_sha) is None):
+        raise AdmissionError("retained template requires selected source commit")
+    repo = Path(repo)
+    environment = {
+        "PATH": os.defpath, "LANG": "C", "LC_ALL": "C",
+        "GIT_NO_REPLACE_OBJECTS": "1", "GIT_OPTIONAL_LOCKS": "0",
+        "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
+        "GIT_TERMINAL_PROMPT": "0",
+    }
+
+    def git(*arguments):
+        try:
+            return subprocess.run(
+                ["git", "--no-replace-objects", "--no-optional-locks", "-C", str(repo), *arguments],
+                check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                timeout=10, env=environment,
+            ).stdout
+        except (OSError, subprocess.SubprocessError) as error:
+            raise AdmissionError("retained template Git custody differs") from error
+
+    git_dir = Path(git("rev-parse", "--absolute-git-dir").decode().strip())
+    if (git_dir / "info/grafts").exists():
+        raise AdmissionError("retained template refuses grafted history")
+    storage = pointer["storage"]
+    for revision in (source_sha, storage["commit"]):
+        if git("cat-file", "-t", revision) != b"commit\n":
+            raise AdmissionError("retained template revision must be a commit")
+    git("merge-base", "--is-ancestor", storage["commit"], source_sha)
+    entries = git("ls-tree", "-rz", storage["commit"], "--", pointer["path"]).split(b"\0")
+    expected = pointer["path"].encode()
+    if len(entries) != 2 or entries[-1] != b"":
+        raise AdmissionError("retained template historical path differs")
+    metadata, _, name = entries[0].partition(b"\t")
+    if name != expected or metadata.decode().split() not in [
+        ["100644", "blob", storage["blob"]], ["100755", "blob", storage["blob"]]
+    ]:
+        raise AdmissionError("retained template must be the declared ordinary blob")
+    if git("cat-file", "-s", storage["blob"]) != str(storage["bytes"]).encode() + b"\n":
+        raise AdmissionError("retained template byte count differs")
+    content = git("cat-file", "blob", storage["blob"])
+    algorithm = "sha256" if len(storage["blob"]) == 64 else "sha1"
+    actual_blob = hashlib.new(
+        algorithm, b"blob " + str(len(content)).encode() + b"\0" + content
+    ).hexdigest()
+    if (len(content) != storage["bytes"] or digest(content) != pointer["sha256"]
+        or actual_blob != storage["blob"]):
+        raise AdmissionError("retained template bytes differ from declared identity")
+    return content
+
+
+def recipe_template(repo, name, *, source_sha=None, descriptor=None):
+    """Select declared historical storage explicitly; ordinary recipes stay physical."""
+    retained = retained_templates(descriptor)
+    if name in retained:
+        return _retained_template(repo, source_sha, retained[name])
+    return read_owned(repo, name)
+
+
+def source_inputs(repo, source_sha, inputs, *, descriptor=None):
     if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", source_sha):
         raise AdmissionError("source identity must be an exact commit")
     command = ["git", "-C", str(repo), "ls-tree", "-rz", source_sha]
@@ -175,8 +284,20 @@ def source_inputs(repo, source_sha, inputs):
         objects[name.decode()] = (mode, kind, object_id)
     algorithm = "sha256" if len(source_sha) == 64 else "sha1"
     checked = []
+    retained = retained_templates(descriptor)
     for item in inputs:
         name = relative(item["path"])
+        if "storage" in item:
+            if (name not in retained or item["storage"] != retained[name]["storage"]
+                or item["sha256"] != retained[name]["sha256"]):
+                raise AdmissionError("retained input is not an owned interactive template")
+            content = _retained_template(repo, source_sha, retained[name])
+            checked.append({"path": name, "sha256": digest(content),
+                            "git_blob": retained[name]["storage"]["blob"],
+                            "storage": dict(retained[name]["storage"])})
+            continue
+        if name in retained:
+            raise AdmissionError("retained template storage authority was omitted")
         content = read_owned(repo, name)
         if digest(content) != item["sha256"]:
             raise AdmissionError("reviewed source fingerprint differs: " + name)

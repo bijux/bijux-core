@@ -32,6 +32,7 @@
         "default": "build"
 "permissions":
   "contents": "read"
+  "actions": "read"
 "concurrency":
   "group": "release-artifacts-${{ github.workflow }}-${{ github.ref }}-${{ inputs.package_slug }}"
   "cancel-in-progress": false
@@ -50,14 +51,22 @@
           "fetch-tags": true
           "ref": "${{ github.sha }}"
       - "name": "Setup Python"
-        "uses": "actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97"
+        "uses": "actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0"
         "with":
           "python-version": "3.11"
       - "name": "Setup uv"
-        "uses": "astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884"
+        "uses": "astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e"
         "with":
           "enable-cache": true
           "cache-dependency-glob": "uv.lock"
+      - "name": "Verify release source and repository admission"
+        "shell": "bash"
+        "env":
+          "PACKAGE_DIR": "${{ inputs.package_dir }}"
+          "PACKAGE_SLUG": "${{ inputs.package_slug }}"
+          "RELEASE_TAG": "${{ inputs.release_tag }}"
+          "GITHUB_TOKEN": "${{ github.token }}"
+        "run": "set -euo pipefail\ncase \"${RELEASE_TAG}\" in\n  v?*) ;;\n  *) echo \"release_tag must start with 'v' and include a version\" >&2; exit 1 ;;\nesac\ntag_commit=\"$(git rev-parse --verify \"refs/tags/${RELEASE_TAG}^{commit}\")\"\nhead_commit=\"$(git rev-parse --verify HEAD)\"\nif [[ \"${tag_commit}\" != \"${head_commit}\" || \"${head_commit}\" != \"${GITHUB_SHA}\" ]]; then\n  echo \"Release source tag, checkout, and workflow revision must identify one commit.\" >&2\n  exit 1\nfi\nif [[ -f .github/release.env ]]; then\n  set -a\n  source .github/release.env\n  set +a\nfi\nsource_command=\"${BIJUX_RELEASE_SOURCE_VERIFICATION_COMMAND:-}\"\nif [[ -n \"${source_command}\" ]]; then\n  eval \"${source_command}\"\nfi\n"
       - "name": "Install package toolchain"
         "shell": "bash"
         "run": "set -euo pipefail\nmakefile=\"${{ inputs.makefile_path }}\"\nif [ -z \"$makefile\" ]; then\n  makefile=\"makes/packages/$(basename '${{ inputs.package_dir }}').mk\"\nfi\nmakefile=\"${GITHUB_WORKSPACE}/$makefile\"\nmake -f \"$makefile\" -C \"${{ inputs.package_dir }}\" install\n"
