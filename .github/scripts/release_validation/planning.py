@@ -58,7 +58,7 @@ def plan(metadata: dict, policy: dict) -> dict:
         raise ValueError('Isolated test policy references a missing Cargo target')
     packages = sorted({item['package'] for item in targets})
     checks = [{'id': kind, 'kind': kind, 'compiled': kind != 'format', 'package': '', 'targets': []}
-              for kind in ('format', 'lint', 'docs')]
+              for kind in ('format', 'lint', 'docs', 'doctests')]
     atomic = {}
     for target in targets:
         atomic.setdefault(tuple(target['selector']), []).append(target)
@@ -115,7 +115,7 @@ def validate(value: dict) -> None:
                 selector_owners.setdefault(tuple(target['selector']), set()).add(check['id'])
     if any(len(owners) != 1 for owners in selector_owners.values()):
         raise ValueError('A workspace-wide Cargo selector must have exactly one worker')
-    for kind in ('lint', 'docs'):
+    for kind in ('lint', 'docs', 'doctests'):
         if sum(check['kind'] == kind for check in checks) != 1:
             raise ValueError('Incomplete workspace verification family: ' + kind)
     if sorted(check['package'] for check in checks if check['kind'] == 'publish') != sorted(PUBLIC_DAG):

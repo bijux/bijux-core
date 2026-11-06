@@ -136,6 +136,8 @@ def commands(check: dict) -> list[list[str]]:
         return [['cargo', 'clippy', '--workspace', '--all-targets', '--all-features', '--locked', '--', '-D', 'warnings']]
     if kind == 'docs':
         return [['cargo', 'doc', '--workspace', '--all-features', '--no-deps', '--locked']]
+    if kind == 'doctests':
+        return [['cargo', 'test', '--workspace', '--doc', '--all-features', '--locked']]
     if kind == 'tests':
         arguments = ['cargo', 'test', '--workspace', '--all-features', '--locked']
         selectors = set()

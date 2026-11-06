@@ -57,7 +57,7 @@ class ReleaseProofTests(unittest.TestCase):
             validate(damaged)
 
     def test_missing_package_proof_family_cannot_be_accepted(self):
-        for kind in ('lint', 'docs', 'publish', 'format', 'package-contents', 'smoke', 'python-installation'):
+        for kind in ('lint', 'docs', 'doctests', 'publish', 'format', 'package-contents', 'smoke', 'python-installation'):
             damaged = copy.deepcopy(self.prepared)
             damaged['checks'].remove(next(check for check in damaged['checks'] if check['kind'] == kind))
             with self.subTest(kind=kind), self.assertRaises(ValueError):
