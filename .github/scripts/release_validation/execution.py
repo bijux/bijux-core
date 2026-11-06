@@ -26,6 +26,7 @@ def command(arguments: list[str], *, cwd: Path = WORKSPACE, capture: bool = Fals
         raise TimeoutError('Release verification exhausted its bounded command budget')
     environment = dict(os.environ, CARGO_TARGET_DIR=str(TARGET), CARGO_BUILD_JOBS='4',
                        CARGO_INCREMENTAL='0', CARGO_HOME=str(OUT / 'cargo-home'), PYTHONDONTWRITEBYTECODE='1',
+                       CLIPPY_CONF_DIR=str(WORKSPACE / 'configs/rust'),
                        PYTHONPYCACHEPREFIX=str(OUT / 'python-cache'),
                        BIJUX_DAG_BIN=str(TARGET / 'debug/bijux-dag'),
                        TMPDIR=str(OUT / 'tmp'), TMP=str(OUT / 'tmp'), TEMP=str(OUT / 'tmp'))
