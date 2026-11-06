@@ -133,13 +133,17 @@ def commands(check: dict) -> list[list[str]]:
     if kind == 'format':
         return [['cargo', 'fmt', '--all', '--', '--check']]
     if kind == 'lint':
-        return [['cargo', 'clippy', '-p', package, '--all-targets', '--all-features', '--locked', '--', '-D', 'warnings']]
+        return [['cargo', 'clippy', '--workspace', '--all-targets', '--all-features', '--locked', '--', '-D', 'warnings']]
     if kind == 'docs':
-        return [['cargo', 'doc', '-p', package, '--all-features', '--no-deps', '--locked']]
+        return [['cargo', 'doc', '--workspace', '--all-features', '--no-deps', '--locked']]
     if kind == 'tests':
-        arguments = ['cargo', 'test', '-p', package, '--all-features', '--locked']
+        arguments = ['cargo', 'test', '--workspace', '--all-features', '--locked']
+        selectors = set()
         for target in check['targets']:
-            arguments.extend(target['selector'])
+            selector = tuple(target['selector'])
+            if selector not in selectors:
+                arguments.extend(selector)
+                selectors.add(selector)
         return [arguments]
     if kind == 'publish':
         return [['cargo', 'publish', '-p', package, '--dry-run', '--locked']]
@@ -178,7 +182,8 @@ def verify(check_id: str) -> None:
 
 def accept() -> None:
     manifest, prepared = load()
-    if any(result != 'success' for result in json.loads(os.environ['RELEASE_JOB_RESULTS'])):
+    jobs = json.loads(os.environ['RELEASE_JOB_RESULTS'])
+    if len(jobs) != 4 or any(result != 'success' for result in jobs):
         raise ValueError('Every producer and verification matrix must finish successfully')
     for name in ('RELEASE_LIBRARIES_SECONDS', 'RELEASE_BINARIES_SECONDS'):
         if not 0 <= float(os.environ[name]) < prepared['policy']['maximum_seconds']:

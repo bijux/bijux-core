@@ -57,23 +57,34 @@ def plan(metadata: dict, policy: dict) -> dict:
     if not set(policy['isolated_tests']) <= known:
         raise ValueError('Isolated test policy references a missing Cargo target')
     packages = sorted({item['package'] for item in targets})
-    checks = [{'id': 'format', 'kind': 'format', 'compiled': False, 'package': '', 'targets': []}]
-    for package in packages:
-        for kind in ('lint', 'docs'):
-            checks.append({'id': kind + '/' + package, 'kind': kind, 'package': package, 'compiled': True, 'targets': []})
-        owned = [item for item in targets if item['package'] == package]
-        ordinary = []
-        groups = []
-        for item in owned:
-            if package + '/' + item['target'] in policy['isolated_tests']:
-                groups.append([item])
-            else:
-                ordinary.append(item)
-        groups.extend(ordinary[index:index + size] for index in range(0, len(ordinary), size))
-        for group in groups:
-            identity = digest(group)[:12]
-            checks.append({'id': 'tests/' + package + '/' + identity, 'kind': 'tests', 'package': package,
-                           'compiled': True, 'targets': group})
+    checks = [{'id': kind, 'kind': kind, 'compiled': kind != 'format', 'package': '', 'targets': []}
+              for kind in ('format', 'lint', 'docs')]
+    atomic = {}
+    for target in targets:
+        atomic.setdefault(tuple(target['selector']), []).append(target)
+    ordinary = {}
+    groups = []
+    for members in atomic.values():
+        if len(members) > size:
+            raise ValueError('An indivisible Cargo selector exceeds the target partition bound')
+        owners = {member['package'] for member in members}
+        owner = next(iter(owners)) if len(owners) == 1 else 'workspace'
+        if any(member['package'] + '/' + member['target'] in policy['isolated_tests'] for member in members):
+            groups.append((owner, members))
+        else:
+            ordinary.setdefault(owner, []).append(members)
+    for owner, batches in sorted(ordinary.items()):
+        current = []
+        for members in batches:
+            if len(current) + len(members) > size:
+                groups.append((owner, current));current = []
+            current.extend(members)
+        if current:
+            groups.append((owner, current))
+    for owner, group in groups:
+        identity = digest(group)[:12]
+        checks.append({'id': 'tests/' + owner + '/' + identity, 'kind': 'tests', 'package': owner,
+                       'compiled': True, 'targets': group})
     for package in PUBLIC_DAG:
         if package not in packages:
             raise ValueError('Public DAG crate is missing from the workspace: ' + package)
@@ -97,10 +108,16 @@ def validate(value: dict) -> None:
     observed = sorted(encoded(target) for check in checks if check['kind'] == 'tests' for target in check['targets'])
     if not expected or observed != expected:
         raise ValueError('Partition plan must cover every Cargo target exactly once')
-    packages = {target['package'] for target in value['inventory']}
+    selector_owners = {}
+    for check in checks:
+        if check['kind'] == 'tests':
+            for target in check['targets']:
+                selector_owners.setdefault(tuple(target['selector']), set()).add(check['id'])
+    if any(len(owners) != 1 for owners in selector_owners.values()):
+        raise ValueError('A workspace-wide Cargo selector must have exactly one worker')
     for kind in ('lint', 'docs'):
-        if sorted(check['package'] for check in checks if check['kind'] == kind) != sorted(packages):
-            raise ValueError('Incomplete package verification family: ' + kind)
+        if sum(check['kind'] == kind for check in checks) != 1:
+            raise ValueError('Incomplete workspace verification family: ' + kind)
     if sorted(check['package'] for check in checks if check['kind'] == 'publish') != sorted(PUBLIC_DAG):
         raise ValueError('Incomplete publication verification family')
     for kind in ('format', 'package-contents', 'smoke', 'python-installation'):

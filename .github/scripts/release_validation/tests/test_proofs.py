@@ -1,7 +1,6 @@
 """Reject incomplete, stale, modified or over-budget release evidence."""
 from pathlib import Path
 import copy
-import importlib.util
 import io
 import json
 import sys
@@ -12,14 +11,16 @@ import unittest
 ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / '.github/scripts'))
 from release_validation.artifacts import file_digest, pack, snapshot, unpack, verify_receipts, verify_sources, source_files
+from release_validation import execution
 from release_validation.execution import commands
+from unittest.mock import patch
 from release_validation.planning import PUBLIC_DAG, plan, validate
 
 
 class ReleaseProofTests(unittest.TestCase):
     def setUp(self):
         self.policy = {'schema': 1, 'target_seconds': 180, 'maximum_seconds': 300,
-                       'targets_per_partition': 3, 'isolated_tests': []}
+                       'targets_per_partition': 6, 'isolated_tests': []}
         self.metadata = {'workspace_members': list(PUBLIC_DAG), 'packages': [
             {'id': name, 'name': name, 'targets': [
                 {'kind': ['lib'], 'name': name.replace('-', '_')},
@@ -62,6 +63,15 @@ class ReleaseProofTests(unittest.TestCase):
             with self.subTest(kind=kind), self.assertRaises(ValueError):
                 validate(damaged)
 
+    def test_colliding_workspace_selectors_cannot_be_split_between_workers(self):
+        damaged = copy.deepcopy(self.prepared)
+        check = next(check for check in damaged['checks'] if any(target['selector'] == ['--lib'] for target in check['targets']))
+        duplicate = copy.deepcopy(check);duplicate['id'] += '/other'
+        duplicate['targets'] = check['targets'][1:];check['targets'] = check['targets'][:1]
+        damaged['checks'].append(duplicate)
+        with self.assertRaisesRegex(ValueError, 'selector'):
+            validate(damaged)
+
     def test_unreviewed_target_kind_refuses_planning(self):
         self.metadata['packages'][0]['targets'].append({'kind': ['foreign'], 'name': 'unknown'})
         with self.assertRaisesRegex(ValueError, 'Unreviewed'):
@@ -76,7 +86,7 @@ class ReleaseProofTests(unittest.TestCase):
         groups = [check for check in result['checks'] if check['kind'] == 'tests']
         owner = next(check for check in groups if any(target['target'] == 'slow_calendar' for target in check['targets']))
         self.assertEqual(len(owner['targets']), 1)
-        self.assertTrue(all(len(check['targets']) <= 3 for check in groups))
+        self.assertTrue(all(len(check['targets']) <= 6 for check in groups))
 
     def test_complete_current_results_are_accepted(self):
         result = verify_receipts(self.prepared, self.identity, self.records)
@@ -179,9 +189,22 @@ class ReleaseProofTests(unittest.TestCase):
     def test_test_commands_preserve_feature_surface_and_select_every_owned_target(self):
         check = next(check for check in self.prepared['checks'] if check['kind'] == 'tests')
         arguments = commands(check)[0]
-        self.assertIn('--all-features', arguments);self.assertIn('--locked', arguments)
+        self.assertIn('--workspace', arguments);self.assertIn('--all-features', arguments);self.assertIn('--locked', arguments)
+        self.assertLessEqual(arguments.count('--lib'), 1)
         for target in check['targets']:
             for flag in target['selector']:self.assertIn(flag, arguments)
+
+    def test_terminal_acceptance_rejects_failed_or_missing_producers(self):
+        root = self.directory()
+        environment = {'RELEASE_LIBRARIES_SECONDS': '2', 'RELEASE_BINARIES_SECONDS': '3'}
+        for results in ([], ['success'] * 3, ['success', 'failure', 'success', 'success']):
+            environment['RELEASE_JOB_RESULTS'] = json.dumps(results)
+            with self.subTest(results=results), \
+                 patch.object(execution, 'load', return_value=({'identity': self.identity}, self.prepared)), \
+                 patch.object(execution, 'OUT', root), patch.dict(execution.os.environ, environment):
+                with self.assertRaisesRegex(ValueError, 'Every producer'):
+                    execution.accept()
+            self.assertFalse((root / 'acceptance.json').exists())
 
     def test_publication_commands_always_remain_locked_dry_runs(self):
         for check in self.prepared['checks']:
