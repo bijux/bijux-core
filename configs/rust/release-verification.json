@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "target_seconds": 180,
+  "maximum_seconds": 300,
+  "targets_per_partition": 12,
+  "isolated_tests": [
+    "bijux-cli-python/bridge_binary_parity_report",
+    "bijux-dag-app/cache_corruption_fixture_contract",
+    "bijux-dev/dag_product_message_contracts",
+    "bijux-dev/foundation_maintainer_command_surface_contracts",
+    "bijux-dev/release_validation_suite_contracts"
+  ]
+}
