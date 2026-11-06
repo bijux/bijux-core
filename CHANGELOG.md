@@ -18,6 +18,10 @@ This project adheres to [Semantic Versioning](https://semver.org) and the
 
 ### Changed
 
+- Qualify Croner 4.0.2 scheduling, current documentation renderer and plugins,
+  and accepted shared workflow action pins while retaining Rust 1.86 support.
+- Run macOS governance tests on the supported macOS 15 hosted runner.
+
 - Require the patched Tokio runtime with corrected asynchronous descriptor safety.
 
 - Patch Rustls certificate validation, WebPKI verification and certificate trust roots.

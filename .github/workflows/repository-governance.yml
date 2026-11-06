@@ -73,14 +73,14 @@ jobs:
             artifact_name: test-reports-ubuntu-24.04
             artifact_path: artifacts/reports
           - id: rust-test-macos
-            name: Rust Test (macos-14)
-            os: macos-14
+            name: Rust Test (macos-15)
+            os: macos-15
             timeout_minutes: 45
             soft_fail: false
             rust_components: ""
             pre_run: ""
             run: cargo run --locked -p bijux-dev --bin bijux-dev-dag -- tests run --domain governance
-            artifact_name: test-reports-macos-14
+            artifact_name: test-reports-macos-15
             artifact_path: artifacts/reports
           - id: compatibility-fixture-drift
             name: Compatibility Fixture Drift
