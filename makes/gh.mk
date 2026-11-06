@@ -30,7 +30,12 @@ gh-audit: gh-security ## Compatibility alias for GitHub security checks
 
 gh-test: install test ## Run GitHub test suites
 
+ifneq ($(strip $(RELEASE_CHECK)),)
+gh-release-validate: ## Execute one source-bound release verification partition
+	@PYTHONDONTWRITEBYTECODE=1 python3 .github/scripts/release_validation --check "$(RELEASE_CHECK)"
+else
 gh-release-validate: install release-validate-rs ## Run the canonical release validation suite in GitHub Actions
+endif
 
 gh-security-install-rust-tools: ## Install Rust security tools that match the pinned CI toolchain
 	@cargo install --locked cargo-deny --version "$(GH_SECURITY_CARGO_DENY_VERSION)"

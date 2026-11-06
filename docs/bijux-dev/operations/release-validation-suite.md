@@ -4,7 +4,7 @@ audience: maintainers
 type: operations
 status: canonical
 owner: bijux-dev-docs
-last_reviewed: 2026-07-19
+last_reviewed: 2026-11-06
 ---
 
 # Release Validation Suite
@@ -21,7 +21,7 @@ evidence that it passed.
 | Context | Entrypoint | Responsibility |
 | --- | --- | --- |
 | local release review | `make release-validate-rs` | runs the canonical Rust release suite |
-| hosted CI | `make gh-release-validate` | delegates to the same suite after CI setup |
+| hosted CI | `make gh-release-validate RELEASE_CHECK=<check>` | proves the complete suite through bounded parallel workers |
 | maintainer control plane | `cargo run -q -p bijux-dev --bin bijux-dev-cli -- release verify` | coordinates release readiness and compatibility evidence |
 
 The CI wrapper must remain thin. A check that exists only in hosted workflow
@@ -54,10 +54,28 @@ for topological dry-run verification before those versions exist remotely.
 That mechanism simulates publication order; it must not conceal a private
 dependency in a public package manifest.
 
-Release validation also reuses one governed target directory and caps Cargo
-parallelism for the suite. The intent is durability, not optimization: keep one
-comparable artifact tree while preventing clean-tree validation from exhausting
-common hosted runner disk during concurrent link steps.
+The local full-suite command reuses one governed target directory. Hosted
+verification prepares one source archive, compiles reusable library and binary
+inputs, then gives each verification worker its own extracted candidate and Cargo
+target directory. Workers share authenticated input bytes and execute independently.
+
+The hosted planner reads the complete workspace Cargo target inventory. It assigns
+every library, binary, integration test and benchmark target exactly once, isolates
+measured slow test targets, and separately requires formatting, workspace-wide Clippy
+and Rust documentation, public package listings, each locked publish dry-run,
+Python installation, and the DAG CLI smoke pipeline. The existing local suite
+remains the complete sequential entrypoint.
+
+`configs/rust/release-verification.json` owns the 180-second target and 300-second
+maximum. Every hosted job has a five-minute timeout, and worker commands reserve
+cleanup time within that limit. Missing, duplicate, failed, stale, modified or
+out-of-budget evidence prevents the final acceptance check from passing.
+
+Only public registry inputs and compiled outputs enter compilation archives;
+Cargo credentials and unrelated outputs are excluded. Candidate, plan, compiler,
+Python runtime and lock identities bind each worker result to the same source.
+The final `validate-release-candidate` job requires every producer and verification
+worker to succeed and retains `artifacts/release-validation/acceptance.json`.
 
 ## Required Proof
 

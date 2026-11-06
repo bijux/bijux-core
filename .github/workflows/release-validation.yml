@@ -1,45 +1,269 @@
 name: release-validation
-
-on:
-  pull_request:
-  workflow_dispatch:
-
+'on':
+  pull_request: null
+  workflow_dispatch: null
 permissions:
   contents: read
-
 concurrency:
   group: release-validation-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
+env:
+  CARGO_INCREMENTAL: '0'
+  CARGO_HOME: ${{ github.workspace }}/artifacts/release-validation/cargo-home
 jobs:
-  validate:
-    name: "${{ (github.event.pull_request.user.login == 'dependabot[bot]' || (github.event.pull_request.user.login == 'github-actions[bot]' && github.event.pull_request.head.ref == 'automation/dependency-lock-refresh')) && 'unverified dependency / ' || '' }}validate-release-candidate"
-    if: "${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (github.event.pull_request.user.login != 'dependabot[bot]') }}"
+  prepare:
+    name: ${{ (github.event.pull_request.user.login == 'dependabot[bot]' || (github.event.pull_request.user.login == 'github-actions[bot]' && github.event.pull_request.head.ref == 'automation/dependency-lock-refresh')) && 'unverified dependency / ' || '' }}Release / candidate
+    if: ${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (github.event.pull_request.user.login != 'dependabot[bot]') }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
-
+    timeout-minutes: 5
+    outputs:
+      candidate_sha256: ${{ steps.prepare.outputs.candidate_sha256 }}
+      manifest_sha256: ${{ steps.prepare.outputs.manifest_sha256 }}
+      plan_sha256: ${{ steps.prepare.outputs.plan_sha256 }}
+      matrix: ${{ steps.prepare.outputs.matrix }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.11"
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # v1
-        with:
-          toolchain: 1.86.0
-          components: rustfmt, clippy
-
-      - name: Restore Rust cache
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-
-      - name: Run release validation suite
-        shell: bash
-        run: |
-          set -euo pipefail
-          make gh-release-validate
+    - name: Checkout exact candidate
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        fetch-depth: 1
+    - name: Select verification Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+      with:
+        python-version: '3.11'
+    - name: Select governed Rust compiler
+      uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+      with:
+        toolchain: 1.86.0
+        components: ''
+    - name: Verify partition and evidence refusal controls
+      run: python3 -B -m unittest discover -s .github/scripts/release_validation/tests -v
+    - name: Prepare one source-bound candidate
+      run: make gh-release-validate RELEASE_CHECK="prepare"
+      id: prepare
+    - name: Retain release-candidate
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: release-candidate
+        path: |-
+          artifacts/release-validation/candidate.tar.gz
+          artifacts/release-validation/candidate.json
+          artifacts/release-validation/plan.json
+        if-no-files-found: error
+        retention-days: 7
+        compression-level: 0
+  libraries:
+    name: ${{ (github.event.pull_request.user.login == 'dependabot[bot]' || (github.event.pull_request.user.login == 'github-actions[bot]' && github.event.pull_request.head.ref == 'automation/dependency-lock-refresh')) && 'unverified dependency / ' || '' }}Release / compile libraries
+    if: ${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (github.event.pull_request.user.login != 'dependabot[bot]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: prepare
+    env:
+      RELEASE_CANDIDATE_SHA256: ${{ needs.prepare.outputs.candidate_sha256 }}
+      RELEASE_MANIFEST_SHA256: ${{ needs.prepare.outputs.manifest_sha256 }}
+      RELEASE_PLAN_SHA256: ${{ needs.prepare.outputs.plan_sha256 }}
+    outputs:
+      sha256: ${{ steps.compile.outputs.libraries_sha256 }}
+      seconds: ${{ steps.compile.outputs.elapsed_seconds }}
+    steps:
+    - name: Checkout exact candidate
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        fetch-depth: 1
+    - name: Select verification Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+      with:
+        python-version: '3.11'
+    - name: Select governed Rust compiler
+      uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+      with:
+        toolchain: 1.86.0
+        components: ''
+    - name: Download release-candidate
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+      with:
+        name: release-candidate
+        path: artifacts/release-validation
+    - name: Authenticate candidate inputs
+      run: make gh-release-validate RELEASE_CHECK="candidate"
+    - name: Restore governed compilation cache
+      uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
+      with:
+        workspaces: artifacts/release-validation/workspace -> ../target
+        shared-key: release-candidate-libraries
+        cache-all-crates: true
+        cache-workspace-crates: true
+    - name: Compile library tests and registry dependencies
+      run: make gh-release-validate RELEASE_CHECK="libraries"
+      id: compile
+    - name: Retain release-libraries
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: release-libraries
+        path: artifacts/release-validation/libraries.tar.gz
+        if-no-files-found: error
+        retention-days: 7
+        compression-level: 0
+  binaries:
+    name: ${{ (github.event.pull_request.user.login == 'dependabot[bot]' || (github.event.pull_request.user.login == 'github-actions[bot]' && github.event.pull_request.head.ref == 'automation/dependency-lock-refresh')) && 'unverified dependency / ' || '' }}Release / compile binaries
+    if: ${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (github.event.pull_request.user.login != 'dependabot[bot]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs:
+    - prepare
+    - libraries
+    env:
+      RELEASE_CANDIDATE_SHA256: ${{ needs.prepare.outputs.candidate_sha256 }}
+      RELEASE_MANIFEST_SHA256: ${{ needs.prepare.outputs.manifest_sha256 }}
+      RELEASE_PLAN_SHA256: ${{ needs.prepare.outputs.plan_sha256 }}
+      RELEASE_LIBRARIES_SHA256: ${{ needs.libraries.outputs.sha256 }}
+    outputs:
+      sha256: ${{ steps.compile.outputs.binaries_sha256 }}
+      seconds: ${{ steps.compile.outputs.elapsed_seconds }}
+    steps:
+    - name: Checkout exact candidate
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        fetch-depth: 1
+    - name: Select verification Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+      with:
+        python-version: '3.11'
+    - name: Select governed Rust compiler
+      uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+      with:
+        toolchain: 1.86.0
+        components: ''
+    - name: Download release-candidate
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+      with:
+        name: release-candidate
+        path: artifacts/release-validation
+    - name: Download release-libraries
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+      with:
+        name: release-libraries
+        path: artifacts/release-validation
+    - name: Compile reusable runtime and maintainer binaries
+      run: make gh-release-validate RELEASE_CHECK="binaries"
+      id: compile
+    - name: Retain release-binaries
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: release-binaries
+        path: artifacts/release-validation/binaries.tar.gz
+        if-no-files-found: error
+        retention-days: 7
+        compression-level: 0
+  verify:
+    name: ${{ (github.event.pull_request.user.login == 'dependabot[bot]' || (github.event.pull_request.user.login == 'github-actions[bot]' && github.event.pull_request.head.ref == 'automation/dependency-lock-refresh')) && 'unverified dependency / ' || '' }}Release / ${{ matrix.id }}
+    if: ${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (github.event.pull_request.user.login != 'dependabot[bot]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs:
+    - prepare
+    - libraries
+    - binaries
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    env:
+      RELEASE_CANDIDATE_SHA256: ${{ needs.prepare.outputs.candidate_sha256 }}
+      RELEASE_MANIFEST_SHA256: ${{ needs.prepare.outputs.manifest_sha256 }}
+      RELEASE_PLAN_SHA256: ${{ needs.prepare.outputs.plan_sha256 }}
+      RELEASE_LIBRARIES_SHA256: ${{ needs.libraries.outputs.sha256 }}
+      RELEASE_BINARIES_SHA256: ${{ needs.binaries.outputs.sha256 }}
+    steps:
+    - name: Checkout exact candidate
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        fetch-depth: 1
+    - name: Select verification Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+      with:
+        python-version: '3.11'
+    - name: Select governed Rust compiler
+      uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+      with:
+        toolchain: 1.86.0
+        components: ${{ (matrix.kind == 'lint' && 'clippy') || (matrix.kind == 'format' && 'rustfmt') || '' }}
+    - name: Download release-candidate
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+      with:
+        name: release-candidate
+        path: artifacts/release-validation
+    - name: Download release-libraries
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+      with:
+        name: release-libraries
+        path: artifacts/release-validation
+      if: ${{ matrix.compiled }}
+    - name: Download release-binaries
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+      with:
+        name: release-binaries
+        path: artifacts/release-validation
+      if: ${{ matrix.compiled }}
+    - name: Run bounded verification
+      run: make gh-release-validate RELEASE_CHECK="${{ matrix.id }}"
+    - name: Retain release-proof-${{ strategy.job-index }}
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: release-proof-${{ strategy.job-index }}
+        path: artifacts/release-validation/results/*.json
+        if-no-files-found: error
+        retention-days: 7
+        compression-level: 0
+      if: ${{ always() }}
+  accept:
+    name: ${{ (github.event.pull_request.user.login == 'dependabot[bot]' || (github.event.pull_request.user.login == 'github-actions[bot]' && github.event.pull_request.head.ref == 'automation/dependency-lock-refresh')) && 'unverified dependency / ' || '' }}validate-release-candidate
+    if: ${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (always() && github.event.pull_request.user.login != 'dependabot[bot]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs:
+    - prepare
+    - libraries
+    - binaries
+    - verify
+    env:
+      RELEASE_CANDIDATE_SHA256: ${{ needs.prepare.outputs.candidate_sha256 }}
+      RELEASE_MANIFEST_SHA256: ${{ needs.prepare.outputs.manifest_sha256 }}
+      RELEASE_PLAN_SHA256: ${{ needs.prepare.outputs.plan_sha256 }}
+      RELEASE_JOB_RESULTS: ${{ toJSON(needs.*.result) }}
+      RELEASE_LIBRARIES_SECONDS: ${{ needs.libraries.outputs.seconds }}
+      RELEASE_BINARIES_SECONDS: ${{ needs.binaries.outputs.seconds }}
+    steps:
+    - name: Checkout exact candidate
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        fetch-depth: 1
+    - name: Select verification Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+      with:
+        python-version: '3.11'
+    - name: Select governed Rust compiler
+      uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+      with:
+        toolchain: 1.86.0
+        components: ''
+    - name: Download release-candidate
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+      with:
+        name: release-candidate
+        path: artifacts/release-validation
+    - name: Download complete worker evidence
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+      with:
+        pattern: release-proof-*
+        path: artifacts/release-validation/results
+        merge-multiple: true
+    - name: Require every current-candidate verification
+      run: make gh-release-validate RELEASE_CHECK="accept"
+    - name: Retain release-acceptance
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: release-acceptance
+        path: artifacts/release-validation/acceptance.json
+        if-no-files-found: error
+        retention-days: 7
+        compression-level: 0
