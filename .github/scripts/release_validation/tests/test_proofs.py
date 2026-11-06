@@ -139,6 +139,25 @@ class ReleaseProofTests(unittest.TestCase):
         external = root / 'external';external.write_text('owned');original.symlink_to(external)
         with self.assertRaises(ValueError):verify_sources(source, identity)
 
+    def test_registry_transfer_excludes_credentials_and_unrelated_outputs(self):
+        root = self.directory();(root / 'cargo-home/registry').mkdir(parents=True)
+        (root / 'cargo-home/registry/public').write_text('registry')
+        (root / 'cargo-home/credentials.toml').write_text('credential')
+        (root / 'target').mkdir();(root / 'target/library').write_text('compiled')
+        (root / 'unrelated').write_text('unrelated');archive = root / 'cache.tar.gz'
+        pack(root, archive, include=['target', 'cargo-home/registry'])
+        with tarfile.open(archive) as stream:
+            self.assertEqual(set(stream.getnames()), {'target/library', 'cargo-home/registry/public'})
+
+    def test_internal_directory_alias_survives_candidate_transfer(self):
+        root = self.directory();source = root / 'source';source.mkdir()
+        (source / 'owned').mkdir();(source / 'owned/input').write_text('owned')
+        (source / 'alias').symlink_to('owned', target_is_directory=True)
+        identity = source_files(source);archive = root / 'candidate.tar.gz'
+        value = pack(source, archive);destination = root / 'restored'
+        unpack(archive, destination, value);verify_sources(destination, identity)
+        self.assertTrue((destination / 'alias').is_symlink())
+
     def test_source_mutation_is_rejected(self):
         root = self.directory();(root / 'Cargo.lock').write_text('locked');identity = source_files(root)
         (root / 'Cargo.lock').write_text('changed')

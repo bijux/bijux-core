@@ -52,19 +52,30 @@ def verify_sources(root: Path, expected: dict[str, str]) -> None:
             raise ValueError('Prepared candidate input changed: ' + relative)
 
 
-def snapshot(root: Path) -> dict[str, str]:
-    return {path.relative_to(root).as_posix(): file_digest(path)
-            for path in root.rglob('*') if path.is_file() and 'incremental' not in path.parts}
+def selected_files(root: Path, include: list[str] | None = None):
+    for owned in ([root / name for name in include] if include else [root]):
+        if not owned.exists():
+            continue
+        for path in sorted(owned.rglob('*')):
+            if 'incremental' not in path.relative_to(root).parts and (path.is_symlink() or not path.is_dir()):
+                yield path
 
 
-def pack(root: Path, output: Path, *, baseline: dict[str, str] | None = None) -> str:
+def entry_digest(path: Path) -> str:
+    return 'symlink:' + os.readlink(path) if path.is_symlink() else file_digest(path)
+
+
+def snapshot(root: Path, *, include: list[str] | None = None) -> dict[str, str]:
+    return {path.relative_to(root).as_posix(): entry_digest(path) for path in selected_files(root, include)}
+
+
+def pack(root: Path, output: Path, *, baseline: dict[str, str] | None = None,
+         include: list[str] | None = None) -> str:
     output.parent.mkdir(parents=True, exist_ok=True)
     with tarfile.open(output, 'w:gz', compresslevel=1) as archive:
-        for path in sorted(root.rglob('*')):
+        for path in selected_files(root, include):
             relative = path.relative_to(root)
-            if 'incremental' in relative.parts or path.is_dir():
-                continue
-            if baseline is not None and relative.as_posix() in baseline and file_digest(path) == baseline[relative.as_posix()]:
+            if baseline is not None and relative.as_posix() in baseline and entry_digest(path) == baseline[relative.as_posix()]:
                 continue
             archive.add(path, arcname=relative.as_posix(), recursive=False)
     return file_digest(output)

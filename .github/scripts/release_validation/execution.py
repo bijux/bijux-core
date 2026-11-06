@@ -25,7 +25,7 @@ def command(arguments: list[str], *, cwd: Path = WORKSPACE, capture: bool = Fals
     if remaining <= 0:
         raise TimeoutError('Release verification exhausted its bounded command budget')
     environment = dict(os.environ, CARGO_TARGET_DIR=str(TARGET), CARGO_BUILD_JOBS='4',
-                       CARGO_INCREMENTAL='0', PYTHONDONTWRITEBYTECODE='1',
+                       CARGO_INCREMENTAL='0', CARGO_HOME=str(OUT / 'cargo-home'), PYTHONDONTWRITEBYTECODE='1',
                        PYTHONPYCACHEPREFIX=str(OUT / 'python-cache'),
                        BIJUX_DAG_BIN=str(TARGET / 'debug/bijux-dag'),
                        TMPDIR=str(OUT / 'tmp'), TMP=str(OUT / 'tmp'), TEMP=str(OUT / 'tmp'))
@@ -103,22 +103,23 @@ def restore(manifest: dict, *, libraries: bool, binaries: bool) -> None:
     if not WORKSPACE.exists():
         unpack(OUT / 'candidate.tar.gz', WORKSPACE, manifest['identity']['candidate_sha256'])
     if libraries:
-        unpack(OUT / 'libraries.tar.gz', TARGET, os.environ['RELEASE_LIBRARIES_SHA256'])
+        unpack(OUT / 'libraries.tar.gz', OUT, os.environ['RELEASE_LIBRARIES_SHA256'])
     if binaries:
-        unpack(OUT / 'binaries.tar.gz', TARGET, os.environ['RELEASE_BINARIES_SHA256'])
+        unpack(OUT / 'binaries.tar.gz', OUT, os.environ['RELEASE_BINARIES_SHA256'])
     verify_sources(WORKSPACE, manifest['files'])
 
 
 def warm(check: str) -> None:
     manifest, _ = load()
     restore(manifest, libraries=check == 'binaries', binaries=False)
-    baseline = snapshot(TARGET) if check == 'binaries' else None
+    cache_roots = ['target', 'cargo-home/registry']
+    baseline = snapshot(OUT, include=cache_roots) if check == 'binaries' else None
     if check == 'libraries':
-        command(['cargo', 'build', '--workspace', '--lib', '--all-features', '--locked'])
+        command(['cargo', 'test', '--workspace', '--lib', '--all-features', '--locked', '--no-run'])
     else:
         command(['cargo', 'build', '--workspace', '--bins', '--all-features', '--locked'])
     verify_sources(WORKSPACE, manifest['files'])
-    archive_hash = pack(TARGET, OUT / (check + '.tar.gz'), baseline=baseline)
+    archive_hash = pack(OUT, OUT / (check + '.tar.gz'), baseline=baseline, include=cache_roots)
     elapsed = time.monotonic() - STARTED
     if elapsed >= 240:
         raise TimeoutError('Compilation preparation exceeded its bounded execution budget')
