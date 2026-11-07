@@ -54,6 +54,8 @@ def plan(metadata: dict, policy: dict) -> dict:
         raise ValueError('Release target partition size is not bounded')
     targets = inventory(metadata)
     known = {item['package'] + '/' + item['target'] for item in targets}
+    if not set(policy.get('serial_test_targets', [])) <= known:
+        raise ValueError('Serial test policy references a missing Cargo target')
     if not set(policy['isolated_tests']) <= known:
         raise ValueError('Isolated test policy references a missing Cargo target')
     packages = sorted({item['package'] for item in targets})
@@ -85,6 +87,10 @@ def plan(metadata: dict, policy: dict) -> dict:
         identity = digest(group)[:12]
         checks.append({'id': 'tests/' + owner + '/' + identity, 'kind': 'tests', 'package': owner,
                        'compiled': True, 'targets': group})
+    for check in checks:
+        if any(target['package'] + '/' + target['target'] in policy.get('serial_test_targets', [])
+               for target in check['targets']):
+            check['test_threads'] = 1
     for package in PUBLIC_DAG:
         if package not in packages:
             raise ValueError('Public DAG crate is missing from the workspace: ' + package)
@@ -111,6 +117,10 @@ def validate(value: dict) -> None:
     selector_owners = {}
     for check in checks:
         if check['kind'] == 'tests':
+            serial = any(target['package'] + '/' + target['target'] in value['policy'].get('serial_test_targets', [])
+                         for target in check['targets'])
+            if check.get('test_threads') != (1 if serial else None):
+                raise ValueError('Verification must retain governed test resource isolation')
             for target in check['targets']:
                 selector_owners.setdefault(tuple(target['selector']), set()).add(check['id'])
     if any(len(owners) != 1 for owners in selector_owners.values()):

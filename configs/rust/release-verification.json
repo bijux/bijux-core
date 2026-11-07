@@ -9,5 +9,8 @@
     "bijux-dev/dag_product_message_contracts",
     "bijux-dev/foundation_maintainer_command_surface_contracts",
     "bijux-dev/release_validation_suite_contracts"
+  ],
+  "serial_test_targets": [
+    "bijux-cli/integration"
   ]
 }

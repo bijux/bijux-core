@@ -155,6 +155,8 @@ def commands(check: dict) -> list[list[str]]:
             if selector not in selectors:
                 arguments.extend(selector)
                 selectors.add(selector)
+        if check.get('test_threads') == 1:
+            arguments.extend(['--', '--test-threads=1'])
         return [arguments]
     if kind == 'publish':
         return [['cargo', 'publish', '-p', package, '--dry-run', '--locked']]

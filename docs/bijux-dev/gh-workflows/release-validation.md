@@ -49,6 +49,10 @@ authenticated target and reuse the prepared default-feature CLI binary. Incremen
 credentials are excluded. A restored cache accelerates compilation; a successful
 worker command and authenticated terminal result establish verification.
 
+CLI integration tests execute serially inside their worker so startup timing
+guards do not compete with state-race campaigns in the same test process. The
+performance thresholds and complete test inventory are unchanged.
+
 ## Terminal evidence
 
 The stable `validate-release-candidate` check passes only after all compilation

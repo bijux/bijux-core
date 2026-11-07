@@ -194,6 +194,24 @@ class ReleaseProofTests(unittest.TestCase):
         for target in check['targets']:
             for flag in target['selector']:self.assertIn(flag, arguments)
 
+    def test_timing_suite_keeps_every_test_with_serial_resource_isolation(self):
+        self.policy['serial_test_targets'] = ['bijux-dag-core/contract']
+        result = plan(self.metadata, self.policy)
+        selected = [check for check in result['checks'] if check.get('test_threads') == 1]
+        self.assertEqual(len(selected), 1)
+        arguments = commands(selected[0])[0]
+        self.assertEqual(arguments[-2:], ['--', '--test-threads=1'])
+        self.assertNotIn('--skip', arguments)
+        self.assertIn('--all-features', arguments)
+        selected[0].pop('test_threads')
+        with self.assertRaisesRegex(ValueError, 'resource isolation'):
+            validate(result)
+
+    def test_unknown_timing_suite_refuses_planning(self):
+        self.policy['serial_test_targets'] = ['bijux-cli/missing']
+        with self.assertRaisesRegex(ValueError, 'Serial test policy'):
+            plan(self.metadata, self.policy)
+
     def test_nested_fixture_builds_reuse_authenticated_compilation_outputs(self):
         root = self.directory();workspace = root / 'workspace';workspace.mkdir()
         cache = root / 'producer';(cache / 'target').mkdir(parents=True)
