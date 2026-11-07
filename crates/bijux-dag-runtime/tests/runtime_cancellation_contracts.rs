@@ -15,6 +15,7 @@ use bijux_dag_runtime::cancellation_is_terminal;
 use bijux_dag_runtime::{Runtime, RuntimeConfig};
 use serde_json::{json, Value};
 use std::fs;
+use std::path::Path;
 use std::process::Command;
 use std::sync::{Mutex, OnceLock};
 use std::thread;
@@ -45,7 +46,7 @@ fn operator_cancellation_graph() -> String {
                     "argv": [
                         "/bin/sh",
                         "-c",
-                        "sleep 2; cat ../inputs/prepare/in > ../outputs/execute.txt"
+                        "printf started > execute.started; sleep 2; cat ../inputs/prepare/in > ../outputs/execute.txt"
                     ]
                 },
                 "effects": ["filesystem"]
@@ -71,6 +72,18 @@ fn operator_cancellation_graph() -> String {
         ]
     })
     .to_string()
+}
+
+fn wait_for_running_execution(staging_dir: &Path) {
+    // Cancellation must follow committed preparation and an actually running shell.
+    let marker = staging_dir.join("nodes/execute/work/execute.started");
+    for _ in 0..1000 {
+        if marker.exists() {
+            return;
+        }
+        thread::sleep(Duration::from_millis(10));
+    }
+    panic!("execute node did not start before cancellation: {}", marker.display());
 }
 
 fn read_node_trace(run_dir: &std::path::Path, node_id: &str) -> Value {
@@ -104,8 +117,10 @@ fn operator_cancellation_preserves_completed_nodes_and_marks_remaining_nodes_can
     let runtime = Runtime::new();
     let out = tempfile::tempdir().expect("temp");
 
-    let signaler = thread::spawn(|| {
-        thread::sleep(Duration::from_millis(150));
+    let run_id = "operator-interrupt";
+    let staging_dir = out.path().join(format!("run.tmp-{run_id}"));
+    let signaler = thread::spawn(move || {
+        wait_for_running_execution(&staging_dir);
         let status = Command::new("kill")
             .args(["-INT", &std::process::id().to_string()])
             .status()
@@ -114,7 +129,11 @@ fn operator_cancellation_preserves_completed_nodes_and_marks_remaining_nodes_can
     });
 
     let run_path = runtime
-        .run(&graph, out.path(), RuntimeConfig { jobs: 1, ..RuntimeConfig::default() })
+        .run(
+            &graph,
+            out.path(),
+            RuntimeConfig { jobs: 1, run_id: Some(run_id.to_string()), ..RuntimeConfig::default() },
+        )
         .expect("cancelled run");
     signaler.join().expect("signaler thread");
 
@@ -201,16 +220,7 @@ fn stop_request_file_cancels_running_run_and_records_operator_request_cause() {
         )
     });
 
-    for _ in 0..200 {
-        if staging_dir.join("nodes").join("prepare").join("trace.json").exists() {
-            break;
-        }
-        thread::sleep(Duration::from_millis(10));
-    }
-    assert!(
-        staging_dir.join("nodes").join("prepare").join("trace.json").exists(),
-        "prepare trace not created in time"
-    );
+    wait_for_running_execution(&staging_dir);
 
     let request = RunStopRequest {
         schema_version: "run-stop-request/v0.1".to_string(),
