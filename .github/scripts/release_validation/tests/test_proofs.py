@@ -10,7 +10,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / '.github/scripts'))
-from release_validation.artifacts import file_digest, pack, snapshot, unpack, verify_receipts, verify_sources, source_files
+from verification.artifacts import file_digest, pack, snapshot, unpack, verify_receipts, verify_sources, source_files
 from release_validation import execution
 from release_validation.execution import commands
 from unittest.mock import patch

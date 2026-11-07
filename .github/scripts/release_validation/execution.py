@@ -10,8 +10,9 @@ import time
 import sys
 import tomllib
 
-from .artifacts import file_digest, pack, source_files, unpack, verify_receipts, verify_sources, write_json, snapshot
-from .planning import PUBLIC_DAG, digest, plan, validate
+from verification.artifacts import file_digest, pack, source_files, unpack, verify_receipts, verify_sources, write_json, snapshot
+from verification.planning import digest
+from .planning import PUBLIC_DAG, plan, validate
 
 ROOT = Path(__file__).resolve().parents[3]
 OUT = ROOT / 'artifacts/release-validation'
