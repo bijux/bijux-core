@@ -194,6 +194,29 @@ class ReleaseProofTests(unittest.TestCase):
         for target in check['targets']:
             for flag in target['selector']:self.assertIn(flag, arguments)
 
+    def test_nested_fixture_builds_reuse_authenticated_compilation_outputs(self):
+        root = self.directory();workspace = root / 'workspace';workspace.mkdir()
+        cache = root / 'producer';(cache / 'target').mkdir(parents=True)
+        (cache / 'target/compiled').write_text('compiled')
+        archive = root / 'libraries.tar.gz';identity = pack(cache, archive)
+        with patch.object(execution, 'OUT', root), patch.object(execution, 'WORKSPACE', workspace), \
+             patch.object(execution, 'TARGET', root / 'target'), \
+             patch.dict(execution.os.environ, {'RELEASE_LIBRARIES_SHA256': identity}):
+            execution.restore({'files': {}}, libraries=True, binaries=False)
+            self.assertEqual((workspace / 'artifacts/target/compiled').read_text(), 'compiled')
+            self.assertEqual((workspace / 'artifacts/target').resolve(), root / 'target')
+
+    def test_nested_fixture_cache_cannot_replace_an_unrelated_directory(self):
+        root = self.directory();workspace = root / 'workspace';(workspace / 'artifacts/target').mkdir(parents=True)
+        cache = root / 'producer';(cache / 'target').mkdir(parents=True)
+        archive = root / 'libraries.tar.gz';identity = pack(cache, archive)
+        with patch.object(execution, 'OUT', root), patch.object(execution, 'WORKSPACE', workspace), \
+             patch.object(execution, 'TARGET', root / 'target'), \
+             patch.dict(execution.os.environ, {'RELEASE_LIBRARIES_SHA256': identity}):
+            with self.assertRaisesRegex(ValueError, 'Nested Cargo'):
+                execution.restore({'files': {}}, libraries=True, binaries=False)
+        self.assertTrue((workspace / 'artifacts/target').is_dir())
+
     def test_terminal_acceptance_rejects_failed_or_missing_producers(self):
         root = self.directory()
         environment = {'RELEASE_LIBRARIES_SECONDS': '2', 'RELEASE_BINARIES_SECONDS': '3'}

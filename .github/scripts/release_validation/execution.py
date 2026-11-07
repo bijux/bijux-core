@@ -108,6 +108,13 @@ def restore(manifest: dict, *, libraries: bool, binaries: bool) -> None:
     if binaries:
         unpack(OUT / 'binaries.tar.gz', OUT, os.environ['RELEASE_BINARIES_SHA256'])
     verify_sources(WORKSPACE, manifest['files'])
+    if libraries:
+        legacy = WORKSPACE / 'artifacts/target'
+        legacy.parent.mkdir(parents=True, exist_ok=True)
+        if not legacy.exists() and not legacy.is_symlink():
+            legacy.symlink_to(os.path.relpath(TARGET, legacy.parent), target_is_directory=True)
+        if not legacy.is_symlink() or legacy.resolve() != TARGET.resolve():
+            raise ValueError('Nested Cargo invocations must share the authenticated compilation target')
 
 
 def warm(check: str) -> None:
@@ -119,6 +126,7 @@ def warm(check: str) -> None:
         command(['cargo', 'test', '--workspace', '--lib', '--all-features', '--locked', '--no-run'])
     else:
         command(['cargo', 'build', '--workspace', '--bins', '--all-features', '--locked'])
+        command(['cargo', 'build', '-p', 'bijux-dag-cli', '--bin', 'bijux-dag', '--locked'])
     verify_sources(WORKSPACE, manifest['files'])
     archive_hash = pack(OUT, OUT / (check + '.tar.gz'), baseline=baseline, include=cache_roots)
     elapsed = time.monotonic() - STARTED

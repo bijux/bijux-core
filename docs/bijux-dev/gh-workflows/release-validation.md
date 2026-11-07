@@ -44,7 +44,8 @@ Every job has a five-minute timeout, with a three-minute execution target. Rust
 
 Independent verification jobs run concurrently. Compilation archives include only
 owned target outputs and public Cargo registry inputs; the binary archive contains
-changes relative to the library archive. Incremental build directories and Cargo
+changes relative to the library archive. Nested CLI fixture builds share that
+authenticated target and reuse the prepared default-feature CLI binary. Incremental build directories and Cargo
 credentials are excluded. A restored cache accelerates compilation; a successful
 worker command and authenticated terminal result establish verification.
 
