@@ -4,81 +4,84 @@ audience: maintainers
 type: operations
 status: canonical
 owner: bijux-dev-docs
-last_reviewed: 2026-07-19
+last_reviewed: 2026-11-07
 ---
 
 # Repository CI
 
-`.github/workflows/ci.yml` is the required pull-request and merge-queue
-validation workflow. It is synchronized from `bijux-std`; this repository owns
-the delegated make targets, not the generated workflow structure.
+`.github/workflows/ci.yml` validates pull requests and merge-queue candidates.
+Its structure is generated from `bijux-std`; this repository owns the delegated
+Make commands and native verification adapter.
 
-## Triggers And Concurrency
+## Events and admission
 
-- `pull_request` targeting `main`;
-- `merge_group` targeting `main`;
-- one active run per workflow and ref, with an older in-progress run cancelled
-  when a newer commit supersedes it.
+Pull requests and merge groups targeting `main` run the workflow. A newer commit
+supersedes the previous run for the same ref. Accepted pull-request evidence is
+not repeated by a push-to-main workflow. Dependabot and automated lock-refresh
+pull requests retain their separate owner-review notice and skip product jobs.
 
-The workflow does not run on a direct `push` event. Branch protection and merge
-policy must therefore require the pull-request or merge-group checks rather
-than assume a post-push CI run exists.
+## Native test verification
 
-Dependabot pull requests conditionally skip the four repository jobs in this
-workflow. Dependency policy and any separate Dependabot validation must not be
-misreported as execution of these skipped jobs.
+`continuous integration / test` accepts complete bounded worker evidence. It no
+longer compiles and executes the complete Rust and Python portfolio in one job.
+Each native job has a five-minute timeout and a three-minute execution target.
 
-## Job Contract
-
-| Job | Hosted command | Repository authority |
+| Responsibility | Hosted command | Proof |
 | --- | --- | --- |
-| Formatting | `make gh-fmt` | Rust and Python format checks without source mutation |
-| Lint | `make gh-lint` | Rust and Python lint policy |
-| Security | install pinned security tools, then `make gh-security` | dependency and repository security gates |
-| Tests | install pinned nextest, then `make gh-test` | required Rust release lane and Python tests |
+| source inventory | `make gh-test TEST_CHECK=prepare` | committed source, exact lock, compiler, Python, complete target inventory and native filter |
+| library preparation | `make gh-test TEST_CHECK=libraries` | shared compiled test dependencies, including binary-only workspace roots |
+| runtime binaries | `make gh-test TEST_CHECK=binaries` | all-feature workspace binaries |
+| maintainer and parity tools | `make gh-test TEST_CHECK=tools` | default CLI, DAG CLI and maintainer binaries |
+| Rust partitions | `make gh-test TEST_CHECK=<id>` | every assigned test target and its complete compiled case catalogue |
+| Python coverage | `make gh-test TEST_CHECK=python` | canonical `make test-py`, installed bridge, parity binaries, JUnit and full coverage threshold |
+| terminal acceptance | `make gh-test TEST_CHECK=accept` | all producers and workers pass with complete current-source receipts |
 
-`make gh-test` delegates to the root `make test` contract. It is not the
-complete ignored/slow Rust portfolio; use the governed full and frozen lanes
-when that evidence is required.
+Runtime-binary and maintainer-tool compilation run concurrently after library
+preparation. Rust target partitions run with up to sixteen workers concurrently;
+the Python worker runs independently. Authenticated library and binary deltas
+share compilation inputs. Nested fixture builds reuse the same owned target
+instead of compiling another copy inside the checkout.
 
-Release packaging, publish dry runs, documentation, and smoke validation belong
-to `.github/workflows/release-validation.yml` through
-`make gh-release-validate`. A green repository CI workflow alone is not a
-release-readiness claim.
+All native workers use the committed `Cargo.lock`. The adapter retains
+workspace-wide all-feature selection, the pinned Nextest executor, the `ci`
+profile and the canonical fast filter exposed by `make gh-test-filter`.
+Colliding target selectors remain together. Existing slow and ignored case
+exclusions retain their governed meaning. A partition containing only existing
+exclusions or an empty harness still proves that its assigned binaries compile
+and have the expected catalogue; complete acceptance requires nonempty Rust and
+Python case coverage across the workflow.
 
-## Environment Authority
+The Python suite remains whole so its existing coverage threshold applies to
+all selected tests. The adapter does not replace its marker or coverage options.
+The local `make test` and `make gh-test` commands retain the complete
+single-machine native test entrypoint. Slow, ignored and frozen portfolios keep
+their separate governed lanes.
 
-The generated workflow selects the runner, Python version, Rust toolchain,
-components, caches, and tool installation. Those values must agree with:
+## Evidence and refusal
 
-- `Cargo.toml` workspace `rust-version`;
-- `rust-toolchain.toml`;
-- `configs/rust/clippy.toml` MSRV;
-- Python requirements in `crates/bijux-cli-python/pyproject.toml`;
-- pinned tool compatibility in `makes/gh.mk`.
+`artifacts/native-tests/` owns plans, compilation transfers, worker receipts,
+Python reports and `acceptance.json`. Workers authenticate the producer's
+manifest and plan digests, source commit, lockfile, compiler and Python identity.
+They verify declared source bytes before and after execution. Compilation
+transfers include only owned target outputs and public registry inputs; Cargo
+credentials and incremental directories are excluded.
 
-A mismatch is standards drift, not a documentation choice. Correct the owning
-configuration in `bijux-std`, refresh synchronized content, and validate the
-shared checksum. Do not patch this generated workflow locally or change the
-handbook to conceal the mismatch.
+The stable `test` check requires successful inventory, library, binary, tool,
+Rust-matrix and Python jobs. Missing, duplicate, failed, stale or over-budget
+receipts reject acceptance. Exact target ownership and unique compiled case
+identities establish the complete native surface. Job timings must also be
+reviewed against the five-minute maximum before accepting an optimization.
 
-## Failure Routing
+## Other gates and ownership
 
-1. Record the workflow run, source commit, event, job, and final status.
-2. Run the delegated make target from the same commit.
-3. Compare toolchain, installed tools, environment, and selected test lane.
-4. Fix repository target behavior locally when local and hosted commands share
-   the same bad behavior.
-5. Fix runner setup or generated workflow behavior in `bijux-std`, then refresh
-   this repository.
+The generated formatting, lint and audit jobs retain `make fmt`, `make lint`
+and `make audit`. Release-candidate formatting, all-target tests, documentation,
+packaging, publication dry-runs and smoke proofs are owned by
+[Release Validation](release-validation.md).
 
-Do not add workflow-only shell logic to make a red local target appear green in
-GitHub Actions.
-
-## Related Operations
-
-- [CI and Automation](../operations/ci-and-automation.md)
-- [CI Targets](../makes/ci-targets.md)
-- [Repository Gates](../operations/repository-gates.md)
-- [Release Validation](release-validation.md)
-- [Documentation Deployment](deploy-docs.md)
+Runner, Python, Rust, executor and workflow changes belong in `bijux-std` first.
+Consume its exact accepted GitHub commit and validate managed checksums when
+refreshing this workflow. Repository-specific native test behavior belongs in
+`.github/scripts/native_testing`, `configs/rust/native-testing.json` and the
+owning Make commands. Preserve the workspace Rust/MSRV and Python compatibility
+contracts when changing either boundary.

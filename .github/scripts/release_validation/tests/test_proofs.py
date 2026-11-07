@@ -39,6 +39,13 @@ class ReleaseProofTests(unittest.TestCase):
         self.addCleanup(directory.cleanup)
         return Path(directory.name)
 
+    def test_committed_source_selection_excludes_untracked_local_cache_inputs(self):
+        root=self.directory();(root/'owned').write_text('source')
+        (root/'ignored-cache').mkdir();(root/'ignored-cache/local').write_text('generated')
+        expected=source_files(root,paths=['owned'])
+        self.assertEqual(set(expected),{'owned'})
+        verify_sources(root,expected)
+
     def test_every_workspace_target_has_one_owner(self):
         self.assertEqual(len(self.prepared['inventory']), 10)
         self.assertEqual(sum(len(check['targets']) for check in self.prepared['checks']), 10)

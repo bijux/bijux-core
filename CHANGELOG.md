@@ -18,6 +18,9 @@ This project adheres to [Semantic Versioning](https://semver.org) and the
 
 ### Changed
 
+- Distribute native Rust compilation and Nextest partitions, run Python coverage
+  independently, and require complete source-bound acceptance in the CI test gate.
+
 - Partition hosted release verification into bounded parallel workers, reuse
   authenticated compilation inputs, and require complete candidate-bound evidence.
 

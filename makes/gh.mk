@@ -13,7 +13,7 @@ GH_SECURITY_CARGO_DENY_VERSION ?= 0.18.3
 GH_SECURITY_CARGO_AUDIT_VERSION ?= 0.22.1
 GH_TEST_CARGO_NEXTEST_VERSION ?= 0.9.100
 
-.PHONY: gh-fmt gh-lint gh-security gh-audit gh-test gh-release-validate \
+.PHONY: gh-fmt gh-lint gh-security gh-audit gh-test gh-test-filter gh-release-validate \
 	docs-artifact-pages docs-artifact-pages-check gh-docs-install gh-docs-configure-git \
 	gh-security-install-rust-tools gh-test-install-rust-tools \
 	gh-release-plan-github gh-release-plan-pypi gh-release-plan-crates \
@@ -28,7 +28,15 @@ gh-security: install security ## Run GitHub security checks
 
 gh-audit: gh-security ## Compatibility alias for GitHub security checks
 
+ifneq ($(strip $(TEST_CHECK)),)
+gh-test: ## Run one source-bound native verification worker
+	@PYTHONDONTWRITEBYTECODE=1 python3 .github/scripts/native_testing --check "$(TEST_CHECK)"
+else
 gh-test: install test ## Run GitHub test suites
+endif
+
+gh-test-filter: ## Expose the canonical fast Nextest selection
+	@"$(NEXTEST_EXPR_BIN)" fast
 
 ifneq ($(strip $(RELEASE_CHECK)),)
 gh-release-validate: ## Execute one source-bound release verification partition

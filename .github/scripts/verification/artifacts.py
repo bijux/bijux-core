@@ -23,22 +23,28 @@ def write_json(path: Path, value: object) -> None:
     path.write_bytes(encoded(value))
 
 
-def source_files(root: Path) -> dict[str, str]:
+def source_files(root: Path, *, paths: list[str] | None = None) -> dict[str, str]:
     files = {}
+    def retain(path):
+        relative = path.relative_to(root)
+        if relative.parts[0] in {'.git', 'artifacts', 'target'} or '__pycache__' in relative.parts:
+            return
+        if path.is_symlink():
+            if not path.resolve().is_relative_to(root.resolve()):
+                raise ValueError('Candidate source alias escapes its owner: ' + str(relative))
+            files[relative.as_posix()] = 'symlink:' + os.readlink(path)
+        elif path.is_dir():
+            visit(path)
+        elif path.is_file():
+            files[relative.as_posix()] = file_digest(path)
     def visit(directory):
         for path in sorted(directory.iterdir()):
-            relative = path.relative_to(root)
-            if relative.parts[0] in {'.git', 'artifacts', 'target'} or '__pycache__' in relative.parts:
-                continue
-            if path.is_symlink():
-                if not path.resolve().is_relative_to(root.resolve()):
-                    raise ValueError('Candidate source alias escapes its owner: ' + str(relative))
-                files[relative.as_posix()] = 'symlink:' + os.readlink(path)
-            elif path.is_dir():
-                visit(path)
-            elif path.is_file():
-                files[relative.as_posix()] = file_digest(path)
-    visit(root)
+            retain(path)
+    if paths is None:
+        visit(root)
+    else:
+        for relative in paths:
+            retain(root / relative)
     return files
 
 
