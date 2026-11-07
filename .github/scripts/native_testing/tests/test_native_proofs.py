@@ -68,6 +68,19 @@ class NativeProofTests(unittest.TestCase):
         for target in check['targets']:
             for flag in target['selector']:self.assertIn(flag, arguments)
 
+    def test_inventory_and_execution_reuse_the_same_compiled_binary_metadata(self):
+        check = next(c for c in self.value['checks'] if c['targets'])
+        listing = execution.rust_arguments(check, self.value, listing=True, reuse=True)
+        running = execution.rust_arguments(check, self.value, reuse=True)
+        for arguments in [listing, running]:
+            self.assertEqual(arguments[arguments.index('--cargo-metadata')+1], str(execution.OUT/'cargo-metadata.json'))
+            self.assertEqual(arguments[arguments.index('--binaries-metadata')+1], str(execution.OUT/'binaries-metadata.json'))
+            self.assertEqual(arguments[arguments.index('-E')+1], self.value['nextest_filter'])
+            self.assertEqual(arguments[arguments.index('--profile')+1], 'ci')
+            self.assertNotIn('--workspace', arguments)
+            self.assertNotIn('--target-dir', arguments)
+        self.assertIn('--workspace', execution.rust_arguments(check, self.value, listing=True))
+
     def test_unknown_case_profile_is_rejected(self):
         self.value['nextest_profile']='default'
         with self.assertRaisesRegex(ValueError, 'canonical'):validate(self.value)

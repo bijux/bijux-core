@@ -124,11 +124,16 @@ def compile_inputs(kind):
     output('sha256', archive_hash);output('elapsed_seconds', str(round(elapsed, 3)))
 
 
-def rust_arguments(check, prepared, *, listing=False):
-    arguments = ['cargo', 'nextest', 'list' if listing else 'run', '--workspace', '--all-features',
-                 '--locked', '--config-file', 'configs/rust/nextest.toml', '--profile', prepared['nextest_profile'],
-                 '--target-dir', str(TARGET), '-E', prepared['nextest_filter']]
-    for flags in dict.fromkeys(tuple(target['selector']) for target in check['targets']):arguments.extend(flags)
+def rust_arguments(check, prepared, *, listing=False, reuse=False):
+    arguments = ['cargo', 'nextest', 'list' if listing else 'run',
+                 '--config-file', 'configs/rust/nextest.toml', '--profile', prepared['nextest_profile'],
+                 '-E', prepared['nextest_filter']]
+    if reuse:
+        arguments.extend(['--cargo-metadata', str(OUT / 'cargo-metadata.json'),
+                          '--binaries-metadata', str(OUT / 'binaries-metadata.json')])
+    else:
+        arguments.extend(['--workspace', '--all-features', '--locked', '--target-dir', str(TARGET)])
+        for flags in dict.fromkeys(tuple(target['selector']) for target in check['targets']):arguments.extend(flags)
     if listing:arguments.extend(['--message-format', 'json'])
     else:arguments.extend(['--status-level', 'all', '--final-status-level', 'all'])
     return arguments
@@ -153,11 +158,19 @@ def verify(check_id):
         if check['kind'] == 'tests':
             version = command(['cargo', 'nextest', '--version'], capture=True).split()
             if version[:2] != ['cargo-nextest', prepared['nextest_version']]:raise ValueError('Native test executor version differs')
-            listed = json.loads(command(rust_arguments(check, prepared, listing=True), capture=True))
-            record.update(catalogue(check, listed));arguments = rust_arguments(check, prepared)
+            # Inventory and execute one compiled binary set; a second Cargo invocation can
+            # rerun Git-aware build scripts even when their resulting metadata is unchanged.
+            build = rust_arguments(check, prepared, listing=True) + ['--list-type', 'binaries-only']
+            write_json(OUT / 'binaries-metadata.json', json.loads(command(build, capture=True)))
+            metadata = ['cargo', 'metadata', '--locked', '--all-features', '--format-version', '1']
+            write_json(OUT / 'cargo-metadata.json', json.loads(command(metadata, capture=True)))
+            listed = json.loads(command(rust_arguments(check, prepared, listing=True, reuse=True), capture=True))
+            record.update(catalogue(check, listed));arguments = rust_arguments(check, prepared, reuse=True)
+            record['binaries_metadata_sha256'] = file_digest(OUT / 'binaries-metadata.json')
+            record['cargo_metadata_sha256'] = file_digest(OUT / 'cargo-metadata.json')
             if not record['selected_cases']:
                 arguments.extend(['--no-tests', 'pass'])
-            record['commands'] = [arguments];command(arguments)
+            record['commands'] = [build, metadata, arguments];command(arguments)
         else:
             arguments = python_arguments();record['commands'] = [arguments];command(arguments)
             suites = ET.parse(OUT / 'python-test/junit.xml').getroot()
