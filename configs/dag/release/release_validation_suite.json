@@ -81,5 +81,14 @@
       "owner": ".github/workflows/release-validation.yml and makes/gh.mk",
       "action": "repair the workflow or wrapper target so CI executes the same suite as local maintainers"
     }
-  ]
+  ],
+  "hosted_verification": {
+    "policy": "configs/rust/release-verification.json",
+    "adapter": ".github/scripts/release_validation",
+    "target_seconds": 180,
+    "maximum_seconds": 300,
+    "coverage": "all workspace Cargo targets exactly once, plus every governed release proof family",
+    "acceptance": "artifacts/release-validation/acceptance.json",
+    "compiled_inputs": "authenticated library and binary archives for one prepared candidate"
+  }
 }
