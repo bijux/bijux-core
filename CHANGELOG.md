@@ -18,6 +18,14 @@ This project adheres to [Semantic Versioning](https://semver.org) and the
 
 ### Changed
 
+- Adopt accepted shared workflow actions: Taiki installer 2.90.3, Ruby setup
+  1.338.0 and GitHub release action 3.0.4. Consolidate their dependency proposals
+  through upstream-owned configuration and verified generated projections
+  ([#188](https://github.com/bijux/bijux-core/pull/188)).
+- Advance common governance from the accepted standard while retaining the
+  independently pinned documentation source and validating managed integrity
+  ([#188](https://github.com/bijux/bijux-core/pull/188)).
+
 - Qualify MkDocs Material 9.8.1, the revision-date plugin 1.7.0, and Pymdown
   Extensions 13 for repository documentation
   ([#187](https://github.com/bijux/bijux-core/pull/187)).
