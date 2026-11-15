@@ -18,6 +18,10 @@ This project adheres to [Semantic Versioning](https://semver.org) and the
 
 ### Changed
 
+- Qualify Croner 4.0.3 scheduling and Flate2 1.1.11 compression on Rust 1.86
+  ([#184](https://github.com/bijux/bijux-core/pull/184),
+  [#186](https://github.com/bijux/bijux-core/pull/186)).
+
 - Distribute native Rust compilation and Nextest partitions, run Python coverage
   independently, and require complete source-bound acceptance in the CI test gate.
 
