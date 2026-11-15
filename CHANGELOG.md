@@ -18,6 +18,12 @@ This project adheres to [Semantic Versioning](https://semver.org) and the
 
 ### Changed
 
+- Qualify MkDocs Material 9.8.1, the revision-date plugin 1.7.0, and Pymdown
+  Extensions 13 for repository documentation
+  ([#181](https://github.com/bijux/bijux-core/pull/181),
+  [#183](https://github.com/bijux/bijux-core/pull/183),
+  [#185](https://github.com/bijux/bijux-core/pull/185)).
+
 - Qualify Croner 4.0.3 scheduling and Flate2 1.1.11 compression on Rust 1.86
   ([#184](https://github.com/bijux/bijux-core/pull/184),
   [#186](https://github.com/bijux/bijux-core/pull/186)).
