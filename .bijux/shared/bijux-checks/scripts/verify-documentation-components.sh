@@ -112,7 +112,7 @@ mandatory = {'shared/bijux-docs', 'shared/bijux-makes', 'shared/bijux-checks', '
 if not mandatory <= installed or not installed <= allowed or {row[1] for row in rows} != installed:
     raise SystemExit('ERROR: documentation component manifest does not cover its complete installed capability closure')
 capabilities = ['common', 'docs']
-for name, capability in [('shared/bijux-makes-py', 'python'), ('shared/bijux-makes-rs', 'rust')]:
+for name, capability in [('shared/bijux-makes-py', 'python'), ('shared/bijux-makes-rs', 'rust'), ('shared/bijux-makes-node', 'node'), ('shared/bijux-gitlab', 'gitlab')]:
     if name in installed: capabilities.append(capability)
 for relative in installed:
     directory = shared / relative.removeprefix('shared/')

@@ -57,6 +57,11 @@
         "id": "dependency-notice",
         "source": "shared/bijux-gh/workflows/dependency-notice.yml",
         "consumer_runtime": ".github/workflows/dependency-notice.yml"
+      },
+      {
+        "id": "release-npm",
+        "source": "shared/bijux-gh/workflows/release-npm.yml",
+        "consumer_runtime": ".github/workflows/release-npm.yml"
       }
     ]
   },
@@ -92,7 +97,7 @@
         {
           "key": "BIJUX_RELEASE_RUST_TOOLCHAIN",
           "type": "string",
-          "value": "1.86.0"
+          "value": "1.89.0"
         },
         {
           "key": "BIJUX_RELEASE_BUILD_MATRIX_JSON",
@@ -161,7 +166,7 @@
         {
           "key": "BIJUX_CRATES_RELEASE_RUST_TOOLCHAIN",
           "type": "string",
-          "value": "1.86.0"
+          "value": "1.89.0"
         },
         {
           "key": "BIJUX_CRATES_RELEASE_VERIFY_TOKEN_COMMAND",
@@ -330,9 +335,9 @@
             "contents": "read"
           },
           "env": {
-            "RUST_TOOLCHAIN_VERSION": "1.86.0",
-            "CARGO_DENY_VERSION": "0.18.3",
-            "CARGO_AUDIT_VERSION": "0.22.0",
+            "RUST_TOOLCHAIN_VERSION": "1.89.0",
+            "CARGO_DENY_VERSION": "0.18.9",
+            "CARGO_AUDIT_VERSION": "0.22.2",
             "CARGO_NEXTEST_VERSION": "0.9.100"
           },
           "jobs": {
@@ -2086,7 +2091,7 @@
                 },
                 {
                   "name": "Install the pinned test executor",
-                  "uses": "taiki-e/install-action@68a389c788b2cd04016ce8c80ee23b80d2ab3d68",
+                  "uses": "taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39",
                   "with": {
                     "tool": "cargo-nextest@${{ env.CARGO_NEXTEST_VERSION }}",
                     "checksum": "true",
@@ -2576,7 +2581,7 @@
                 },
                 {
                   "name": "Install Rust audit tools",
-                  "uses": "taiki-e/install-action@68a389c788b2cd04016ce8c80ee23b80d2ab3d68",
+                  "uses": "taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39",
                   "with": {
                     "tool": "cargo-deny@${{ env.CARGO_DENY_VERSION }},cargo-audit@${{ env.CARGO_AUDIT_VERSION }}",
                     "checksum": "true",
@@ -2628,7 +2633,7 @@
                 },
                 {
                   "name": "Install the pinned test executor",
-                  "uses": "taiki-e/install-action@68a389c788b2cd04016ce8c80ee23b80d2ab3d68",
+                  "uses": "taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39",
                   "with": {
                     "tool": "cargo-nextest@${{ env.CARGO_NEXTEST_VERSION }}",
                     "checksum": "true",
@@ -2734,7 +2739,7 @@
                 },
                 {
                   "name": "Install the pinned test executor",
-                  "uses": "taiki-e/install-action@68a389c788b2cd04016ce8c80ee23b80d2ab3d68",
+                  "uses": "taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39",
                   "with": {
                     "tool": "cargo-nextest@${{ env.CARGO_NEXTEST_VERSION }}",
                     "checksum": "true",
@@ -2933,47 +2938,6 @@
           "workflow": "continuous integration"
         }
       ]
-    },
-    {
-      "name": "bijux-iac",
-      "release_env": [],
-      "workflow_allowlist": [
-        "dependency-notice",
-        "deploy-docs",
-        "github-policy",
-        "pr-approval-policy"
-      ],
-      "additional_required_status_checks": [
-        {
-          "context": "iac / contracts",
-          "workflow": "github-governance-plan"
-        },
-        {
-          "context": "iac / plan",
-          "workflow": "github-governance-plan"
-        },
-        {
-          "context": "iac / governance",
-          "workflow": "github-governance-plan"
-        }
-      ],
-      "workflow_execution_policy": {
-        "schema": 1,
-        "publication_entrypoints": {
-          "deploy-docs": {
-            "mode": "manual-only",
-            "controller": "iac",
-            "refs": "main-only",
-            "destination": {
-              "repository": "bijux.github.io",
-              "path": "/infrastructure/"
-            }
-          }
-        },
-        "dependency_pull_requests": "notification-only",
-        "dependency_merge": "owner-consolidation",
-        "main_verification": "accepted-pull-request"
-      }
     },
     {
       "name": "bijux-masterclass",
@@ -5464,6 +5428,177 @@
         "dependency_merge": "owner-consolidation",
         "main_verification": "accepted-pull-request"
       }
+    },
+    {
+      "name": "bijux-ro-crate-node",
+      "additional_required_status_checks": [
+        {
+          "context": "packages / node-22.23.4",
+          "workflow": "Validation"
+        },
+        {
+          "context": "packages / node-24.3.0",
+          "workflow": "Validation"
+        },
+        {
+          "context": "Python reference",
+          "workflow": "Validation"
+        },
+        {
+          "context": "Browser validation and draft lifecycle",
+          "workflow": "Validation"
+        }
+      ],
+      "release_env": [
+        {
+          "key": "BIJUX_NPM_ENABLED",
+          "type": "bool",
+          "value": false
+        },
+        {
+          "key": "BIJUX_NPM_RELEASE_VERSION",
+          "type": "string",
+          "value": "0.1.0"
+        },
+        {
+          "key": "BIJUX_NPM_PACKAGES_JSON",
+          "type": "json",
+          "value": [
+            {
+              "name": "@bijux/ro-crate-core",
+              "version": "0.1.0",
+              "directory": "core"
+            },
+            {
+              "name": "@bijux/ro-crate-validator",
+              "version": "0.1.0",
+              "directory": "validator"
+            }
+          ]
+        }
+      ],
+      "workflow_allowlist": [
+        "dependency-notice",
+        "github-policy",
+        "pr-approval-policy",
+        "release-npm"
+      ],
+      "workflow_execution_policy": {
+        "schema": 1,
+        "dependency_pull_requests": "notification-only",
+        "dependency_merge": "owner-consolidation",
+        "main_verification": "accepted-pull-request",
+        "publication_entrypoints": {
+          "release-npm": {
+            "mode": "manual-only",
+            "controller": "iac"
+          }
+        }
+      }
+    },
+    {
+      "name": "bijux-ontology",
+      "standard_capabilities": [
+        "common",
+        "python"
+      ],
+      "python_workspace": {
+        "manager": "uv",
+        "requires_python": ">=3.11,<4",
+        "packages": [
+          {
+            "name": "bijux-ontology",
+            "directory": "packages/bijux-ontology",
+            "responsibility": "vocabulary and structural declaration checks"
+          },
+          {
+            "name": "bijux-ontology-adapters",
+            "directory": "packages/bijux-ontology-adapters",
+            "responsibility": "optional framework and data-format bridges"
+          },
+          {
+            "name": "bijux-ontology-reasoning",
+            "directory": "packages/bijux-ontology-reasoning",
+            "responsibility": "optional OWL profile checks"
+          },
+          {
+            "name": "bijux-ontology-dev",
+            "directory": "packages/bijux-ontology-dev",
+            "responsibility": "internal repository tooling"
+          }
+        ]
+      },
+      "repository_owned_workflows": [
+        ".github/workflows/verify.yml"
+      ],
+      "additional_required_status_checks": [
+        {
+          "context": "python / 3.11",
+          "workflow": "repository verification"
+        },
+        {
+          "context": "python / 3.13",
+          "workflow": "repository verification"
+        }
+      ],
+      "release_env": [],
+      "workflow_allowlist": [
+        "dependency-notice",
+        "github-policy",
+        "pr-approval-policy"
+      ],
+      "workflow_execution_policy": {
+        "schema": 1,
+        "dependency_pull_requests": "notification-only",
+        "dependency_merge": "owner-consolidation",
+        "publication_entrypoints": {},
+        "main_verification": "existing-events"
+      }
+    },
+    {
+      "name": "bijux-iac",
+      "release_env": [],
+      "workflow_allowlist": [
+        "dependency-notice",
+        "deploy-docs",
+        "github-policy",
+        "pr-approval-policy"
+      ],
+      "additional_required_status_checks": [
+        {
+          "context": "iac / contracts",
+          "workflow": "github-governance-plan"
+        },
+        {
+          "context": "iac / plan",
+          "workflow": "github-governance-plan"
+        },
+        {
+          "context": "iac / governance",
+          "workflow": "github-governance-plan"
+        }
+      ],
+      "workflow_execution_policy": {
+        "schema": 1,
+        "publication_entrypoints": {
+          "deploy-docs": {
+            "mode": "manual-only",
+            "controller": "iac",
+            "refs": "main-only",
+            "destination": {
+              "repository": "bijux.github.io",
+              "path": "/infrastructure/"
+            }
+          }
+        },
+        "dependency_pull_requests": "notification-only",
+        "dependency_merge": "owner-consolidation",
+        "main_verification": "accepted-pull-request"
+      },
+      "standard_capabilities": [
+        "common",
+        "gitlab"
+      ]
     }
   ]
 }

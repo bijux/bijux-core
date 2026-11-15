@@ -55,6 +55,11 @@
       "id": "dependency-notice",
       "source": "shared/bijux-gh/workflows/dependency-notice.yml",
       "consumer_runtime": ".github/workflows/dependency-notice.yml"
+    },
+    {
+      "id": "release-npm",
+      "source": "shared/bijux-gh/workflows/release-npm.yml",
+      "consumer_runtime": ".github/workflows/release-npm.yml"
     }
   ]
 }

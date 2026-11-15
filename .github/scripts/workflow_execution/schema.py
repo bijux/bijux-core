@@ -24,7 +24,7 @@ class WorkflowExecutionPolicy(TypedDict, total=False):
 
 
 PUBLICATION_ENTRYPOINTS = frozenset(
-    {"deploy-docs", "release-github", "release-ghcr", "release-crates", "release-pypi"}
+    {"deploy-docs", "release-github", "release-ghcr", "release-crates", "release-pypi", "release-npm"}
 )
 
 

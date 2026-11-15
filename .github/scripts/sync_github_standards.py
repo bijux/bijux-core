@@ -60,14 +60,17 @@ DEFAULT_REPOS = [
     "bijux-genomics",
     "bijux-iac",
     "bijux-masterclass",
+    "bijux-ontology",
     "bijux-phylogenetics",
     "bijux-pollenomics",
     "bijux-proteomics",
+    "bijux-ro-crate-node",
     "bijux-gnss",
     "bijux.github.io",
 ]
 
 BASE_FILE_MAPPINGS: list[tuple[str, str]] = [
+    ("shared/bijux-gh/scripts/npm_release.py", ".bijux/shared/bijux-gh/scripts/npm_release.py"),
     ("shared/bijux-gh/scripts/publication_admission.py", ".bijux/shared/bijux-gh/scripts/publication_admission.py"),
     (".github/CODEOWNERS", ".github/CODEOWNERS"),
     (".github/ISSUE_TEMPLATE/bug-report.yml", ".github/ISSUE_TEMPLATE/bug-report.yml"),
@@ -100,6 +103,8 @@ BASE_FILE_MAPPINGS: list[tuple[str, str]] = [
     (".github/scripts/render_repo_configs.py", ".github/scripts/render_repo_configs.py"),
     (".github/scripts/sync_github_standards.py", ".github/scripts/sync_github_standards.py"),
     (".github/scripts/wait_for_ci.py", ".github/scripts/wait_for_ci.py"),
+    (".github/standards/node-workspaces.json", ".github/standards/node-workspaces.json"),
+    (".github/standards/repository-profiles.json", ".github/standards/repository-profiles.json"),
     (".github/standards/workflow-inventory.json", ".github/standards/workflow-inventory.json"),
     (".github/standards/repo-config.manifest.json", ".github/standards/repo-config.manifest.json"),
     (".github/standards/workflow-sources/bijux-std.yml", ".github/standards/workflow-sources/bijux-std.yml"),
@@ -317,6 +322,8 @@ def copy_repo_files(target_repo: str, repo_config: dict[str, Any], manifest: dic
     source_snapshots = WORKFLOW_EXECUTION.capture_sources(STD_REPO)
     prepared = prepare_runtime_workflows(repo_config, manifest)
     repo_dir = resolve_repository_checkout(target_repo)
+    if target_repo != "bijux-std" and repo_dir.resolve() == STD_REPO.resolve():
+        raise ValueError("Consumer synchronization cannot target canonical shared source")
     retirement = WORKFLOW_EXECUTION.retired_package_workflows.plan_retirement(repo_dir, target_repo)
     legacy_helper = qualified_legacy_policy_helper(repo_dir)
     for relative, content in source_snapshots.items():
@@ -351,6 +358,21 @@ def copy_repo_files(target_repo: str, repo_config: dict[str, Any], manifest: dic
             else:
                 path.unlink()
 
+    # The owning checksum seed includes Std's own active workflows. A consumer's
+    # disabled destinations must leave that seed when their files are removed.
+    disabled = {path for path, identity in managed_runtime_paths.items() if identity not in allowlist}
+    checksum = repo_dir / ".github/bijux-std-shared.sha256"
+    retained = []
+    for row in checksum.read_text(encoding="utf-8").splitlines():
+        if not row.strip():
+            continue
+        parts = row.split(maxsplit=1)
+        if len(parts) != 2:
+            raise ValueError(f"Malformed checksum line: {row}")
+        if parts[1] not in disabled:
+            retained.append(row)
+    checksum.write_text("\n".join(retained) + "\n", encoding="utf-8")
+
     WORKFLOW_EXECUTION.retired_package_workflows.apply_retirement(repo_dir, target_repo, retirement)
 
     if legacy_helper is not None:
@@ -370,7 +392,7 @@ def copy_repo_files(target_repo: str, repo_config: dict[str, Any], manifest: dic
         if path.exists():
             path.unlink()
 
-    if repo_dir.name != "bijux-std" and (repo_dir / ".bijux/shared").exists():
+    if target_repo != "bijux-std" and (repo_dir / ".bijux/shared").exists():
         for legacy_name in ("bijux-docs", "bijux-makes-py", "bijux-checks", "bijux-gh"):
             legacy_shared_path = repo_dir / "shared" / legacy_name
             if legacy_shared_path.exists():

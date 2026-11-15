@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "repositories": [
+    {
+      "name": "bijux-ro-crate-node",
+      "additional_required_status_checks": [
+        {
+          "context": "packages / node-22.23.4",
+          "workflow": "Validation"
+        },
+        {
+          "context": "packages / node-24.3.0",
+          "workflow": "Validation"
+        },
+        {
+          "context": "Python reference",
+          "workflow": "Validation"
+        },
+        {
+          "context": "Browser validation and draft lifecycle",
+          "workflow": "Validation"
+        }
+      ],
+      "release_env": [
+        {
+          "key": "BIJUX_NPM_ENABLED",
+          "type": "bool",
+          "value": false
+        },
+        {
+          "key": "BIJUX_NPM_RELEASE_VERSION",
+          "type": "string",
+          "value": "0.1.0"
+        },
+        {
+          "key": "BIJUX_NPM_PACKAGES_JSON",
+          "type": "json",
+          "value": [
+            {
+              "name": "@bijux/ro-crate-core",
+              "version": "0.1.0",
+              "directory": "core"
+            },
+            {
+              "name": "@bijux/ro-crate-validator",
+              "version": "0.1.0",
+              "directory": "validator"
+            }
+          ]
+        }
+      ],
+      "workflow_allowlist": [
+        "dependency-notice",
+        "github-policy",
+        "pr-approval-policy",
+        "release-npm"
+      ],
+      "workflow_execution_policy": {
+        "schema": 1,
+        "dependency_pull_requests": "notification-only",
+        "dependency_merge": "owner-consolidation",
+        "main_verification": "accepted-pull-request",
+        "publication_entrypoints": {
+          "release-npm": {
+            "mode": "manual-only",
+            "controller": "iac"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -54,7 +54,7 @@
           "PUBLICATION_COMMIT": "${{ inputs.accepted_commit }}"
           "PUBLICATION_RUN_SHA": "${{ github.sha }}"
           "PUBLICATION_WORKFLOW": "release-github"
-          "PUBLICATION_TAG": "${{ inputs.release_tag || '' }}"
+          "PUBLICATION_TAG": "${{ inputs.release_tag }}"
           "PYTHONPYCACHEPREFIX": "${{ github.workspace }}/artifacts/python/pycache"
         "run": "python3 .bijux/shared/bijux-gh/scripts/publication_admission.py"
   "resolve":
@@ -205,7 +205,7 @@
         "run": "set -euo pipefail\nif gh release view \"${{ steps.release.outputs.release_tag }}\" --repo \"${GITHUB_REPOSITORY}\" >/dev/null 2>&1; then\n  gh release delete \"${{ steps.release.outputs.release_tag }}\" \\\n    --repo \"${GITHUB_REPOSITORY}\" \\\n    --yes\nelse\n  echo \"No existing GitHub release for ${{ steps.release.outputs.release_tag }}; creating a fresh release.\"\nfi\n"
       - "name": "Publish GitHub release with files and body"
         "if": "${{ steps.release.outputs.publish == 'true' && steps.release.outputs.release_files_glob != '' && steps.release.outputs.release_notes_path != '' }}"
-        "uses": "softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64"
+        "uses": "softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3"
         "with":
           "tag_name": "${{ steps.release.outputs.release_tag }}"
           "name": "${{ steps.release.outputs.release_name }}"
@@ -217,7 +217,7 @@
           "preserve_order": true
       - "name": "Publish GitHub release with files"
         "if": "${{ steps.release.outputs.publish == 'true' && steps.release.outputs.release_files_glob != '' && steps.release.outputs.release_notes_path == '' }}"
-        "uses": "softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64"
+        "uses": "softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3"
         "with":
           "tag_name": "${{ steps.release.outputs.release_tag }}"
           "name": "${{ steps.release.outputs.release_name }}"
@@ -228,7 +228,7 @@
           "preserve_order": true
       - "name": "Publish GitHub release with body"
         "if": "${{ steps.release.outputs.publish == 'true' && steps.release.outputs.release_files_glob == '' && steps.release.outputs.release_notes_path != '' }}"
-        "uses": "softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64"
+        "uses": "softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3"
         "with":
           "tag_name": "${{ steps.release.outputs.release_tag }}"
           "name": "${{ steps.release.outputs.release_name }}"
@@ -236,7 +236,7 @@
           "generate_release_notes": "${{ needs.resolve.outputs.generate_release_notes == 'true' }}"
       - "name": "Publish GitHub release without assets"
         "if": "${{ steps.release.outputs.publish == 'true' && steps.release.outputs.release_files_glob == '' && steps.release.outputs.release_notes_path == '' }}"
-        "uses": "softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64"
+        "uses": "softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3"
         "with":
           "tag_name": "${{ steps.release.outputs.release_tag }}"
           "name": "${{ steps.release.outputs.release_name }}"

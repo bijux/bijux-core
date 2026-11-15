@@ -1,0 +1,93 @@
+# SSOT NOTICE: Consumer copies are generated from bijux-std/shared/bijux-gh/workflows/release-npm.yml.
+name: release-npm
+on:
+  workflow_dispatch:
+    inputs:
+      accepted_commit:
+        description: Immutable accepted main commit selected by bijux-iac
+        required: true
+        type: string
+      release_tag:
+        description: Existing repository version tag at accepted main
+        required: true
+        type: string
+      candidate_run_id:
+        description: Successful package-candidate workflow run at that exact source
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: release-npm-${{ github.repository }}
+  cancel-in-progress: false
+env:
+  PUBLICATION_REPOSITORY: ${{ github.repository }}
+  PUBLICATION_EVENT: ${{ github.event_name }}
+  PUBLICATION_REF: ${{ github.ref }}
+  PUBLICATION_ACTOR: ${{ github.actor }}
+  PUBLICATION_ACTOR_ID: ${{ github.actor_id }}
+  PUBLICATION_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+  PUBLICATION_CONTROLLER_ACTOR_ID: ${{ vars.BIJUX_PUBLICATION_ACTOR_ID }}
+  PUBLICATION_COMMIT: ${{ inputs.accepted_commit }}
+  PUBLICATION_RUN_SHA: ${{ github.sha }}
+  PUBLICATION_WORKFLOW: release-npm
+  PUBLICATION_TAG: ${{ inputs.release_tag }}
+  PYTHONDONTWRITEBYTECODE: '1'
+  NPM_CONFIG_PROVENANCE: 'true'
+  NPM_CONFIG_CACHE: ${{ github.workspace }}/artifacts/cache/npm
+  NPM_CONFIG_LOGS_DIR: ${{ github.workspace }}/artifacts/logs/npm
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Inspect frozen candidate bytes without registry credentials
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE_RUN: ${{ inputs.candidate_run_id }}
+        run: python3 .bijux/shared/bijux-gh/scripts/npm_release.py prepare --candidate-run "$CANDIDATE_RUN"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: inspected-npm-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/publication
+          if-no-files-found: error
+  publish:
+    needs: inspect
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: npm-publication
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24.21.0'
+          registry-url: https://registry.npmjs.org
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: inspected-npm-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/publication
+      - name: Install the supported pinned npm publisher locally
+        run: npm install --prefix artifacts/tools/npm npm@11.21.2 --ignore-scripts --no-audit --no-fund
+      - name: Publish inspected bytes in declared dependency order
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: PATH="$PWD/artifacts/tools/npm/node_modules/.bin:$PATH" python3 .bijux/shared/bijux-gh/scripts/npm_release.py publish
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: npm-publication-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/publication/npm-receipt.json
+          if-no-files-found: warn

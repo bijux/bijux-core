@@ -3,6 +3,9 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+source "${script_dir}/scripts/standard-source-layout.sh"
+in_bijux_std_repo=0
+if is_standard_source_checkout "${repo_root}"; then in_bijux_std_repo=1; fi
 bijux_std_artifact_root="${repo_root}/artifacts/bijux-std"
 mkdir -p "${bijux_std_artifact_root}/pycache"
 export PYTHONPYCACHEPREFIX="${PYTHONPYCACHEPREFIX:-${bijux_std_artifact_root}/pycache}"
@@ -38,7 +41,7 @@ read_selected_directories() {
 
 resolve_local_rel() {
   local rel="$1"
-  if [[ "${rel}" == shared/* && -d "${repo_root}/.bijux/shared" && "$(basename "${repo_root}")" != "bijux-std" ]]; then
+  if [[ "${rel}" == shared/* && -d "${repo_root}/.bijux/shared" && "${in_bijux_std_repo}" != "1" ]]; then
     printf '.bijux/%s\n' "${rel}"
     return
   fi
@@ -46,7 +49,7 @@ resolve_local_rel() {
 }
 
 verify_no_legacy_root_shared_dirs() {
-  if [[ -d "${repo_root}/.bijux/shared" && "$(basename "${repo_root}")" != "bijux-std" ]]; then
+  if [[ -d "${repo_root}/.bijux/shared" && "${in_bijux_std_repo}" != "1" ]]; then
     if [[ -d "${repo_root}/shared" ]]; then
       echo "ERROR: legacy root shared directory present: shared/" >&2
       echo "Hint: remove root shared and keep only .bijux/shared/*" >&2
@@ -431,7 +434,7 @@ fi
 # Documentation authority may remain on an independently accepted reader
 # source while common workflow components advance. Both sources remain exact.
 docs_pin="${repo_root}/.github/standards/bijux-docs.sha"
-if [[ "$(basename "${repo_root}")" != "bijux-std" && -d "${repo_root}/.bijux/shared/bijux-docs" ]] && grep -Fxq "shared/bijux-docs" <<<"${selected_directories}" && [[ -e "${docs_pin}" || -L "${docs_pin}" ]]; then
+if [[ "${in_bijux_std_repo}" != "1" && -d "${repo_root}/.bijux/shared/bijux-docs" ]] && grep -Fxq "shared/bijux-docs" <<<"${selected_directories}" && [[ -e "${docs_pin}" || -L "${docs_pin}" ]]; then
   [[ -f "${docs_pin}" && ! -L "${docs_pin}" ]] || { echo "ERROR: documentation authority requires a regular source pin" >&2; exit 1; }
   git -C "${repo_root}" ls-files --error-unmatch .github/standards/bijux-docs.sha >/dev/null
   docs_pin_before="$(cat "${docs_pin}")"
