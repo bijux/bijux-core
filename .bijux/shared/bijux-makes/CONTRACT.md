@@ -19,7 +19,9 @@ BIJUX_MAKE_COMPONENTS := docs rust
 include .bijux/shared/bijux-makes/bijux.mk
 ```
 
-Supported components are `docs` and `rust`. The Python Make library remains an
+Supported components are `docs`, `rust`, and `node`. The Node component exposes
+`node-install`, `node-build`, `node-test`, and `node-check` through the shared
+entry point and help inventory. The Python Make library remains an
 independent contract under `bijux-makes-py`.
 
 ## Public Behavior

@@ -50,6 +50,16 @@
         "type": "make_target",
         "target": "check-make-layout"
       }
+    },
+    {
+      "id": "BJC-NODE-WORKSPACE-001",
+      "title": "Node workspace metadata and public declarations pass",
+      "owner_id": "bijux-maintainers",
+      "severity": "high",
+      "runner": {
+        "type": "make_target",
+        "target": "node-check"
+      }
     }
   ]
 }

@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "repositories": [
+    {
+      "name": "bijux-ontology",
+      "standard_capabilities": [
+        "common",
+        "python"
+      ],
+      "python_workspace": {
+        "manager": "uv",
+        "requires_python": ">=3.11,<4",
+        "packages": [
+          {
+            "name": "bijux-ontology",
+            "directory": "packages/bijux-ontology",
+            "responsibility": "vocabulary and structural declaration checks"
+          },
+          {
+            "name": "bijux-ontology-adapters",
+            "directory": "packages/bijux-ontology-adapters",
+            "responsibility": "optional framework and data-format bridges"
+          },
+          {
+            "name": "bijux-ontology-reasoning",
+            "directory": "packages/bijux-ontology-reasoning",
+            "responsibility": "optional OWL profile checks"
+          },
+          {
+            "name": "bijux-ontology-dev",
+            "directory": "packages/bijux-ontology-dev",
+            "responsibility": "internal repository tooling"
+          }
+        ]
+      },
+      "repository_owned_workflows": [
+        ".github/workflows/verify.yml"
+      ],
+      "additional_required_status_checks": [
+        {
+          "context": "python / 3.11",
+          "workflow": "repository verification"
+        },
+        {
+          "context": "python / 3.13",
+          "workflow": "repository verification"
+        }
+      ],
+      "release_env": [],
+      "workflow_allowlist": [
+        "dependency-notice",
+        "github-policy",
+        "pr-approval-policy"
+      ],
+      "workflow_execution_policy": {
+        "schema": 1,
+        "dependency_pull_requests": "notification-only",
+        "dependency_merge": "owner-consolidation",
+        "publication_entrypoints": {},
+        "main_verification": "existing-events"
+      }
+    },
+    {
+      "name": "bijux-iac",
+      "release_env": [],
+      "workflow_allowlist": [
+        "dependency-notice",
+        "deploy-docs",
+        "github-policy",
+        "pr-approval-policy"
+      ],
+      "additional_required_status_checks": [
+        {
+          "context": "iac / contracts",
+          "workflow": "github-governance-plan"
+        },
+        {
+          "context": "iac / plan",
+          "workflow": "github-governance-plan"
+        },
+        {
+          "context": "iac / governance",
+          "workflow": "github-governance-plan"
+        }
+      ],
+      "workflow_execution_policy": {
+        "schema": 1,
+        "publication_entrypoints": {
+          "deploy-docs": {
+            "mode": "manual-only",
+            "controller": "iac",
+            "refs": "main-only",
+            "destination": {
+              "repository": "bijux.github.io",
+              "path": "/infrastructure/"
+            }
+          }
+        },
+        "dependency_pull_requests": "notification-only",
+        "dependency_merge": "owner-consolidation",
+        "main_verification": "accepted-pull-request"
+      },
+      "standard_capabilities": [
+        "common",
+        "gitlab"
+      ]
+    }
+  ]
+}

@@ -13,7 +13,10 @@ actual_origin="$(git -C "${source_root}" remote get-url origin)"
 if [[ "${BIJUX_STD_ALLOW_LOCAL_SOURCE:-0}" != '1' ]]; then
   case "${actual_origin}" in
     https://github.com/bijux/bijux-std.git|git@github.com:bijux/bijux-std.git) ;;
-    *) echo 'ERROR: accepted rollout requires the bijux-std GitHub source; local verification requires BIJUX_STD_ALLOW_LOCAL_SOURCE=1' >&2; exit 1 ;;
+    https://gitlab.com/bijux-oss/bijux-std|https://gitlab.com/bijux-oss/bijux-std.git) ;;
+    git@gitlab.com:bijux-oss/bijux-std|git@gitlab.com:bijux-oss/bijux-std.git) ;;
+    ssh://git@gitlab.com/bijux-oss/bijux-std.git|ssh://git@gitlab.com:22/bijux-oss/bijux-std.git) ;;
+    *) echo 'ERROR: source verification requires canonical bijux-std GitHub source or explicitly selected GitLab source; local verification requires BIJUX_STD_ALLOW_LOCAL_SOURCE=1' >&2; exit 1 ;;
   esac
 fi
 [[ "$(git -C "${source_root}" rev-parse HEAD)" == "${expected_sha}" ]] || { echo 'ERROR: standard authority HEAD differs from requested SHA' >&2; exit 1; }
@@ -23,4 +26,10 @@ git -C "${source_root}" fetch --quiet --depth 1 origin "${expected_sha}"
 [[ "$(git -C "${source_root}" rev-parse 'FETCH_HEAD^{commit}')" == "${expected_sha}" ]] || { echo 'ERROR: fetched standard source differs from requested SHA' >&2; exit 1; }
 git -C "${source_root}" diff --quiet "${expected_sha}" --
 [[ -z "$(git -C "${source_root}" status --porcelain --untracked-files=all)" ]] || { echo 'ERROR: standard authority changed during verification' >&2; exit 1; }
-printf 'Verified %s source %s from %s\n' "$( [[ "${BIJUX_STD_ALLOW_LOCAL_SOURCE:-0}" == '1' ]] && printf 'local-verification-only' || printf 'GitHub' )" "${expected_sha}" "${actual_origin}"
+source_identity='GitHub'
+case "${actual_origin}" in
+  https://gitlab.com/bijux-oss/bijux-std|https://gitlab.com/bijux-oss/bijux-std.git|git@gitlab.com:bijux-oss/bijux-std|git@gitlab.com:bijux-oss/bijux-std.git|ssh://git@gitlab.com/bijux-oss/bijux-std.git|ssh://git@gitlab.com:22/bijux-oss/bijux-std.git)
+    source_identity='GitLab bijux-oss/bijux-std project 88948041' ;;
+esac
+if [[ "${BIJUX_STD_ALLOW_LOCAL_SOURCE:-0}" == '1' ]]; then source_identity='local-verification-only'; fi
+printf 'Verified %s source %s from %s\n' "${source_identity}" "${expected_sha}" "${actual_origin}"

@@ -25,7 +25,7 @@ jobs:
           set -euo pipefail
           {
             echo '## Dependency proposal requires owner consolidation'
-            printf 'Proposal: %s\n\nHead: `%s`\n\n' "$PR_URL" "$PR_HEAD"
+            printf 'Proposal: %s\n\nHead: %s\n\n' "$PR_URL" "$PR_HEAD"
             echo 'This successful notice confirms receipt only. Product, security and standards verification did not run.'
             echo 'An owner must qualify the dependency changes locally and include them in a human-authored PR with all applicable verification and approval checks.'
             echo 'Required verification contexts are intentionally absent for this proposal. Automatic merge is disabled.'

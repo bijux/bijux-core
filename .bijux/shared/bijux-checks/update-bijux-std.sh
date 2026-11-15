@@ -3,6 +3,9 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+source "${script_dir}/scripts/standard-source-layout.sh"
+in_bijux_std_repo=0
+if is_standard_source_checkout "${repo_root}"; then in_bijux_std_repo=1; fi
 bijux_std_artifact_root="${repo_root}/artifacts/bijux-std"
 mkdir -p "${bijux_std_artifact_root}"
 default_config_path="${repo_root}/.bijux/shared/bijux-checks/bijux-std-checks.yml"
@@ -37,7 +40,7 @@ read_selected_directories() {
 
 resolve_local_rel() {
   local rel="$1"
-  if [[ "${rel}" == shared/* && -d "${repo_root}/.bijux/shared" && "$(basename "${repo_root}")" != "bijux-std" ]]; then
+  if [[ "${rel}" == shared/* && -d "${repo_root}/.bijux/shared" && "${in_bijux_std_repo}" != "1" ]]; then
     printf '.bijux/%s\n' "${rel}"
     return
   fi
@@ -146,11 +149,6 @@ declare -a missing_dirs=()
 declare -a update_dirs=()
 declare -a skipped_dirs=()
 
-in_bijux_std_repo=0
-if [[ "$(basename "${repo_root}")" == "bijux-std" ]]; then
-  in_bijux_std_repo=1
-fi
-
 should_use_self_repo_mode=0
 if [[ "${self_repo_mode}" == "on" ]]; then
   should_use_self_repo_mode=1
@@ -210,7 +208,10 @@ fi
 if [[ "${BIJUX_STD_ALLOW_LOCAL_SOURCE:-0}" != "1" ]]; then
   case "${std_git_url}" in
     https://github.com/bijux/bijux-std.git|git@github.com:bijux/bijux-std.git) ;;
-    *) echo "ERROR: accepted rollout requires bijux-std GitHub source; local verification must be explicit" >&2; exit 1 ;;
+    https://gitlab.com/bijux-oss/bijux-std|https://gitlab.com/bijux-oss/bijux-std.git) ;;
+    git@gitlab.com:bijux-oss/bijux-std|git@gitlab.com:bijux-oss/bijux-std.git) ;;
+    ssh://git@gitlab.com/bijux-oss/bijux-std.git|ssh://git@gitlab.com:22/bijux-oss/bijux-std.git) ;;
+    *) echo "ERROR: source verification requires canonical bijux-std GitHub source or explicitly selected GitLab source; local verification must be explicit" >&2; exit 1 ;;
   esac
 fi
 expected_sha=""
@@ -359,7 +360,16 @@ fi
 python3 - "${bijux_std_artifact_root}/source-provenance.json" "${std_git_url}" "${resolved_ref}" "${fetched_sha}" "${BIJUX_STD_ALLOW_LOCAL_SOURCE:-0}" "${BIJUX_STD_UPDATE_DRY_RUN:-0}" <<'PY_RECEIPT'
 import json,sys
 from pathlib import Path
-Path(sys.argv[1]).write_text(json.dumps(dict(result="planned",origin=sys.argv[2],requested_ref=sys.argv[3],resolved_sha=sys.argv[4],verification_only=sys.argv[5]=='1',dry_run=sys.argv[6]=='1'),indent=2)+'\n')
+record = dict(result="planned",origin=sys.argv[2],requested_ref=sys.argv[3],resolved_sha=sys.argv[4],verification_only=sys.argv[5]=='1',dry_run=sys.argv[6]=='1')
+if sys.argv[2] in {
+    "https://gitlab.com/bijux-oss/bijux-std", "https://gitlab.com/bijux-oss/bijux-std.git",
+    "git@gitlab.com:bijux-oss/bijux-std", "git@gitlab.com:bijux-oss/bijux-std.git",
+    "ssh://git@gitlab.com/bijux-oss/bijux-std.git", "ssh://git@gitlab.com:22/bijux-oss/bijux-std.git",
+}:
+    # Project identity names the configured canonical origin; acceptance is separate.
+    record["source_project"] = dict(host="gitlab.com", path="bijux-oss/bijux-std", id=88948041,
+                                    identity_basis="configured-canonical-origin")
+Path(sys.argv[1]).write_text(json.dumps(record,indent=2)+'\n')
 PY_RECEIPT
 if [[ "${BIJUX_STD_UPDATE_DRY_RUN:-0}" == "1" ]]; then
   for remote_dir_rel in "${update_dirs[@]}"; do
@@ -463,7 +473,7 @@ else
   rewrite_manifest_for_directories "${manifest_path}" "${selected_directories}"
 fi
 
-if [[ -d "${repo_root}/.bijux/shared" && "$(basename "${repo_root}")" != "bijux-std" ]]; then
+if [[ -d "${repo_root}/.bijux/shared" && "${in_bijux_std_repo}" != "1" ]]; then
   if [[ -d "${repo_root}/shared" ]]; then
     if [[ -z "$(find "${repo_root}/shared" -mindepth 1 -print -quit 2>/dev/null)" ]]; then
       rmdir "${repo_root}/shared"

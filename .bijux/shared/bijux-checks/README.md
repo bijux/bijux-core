@@ -23,6 +23,9 @@ Available capabilities are declared in `bijux-std-checks.yml`:
 - `docs`: shared documentation shell and assets.
 - `python`: Python Make modules.
 - `rust`: Rust Make modules.
+- `node`: private-root npm workspace Make contracts.
+- `gitlab`: canonical standards CI execution and native evidence admission.
+  This capability is opt-in; existing consumer profiles do not enable it.
 
 When capabilities are explicitly selected, the updater removes unselected
 managed directories and writes a manifest containing only selected directories.
@@ -33,7 +36,7 @@ An additive refresh can preserve installed, independently accepted components wh
 advancing common governance. Set `BIJUX_STD_UPDATE_PRESERVE_UNSELECTED=1` together
 with an explicit capability selection, and run the updater from the exact accepted
 source checkout. For example, select `BIJUX_STD_CAPABILITIES=common` to retain the
-documentation, Python and Rust components. This mode preserves their manifest rows
+documentation, Python, Rust and Node components. This mode preserves their manifest rows
 and refuses modified, untracked, aliased or unaccepted inputs. Unselected runtime
 components must also match the new source; otherwise select their capability.
 The default replacement behaviour above remains unchanged.
@@ -64,6 +67,21 @@ baseline and independently admitted documentation while advancing governance.
 `BIJUX_STD_REF` accepts an exact commit SHA, branch, or tag. Downstream
 repositories should use an accepted exact commit SHA. The updater fetches and
 checks out that object in detached mode before copying managed content.
+
+The default source remains `https://github.com/bijux/bijux-std.git` for existing
+consumers. To explicitly acquire the canonical GitLab source, set
+`BIJUX_STD_GIT_URL=https://gitlab.com/bijux-oss/bijux-std.git` together with the
+reviewed exact `BIJUX_STD_REF`. The canonical GitLab project is
+[`bijux-oss/bijux-std`, project 88948041](https://gitlab.com/api/v4/projects/88948041).
+HTTPS and canonical GitLab SSH origins are admitted; personal mirrors, other
+projects, and lookalike hosts are refused. Acquisition still independently
+fetches the exact object and requires a clean checkout at the requested SHA.
+Source provenance records the configured GitLab project identity with
+`identity_basis=configured-canonical-origin`; it does not assert a live API
+identity check. Acquisition verifies source bytes, while review and rollout
+acceptance remain separate decisions.
+`BIJUX_STD_ALLOW_LOCAL_SOURCE=1` always retains the `verification_only` label,
+including when the configured origin names a canonical host.
 
 ## Artifact Placement
 

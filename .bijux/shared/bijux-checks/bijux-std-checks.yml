@@ -5,8 +5,10 @@ directories:
   - shared/bijux-makes
   - shared/bijux-makes-py
   - shared/bijux-makes-rs
+  - shared/bijux-makes-node
   - shared/bijux-checks
   - shared/bijux-gh
+  - shared/bijux-gitlab
 capabilities:
   common:
     - shared/bijux-makes
@@ -18,6 +20,10 @@ capabilities:
     - shared/bijux-makes-py
   rust:
     - shared/bijux-makes-rs
+  node:
+    - shared/bijux-makes-node
+  gitlab:
+    - shared/bijux-gitlab
 remote:
   repo_url: https://github.com/bijux/bijux-std
   git_url: https://github.com/bijux/bijux-std.git

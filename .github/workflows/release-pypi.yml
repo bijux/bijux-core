@@ -70,7 +70,7 @@
           "PUBLICATION_COMMIT": "${{ inputs.accepted_commit }}"
           "PUBLICATION_RUN_SHA": "${{ github.sha }}"
           "PUBLICATION_WORKFLOW": "release-pypi"
-          "PUBLICATION_TAG": "${{ inputs.release_tag || '' }}"
+          "PUBLICATION_TAG": "${{ inputs.release_tag }}"
           "PYTHONPYCACHEPREFIX": "${{ github.workspace }}/artifacts/python/pycache"
         "run": "python3 .bijux/shared/bijux-gh/scripts/publication_admission.py"
   "resolve":

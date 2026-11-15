@@ -96,7 +96,7 @@ jobs:
 
       - name: Provision action reference parser
         if: ${{ matrix.check == 'standard' }}
-        uses: ruby/setup-ruby@de492cf36cbab201753d720ce4f4e336cd688c94
+        uses: ruby/setup-ruby@b3aaceaef7e0ee231b499e7b5f49c03fc1d32199
         with:
           ruby-version: '3.3.12'
 
@@ -327,7 +327,7 @@ jobs:
     if: ${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (always() && github.repository == 'bijux/bijux-std' && (needs.input-plan.result != 'success' || needs.input-plan.outputs.frontend != 'false')) }}
     needs: input-plan
     env:
-      BIJUX_COST_OWNER: catalogue-renderer-${{ matrix.group || '' }}-${{ matrix.engine || '' }}
+      BIJUX_COST_OWNER: catalogue-renderer-${{ matrix.group }}
     runs-on: ubuntu-latest
     timeout-minutes: 3
     strategy:
@@ -383,7 +383,7 @@ jobs:
     if: ${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (always() && github.repository == 'bijux/bijux-std' && (needs.input-plan.result != 'success' || needs.input-plan.outputs.frontend != 'false')) }}
     needs: input-plan
     env:
-      BIJUX_COST_OWNER: publication-commands-${{ matrix.group || '' }}-${{ matrix.engine || '' }}
+      BIJUX_COST_OWNER: publication-commands
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
@@ -414,7 +414,7 @@ jobs:
     if: ${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (always() && github.repository == 'bijux/bijux-std' && (needs.input-plan.result != 'success' || needs.input-plan.outputs.frontend != 'false')) }}
     needs: input-plan
     env:
-      BIJUX_COST_OWNER: renderer-controls-${{ matrix.group || '' }}-${{ matrix.engine || '' }}
+      BIJUX_COST_OWNER: renderer-controls-${{ matrix.group }}
     runs-on: ubuntu-latest
     timeout-minutes: 3
     strategy:
@@ -457,7 +457,7 @@ jobs:
     if: ${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (always() && github.repository == 'bijux/bijux-std' && (needs.input-plan.result != 'success' || needs.input-plan.outputs.frontend != 'false')) }}
     needs: input-plan
     env:
-      BIJUX_COST_OWNER: navigation-fixtures-${{ matrix.group || '' }}-${{ matrix.engine || '' }}
+      BIJUX_COST_OWNER: navigation-fixtures
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
@@ -579,7 +579,7 @@ jobs:
       contents: read
       actions: read
     env:
-      BIJUX_COST_OWNER: persisted-native-reader-${{ matrix.group || '' }}-${{ matrix.engine || '' }}
+      BIJUX_COST_OWNER: persisted-native-reader
     runs-on: ubuntu-latest
     timeout-minutes: 3
     container:
@@ -637,7 +637,7 @@ jobs:
       contents: read
       actions: read
     env:
-      BIJUX_COST_OWNER: frontend-browser-faults-${{ matrix.group || '' }}-${{ matrix.engine || '' }}
+      BIJUX_COST_OWNER: frontend-browser-faults-${{ matrix.engine }}
     runs-on: ubuntu-latest
     timeout-minutes: 3
     strategy:
@@ -696,7 +696,7 @@ jobs:
     if: ${{ ((github.event_name != 'pull_request' && github.event_name != 'pull_request_target' && github.event_name != 'pull_request_review') || (github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.pull_request.user.login != 'github-actions[bot]' || github.event.pull_request.head.ref != 'automation/dependency-lock-refresh'))) && (always() && github.repository == 'bijux/bijux-std' && (needs.input-plan.result != 'success' || needs.input-plan.outputs.frontend != 'false')) }}
     needs: input-plan
     env:
-      BIJUX_COST_OWNER: frontend-public-faults-${{ matrix.group || '' }}-${{ matrix.engine || '' }}
+      BIJUX_COST_OWNER: frontend-public-faults
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:

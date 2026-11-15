@@ -276,7 +276,7 @@ nor source, deployment, profile or manual qualification requirements.
 
 ## Manual publication controlled by IaC
 
-The twelve governed repositories select `manual-only` publication with
+The governed repositories select `manual-only` publication with
 `controller: iac` for each applicable canonical publisher: `release-github`,
 `release-ghcr`, `release-crates`, `release-pypi`, and `deploy-docs`. The projection
 removes automatic and reusable entry points. Validation rejects callers of these
@@ -298,7 +298,7 @@ rejects publication. PR-only approval evidence belongs to protected-main
 acceptance rather than a nonexistent push approval run.
 
 `bijux-iac` owns the manual dispatch controller and its environment credentials.
-Its App is limited to the twelve repositories with Actions write, Contents read,
+Its App is limited to governed publisher destinations with Actions write, Contents read,
 Checks read, Variables read, and mandatory Metadata read. Each dispatch mints a
 token for only the selected repository. App identity and permissions are checked
 before dispatch; the private key remains in IaC's main-only `publication-control`
@@ -336,3 +336,32 @@ need source-specific admission own the command in the typed repository manifest.
 `BIJUX_RELEASE_ARTIFACT_VERIFICATION_COMMAND` remains the later, independent
 check of constructed distribution identity and repository artifact policy.
 Passing either command does not publish a package or replace the other check.
+
+
+## npm workspace publication
+
+`release-npm` is a manual IaC-controlled publisher, with no push/tag trigger or
+reusable-workflow publication route. The initial RO-Crate declaration retains
+`BIJUX_NPM_ENABLED=false`. Names and versions in that declaration do not prove
+registry ownership, trusted-publisher configuration or publication approval.
+
+An enabled release selects an existing version tag at current accepted main and
+a successful manual `package-candidate.yml` run at the same source. Inspection
+checks repository/workflow identity, source/tree/lock receipts, exact archive
+SHA256/SHA512, confined regular tar members, package provenance, public access
+and dependency order. The publisher downloads the inspected cohort across jobs
+and rechecks it; it never rebuilds or repacks before registry writes.
+
+Only the publish job enters `npm-publication` and requests OIDC. It uses pinned
+Node24.21.0 and npm11.21.2. npm trusted publishing needs npm11.5.1 or later and
+Node22.14.0 or later; configure the exact public repository/workflow/environment
+binding and first-package ownership before enabling publication. See the
+[official npm guidance](https://docs.npmjs.com/trusted-publishers/).
+
+Packages publish in declared dependency order with lifecycle scripts disabled.
+Existing identical versions are verified and skipped; a different integrity
+refuses the release. Partial receipts retain attempted/verified states, and a
+retry resumes missing immutable versions. Authentication or network failures
+are never interpreted as absent packages. The controller re-admits source,
+checks and tag at the write boundary. Configuring this contract does not execute
+publication, reserve names, bootstrap credentials or attest a registry release.
