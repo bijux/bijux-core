@@ -55,6 +55,10 @@ This project adheres to [Semantic Versioning](https://semver.org) and the
 
 ### Security
 
+- Resolve three QUIC denial-of-service advisories by locking `quinn-proto` to
+  `0.11.19` and `quinn-udp` to `0.5.16`
+  ([#187](https://github.com/bijux/bijux-core/pull/187)).
+
 - Resolve five QUIC protocol denial-of-service advisories by locking `quinn-proto` to the compatible patched version `0.11.18` ([#150](https://github.com/bijux/bijux-core/pull/150)).
 
 
