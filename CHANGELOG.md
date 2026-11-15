@@ -18,6 +18,13 @@ This project adheres to [Semantic Versioning](https://semver.org) and the
 
 ### Changed
 
+- Qualify MkDocs Material 9.8.1, the revision-date plugin 1.7.0, and Pymdown
+  Extensions 13 for repository documentation
+  ([#187](https://github.com/bijux/bijux-core/pull/187)).
+
+- Qualify Croner 4.0.3 scheduling and Flate2 1.1.11 compression on Rust 1.86
+  ([#187](https://github.com/bijux/bijux-core/pull/187)).
+
 - Distribute native Rust compilation and Nextest partitions, run Python coverage
   independently, and require complete source-bound acceptance in the CI test gate.
 
@@ -47,6 +54,10 @@ This project adheres to [Semantic Versioning](https://semver.org) and the
 - Adopt trusted manual publication admission and accepted shared documentation policy ([#145](https://github.com/bijux/bijux-core/pull/145)).
 
 ### Security
+
+- Resolve three QUIC denial-of-service advisories by locking `quinn-proto` to
+  `0.11.19` and `quinn-udp` to `0.5.16`
+  ([#187](https://github.com/bijux/bijux-core/pull/187)).
 
 - Resolve five QUIC protocol denial-of-service advisories by locking `quinn-proto` to the compatible patched version `0.11.18` ([#150](https://github.com/bijux/bijux-core/pull/150)).
 
